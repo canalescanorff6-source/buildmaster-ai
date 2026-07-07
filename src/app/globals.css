@@ -634,3 +634,48 @@ textarea {
   font-size: 11px;
   font-weight: 900;
 }
+
+/* Upload mobile corrigido: separa galeria/arquivos da câmera */
+.preview-zone {
+  cursor: default;
+}
+.upload-choice-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 12px;
+}
+.upload-action {
+  width: 100%;
+  min-height: 46px;
+  text-align: center;
+}
+.primary-upload {
+  border-color: rgba(73,255,135,.34);
+  background: linear-gradient(135deg, rgba(73,255,135,.14), rgba(56,216,255,.08));
+  color: #dfffea;
+}
+.camera-upload {
+  border-color: rgba(148,163,184,.18);
+  background: rgba(255,255,255,.055);
+}
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+.upload-help {
+  margin-top: 10px;
+}
+.upload-help strong {
+  color: #dfffea;
+}
+@media (max-width: 460px) {
+  .upload-choice-row { grid-template-columns: 1fr; }
+}

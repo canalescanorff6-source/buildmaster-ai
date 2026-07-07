@@ -440,20 +440,46 @@ export function CardVisionApp() {
             <Camera size={24} />
           </div>
 
-          <label className="dropzone">
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) void handleFile(file);
-              }}
-            />
+          <div className="dropzone preview-zone">
             {preview ? <img src={preview} alt="Imagem enviada" /> : (
-              <span><UploadCloud size={34} /> Toque para tirar foto ou enviar print da carta</span>
+              <span><UploadCloud size={34} /> Envie um print nítido da carta para o app ler a ficha completa</span>
             )}
-          </label>
+          </div>
+
+          <div className="upload-choice-row">
+            <label className="soft-button upload-action primary-upload">
+              <input
+                className="visually-hidden"
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.currentTarget.value = '';
+                  if (file) void handleFile(file);
+                }}
+              />
+              <UploadCloud size={18} /> Buscar print/galeria
+            </label>
+
+            <label className="soft-button upload-action camera-upload">
+              <input
+                className="visually-hidden"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  event.currentTarget.value = '';
+                  if (file) void handleFile(file);
+                }}
+              />
+              <Camera size={18} /> Tirar foto
+            </label>
+          </div>
+
+          <p className="microcopy upload-help">
+            No celular, use <strong>Buscar print/galeria</strong> para abrir o gerenciador de arquivos/galeria. Use <strong>Tirar foto</strong> apenas quando quiser abrir a câmera.
+          </p>
 
           <div className="form-grid">
             <label>
