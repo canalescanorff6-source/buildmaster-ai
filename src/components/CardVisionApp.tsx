@@ -50,7 +50,7 @@ const tacticalLabels: Record<string, string> = {
   longBall: 'Bola longa'
 };
 
-type ReadingMode = 'fast' | 'precision';
+type ReadingMode = 'vision' | 'precision' | 'fast';
 type ResultTab = 'resumo' | 'ficha' | 'habilidades' | 'posicoes' | 'dados';
 
 function mergeOcrTexts(...texts: string[]) {
@@ -66,6 +66,75 @@ function mergeOcrTexts(...texts: string[]) {
     }
   }
   return Array.from(lines.values()).join('\n');
+}
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error ?? new Error('Falha ao ler imagem.'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function posPtToCode(position: string | null | undefined) {
+  const value = String(position ?? '').trim().toUpperCase();
+  const map: Record<string, string> = { CA: 'CF', SA: 'SS', PE: 'LWF', PD: 'RWF', ME: 'LMF', MD: 'RMF', MAT: 'AMF', MC: 'CMF', VOL: 'DMF', ZAG: 'CB', LE: 'LB', LD: 'RB', GOL: 'GK' };
+  return map[value] ?? value;
+}
+
+function visionCardToText(card: any) {
+  const lines: string[] = [];
+  const add = (label: string, value: any) => {
+    if (value !== null && value !== undefined && value !== '') lines.push(`${label}: ${value}`);
+  };
+
+  add('Jogador', card.playerName);
+  add('Overall', card.overall);
+  add('Posição principal', posPtToCode(card.mainPosition));
+  add('Estilo', card.playstyle);
+  add('Altura', card.height ? `${card.height}cm` : null);
+  add('Peso', card.weight ? `${card.weight}kg` : null);
+  add('Idade', card.age);
+  add('Nível máximo', card.level);
+
+  const inferred = Number.isFinite(Number(card.level)) ? (Number(card.level) - 1) * 2 : Number(card.trainingPointsTotal);
+  if (Number.isFinite(inferred) && inferred >= 20 && inferred <= 80) add('Pontos confirmados', `${inferred}/${inferred}`);
+
+  if (card.positionRatings && typeof card.positionRatings === 'object') {
+    for (const [code, value] of Object.entries(card.positionRatings)) {
+      if (Number.isFinite(Number(value))) lines.push(`${posPtToCode(code)} ${value}`);
+    }
+  }
+
+  const attrLabels: Record<string, string> = {
+    offensiveAwareness: 'Talento ofensivo', ballControl: 'Controle de bola', dribbling: 'Drible', tightPossession: 'Condução firme', lowPass: 'Passe rasteiro', loftedPass: 'Passe alto', finishing: 'Finalização', heading: 'Cabeçada', placeKicking: 'Cobrança de bola parada', curl: 'Curva', defensiveAwareness: 'Talento defensivo', defensiveEngagement: 'Dedicação defensiva', tackling: 'Desarme', aggression: 'Agressividade', goalkeeperAwareness: 'Talento de GO', goalkeeperCatching: 'Firmeza do GO', goalkeeperParrying: 'Defesa do GO', goalkeeperReflexes: 'Reflexos do GO', goalkeeperReach: 'Alcance do GO', speed: 'Velocidade', acceleration: 'Aceleração', kickingPower: 'Força do chute', jump: 'Salto', physicalContact: 'Contato físico', balance: 'Equilíbrio', stamina: 'Resistência'
+  };
+  if (card.attributes && typeof card.attributes === 'object') {
+    for (const [key, label] of Object.entries(attrLabels)) {
+      const value = card.attributes[key];
+      if (Number.isFinite(Number(value))) lines.push(`${label} ${value}`);
+    }
+  }
+
+  if (Array.isArray(card.boosters) && card.boosters.length) {
+    lines.push(`Ímpetos: ${card.boosters.map((item: any) => `${item.name}${item.value ? ` +${item.value}` : ''}`).join(', ')}`);
+  }
+  if (Array.isArray(card.nativeSkills) && card.nativeSkills.length) lines.push(`Habilidades: ${card.nativeSkills.join(', ')}`);
+  if (Array.isArray(card.rawImportantText)) lines.push(...card.rawImportantText.filter(Boolean));
+  return lines.join('\n');
+}
+
+async function readWithVisionAI(file: File) {
+  const imageDataUrl = await fileToDataUrl(file);
+  const response = await fetch('/api/vision', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imageDataUrl })
+  });
+  const payload = await response.json();
+  if (!response.ok || !payload?.ok) throw new Error(payload?.error ?? 'Vision AI indisponível.');
+  return visionCardToText(payload.card);
 }
 
 async function imageToCanvas(file: File | Blob) {
@@ -523,7 +592,7 @@ export function CardVisionApp() {
   const [rawText, setRawText] = useState('');
   const [objective, setObjective] = useState<Objective>('COMPETITIVE');
   const [targetPosition, setTargetPosition] = useState<PositionCode | 'AUTO'>('AUTO');
-  const [readingMode, setReadingMode] = useState<ReadingMode>('precision');
+  const [readingMode, setReadingMode] = useState<ReadingMode>('vision');
   const [status, setStatus] = useState('Envie o print da carta para começar.');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
@@ -544,7 +613,23 @@ export function CardVisionApp() {
       const croppedPreview = await createPlayerCardPreview(file);
       if (croppedPreview) setPlayerCardImage(croppedPreview);
 
-      const variants = await createOcrVariants(file, readingMode);
+      if (readingMode === 'vision') {
+        try {
+          setStatus('Lendo com IA Vision em alta precisão...');
+          const visionText = await readWithVisionAI(file);
+          if (visionText.trim().length > 8) {
+            setRawText(visionText);
+            const autoResult = analyzeCard(visionText, objective, targetPosition, file.name);
+            setResult(autoResult);
+            setStatus('Leitura automática concluída com IA Vision. Ficha Elite gerada sem precisar revisar manualmente.');
+            return;
+          }
+        } catch (error) {
+          setStatus(`${error instanceof Error ? error.message : 'IA Vision indisponível.'} Vou usar OCR local seguro.`);
+        }
+      }
+
+      const variants = await createOcrVariants(file, readingMode === 'fast' ? 'fast' : 'precision');
       const texts: string[] = [];
 
       for (let index = 0; index < variants.length; index += 1) {
@@ -562,16 +647,22 @@ export function CardVisionApp() {
 
       const mergedText = mergeOcrTexts(...texts);
       setRawText(mergedText);
-      setStatus('Leitura concluída. Confira nome, estilo, posição, pontos e atributos antes de gerar a ficha final.');
+      if (mergedText.trim().length > 2) {
+        const autoResult = analyzeCard(mergedText, objective, targetPosition, file.name);
+        setResult(autoResult);
+        setStatus('OCR local concluído. Ficha Elite gerada automaticamente com travas contra pontos/posições absurdas.');
+      } else {
+        setStatus('Não consegui ler texto suficiente. Tente outro print ou use IA Vision com chave configurada.');
+      }
     } catch {
-      setStatus('Não consegui ler automaticamente. Use Buscar print/galeria novamente ou cole os dados da carta no campo de revisão.');
+      setStatus('Não consegui ler automaticamente. Tente outro print direto da tela ou configure IA Vision para máxima precisão.');
     } finally {
       setLoading(false);
     }
   }
 
   function runAnalysis() {
-    setStatus('Gerando ficha de gameplay máximo...');
+    setStatus('Gerando ficha Elite de gameplay máximo...');
     const nextResult = analyzeCard(rawText, objective, targetPosition, fileName);
     setResult(nextResult);
     setStatus(nextResult.note);
@@ -581,13 +672,13 @@ export function CardVisionApp() {
     <main className="app-frame">
       <section className="hero compact-hero premium-hero">
         <div>
-          <div className="brand-pill"><Sparkles size={16} /> BuildMaster AI Vision Pro</div>
-          <h1>Ficha máxima por imagem</h1>
-          <p>Envie o print da carta. O app lê as estatísticas, organiza a informação e entrega ficha com custo real de pontos, melhor posição, habilidades adicionais faltantes e gameplay ideal.</p>
+          <div className="brand-pill"><Sparkles size={16} /> BuildMaster AI Vision Pro v4</div>
+          <h1>Ficha Elite automática por imagem</h1>
+          <p>Envie o print da carta. O app tenta ler tudo automaticamente, trava pontos/posições absurdas e gera uma ficha Elite de gameplay real, sem copiar a ficha automática do jogo.</p>
         </div>
         <div className="hero-badges">
           <span><ShieldCheck size={16} /> Sem banco</span>
-          <span><ScanText size={16} /> OCR por áreas</span>
+          <span><ScanText size={16} /> Vision + OCR</span>
           <span><CheckCircle2 size={16} /> PT-BR</span>
         </div>
       </section>
@@ -643,7 +734,8 @@ export function CardVisionApp() {
             <label>
               Modo de leitura
               <select value={readingMode} onChange={(event) => setReadingMode(event.target.value as ReadingMode)}>
-                <option value="precision">Precisão máxima — lê por áreas</option>
+                <option value="vision">IA Vision — melhor precisão automática</option>
+                <option value="precision">OCR local premium — sem chave de API</option>
                 <option value="fast">Rápido — leitura leve</option>
               </select>
             </label>
@@ -665,7 +757,7 @@ export function CardVisionApp() {
             <div className="section-head compact-section-head">
               <div>
                 <p className="eyebrow">Etapa 2</p>
-                <h3>Revisão do OCR</h3>
+                <h3>Dados detectados</h3>
               </div>
               <Zap size={18} />
             </div>
@@ -673,19 +765,26 @@ export function CardVisionApp() {
               rows={12}
               value={rawText}
               onChange={(event) => setRawText(event.target.value)}
-              placeholder={'O texto lido aparece aqui. Corrija se precisar:\nEl-Hadji Diouf\nEstilo: Artilheiro\nCA 102  PE 100  PD 100  SA 100\nNível máximo 32  Pontos 62/62\nChute 10  Passe 4  Destreza 12  Força nas pernas 8  Bola aérea 4\nFinalização 91  Velocidade 92  Aceleração 95\nHabilidades: Chute de primeira, Cabeçada...'}
+                            placeholder={`O app preenche sozinho. Este campo fica só para conferir ou ajustar em último caso:
+El-Hadji Diouf
+Estilo: Artilheiro
+CA 102  PE 100  PD 100  SA 100
+Nível máximo 32  Pontos 62/62
+Chute 10  Passe 4  Destreza 12  Força nas pernas 8  Bola aérea 4
+Finalização 91  Velocidade 92  Aceleração 95
+Habilidades: Chute de primeira, Cabeçada...`}
             />
           </div>
 
           <div className="actions sticky-actions">
             <button type="button" className="primary-button" disabled={loading || !canAnalyze} onClick={runAnalysis}>
               {loading ? <Loader2 className="spin" size={18} /> : <Wand2 size={18} />}
-              Gerar ficha premium
+              Gerar ficha Elite
             </button>
           </div>
 
           <p className="status-line">{status}</p>
-          <p className="microcopy upload-help">Para máxima precisão, use print direto da tela. Se alguma linha vier errada, corrija no campo acima antes de gerar a ficha.</p>
+          <p className="microcopy upload-help">Modo IA Vision entrega a melhor leitura automática quando a chave está configurada na Vercel. Sem chave, o app usa OCR local seguro com fallback de pontos e posição.</p>
         </section>
 
         <section className="output-panel">

@@ -384,6 +384,73 @@ function detectPositions(text: string): PositionCode[] {
   return Array.from(new Set(detected));
 }
 
+
+function codeFromPositionToken(token: string): PositionCode | null {
+  const value = normalize(token).toUpperCase().replace(/[^A-ZÀ-Ÿ]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (/^(CF|CA|CENTROAVANTE)$/.test(value)) return 'CF';
+  if (/^(SS|SA|SEGUNDO ATACANTE)$/.test(value)) return 'SS';
+  if (/^(LWF|PE|PTE|PONTA ESQUERDA)$/.test(value)) return 'LWF';
+  if (/^(RWF|PD|PTD|PONTA DIREITA)$/.test(value)) return 'RWF';
+  if (/^(LMF|ME|MEIA ESQUERDA)$/.test(value)) return 'LMF';
+  if (/^(RMF|MD|MEIA DIREITA)$/.test(value)) return 'RMF';
+  if (/^(AMF|MAT|MEIA ATACANTE)$/.test(value)) return 'AMF';
+  if (/^(CMF|MC|MEIA CENTRAL)$/.test(value)) return 'CMF';
+  if (/^(DMF|VOL|VOLANTE)$/.test(value)) return 'DMF';
+  if (/^(CB|ZAG|ZAGUEIRO)$/.test(value)) return 'CB';
+  if (/^(LB|LE|LATERAL ESQUERDO)$/.test(value)) return 'LB';
+  if (/^(RB|LD|LATERAL DIREITO)$/.test(value)) return 'RB';
+  if (/^(GK|GOL|GOLEIRO)$/.test(value)) return 'GK';
+  return null;
+}
+
+
+function detectExplicitMainPosition(text: string): PositionCode | null {
+  const compact = normalize(text).replace(/\r?\n/g, ' ');
+  const patterns = [
+    /(?:posi[cç][aã]o\s+principal|posição\s+principal|main\s*position|primary\s*position|posicao)\s*[:=\-]?\s*(CF|CA|SS|SA|LWF|RWF|LMF|RMF|AMF|CMF|DMF|CB|LB|RB|GK|PE|PD|ME|MD|MAT|MC|VOL|ZAG|LE|LD|GOL)\b/i,
+    /(?:overall|ovr)\s*[:=\-]?\s*\d{2,3}\s*(CF|CA|SS|SA|LWF|RWF|LMF|RMF|AMF|CMF|DMF|CB|LB|RB|GK|PE|PD|ME|MD|MAT|MC|VOL|ZAG|LE|LD|GOL)\b/i
+  ];
+  for (const pattern of patterns) {
+    const match = compact.match(pattern);
+    if (match?.[1]) {
+      const code = codeFromPositionToken(match[1]);
+      if (code) return code;
+    }
+  }
+  return null;
+}
+
+function detectPrimaryPositionFromTop(text: string): PositionCode | null {
+  const lines = normalize(text).toUpperCase().split(/\r?\n/).map(cleanLine).filter(Boolean).slice(0, 40);
+  const positionAliases = '(CF|CA|SS|SA|LWF|RWF|LMF|RMF|AMF|CMF|DMF|CB|LB|RB|GK|PE|PD|ME|MD|MAT|MC|VOL|ZAG|LE|LD|GOL)';
+
+  // Formato comum da carta recortada: overall grande e posição logo abaixo. Ex.: "104" na linha anterior e "CA" na linha atual.
+  for (let index = 1; index < lines.length; index += 1) {
+    const previousNumber = lines[index - 1].match(/\b(8\d|9\d|10\d|11\d)\b/);
+    const currentPosition = lines[index].match(new RegExp(`^${positionAliases}$`, 'i'));
+    if (previousNumber && currentPosition) {
+      const code = codeFromPositionToken(currentPosition[1]);
+      if (code) return code;
+    }
+  }
+
+  // Formato em uma linha só: "104 CA" ou "CA 104".
+  for (const line of lines.slice(0, 25)) {
+    const numberThenPosition = line.match(new RegExp(`\\b(8\\d|9\\d|10\\d|11\\d)\\s*${positionAliases}\\b`, 'i'));
+    if (numberThenPosition) {
+      const code = codeFromPositionToken(numberThenPosition[2]);
+      if (code) return code;
+    }
+    const positionThenNumber = line.match(new RegExp(`\\b${positionAliases}\\s*(8\\d|9\\d|10\\d|11\\d)\\b`, 'i'));
+    if (positionThenNumber) {
+      const code = codeFromPositionToken(positionThenNumber[1]);
+      if (code) return code;
+    }
+  }
+
+  return null;
+}
+
 function detectPositionRatings(text: string): PositionRatings {
   const ratings: PositionRatings = {};
   const normalized = normalize(text).toUpperCase();
@@ -517,7 +584,7 @@ function parseAttributes(text: string): Attributes {
   const compact = normalize(text).replace(/\r?\n/g, ' ');
   for (const [key, patterns] of ATTRIBUTE_LABELS) {
     const value = readNumber(compact, patterns);
-    if (value !== null && value >= 1 && value <= 120) attributes[key] = value;
+    if (value !== null && value >= 1 && value <= 110) attributes[key] = value;
   }
   return attributes;
 }
@@ -758,10 +825,14 @@ function calculateTacticalFit(position: PositionCode, a: Required<Attributes>, p
 const TRAINING_KEYS: TrainingKey[] = ['shooting', 'passing', 'dribbling', 'dexterity', 'lowerBodyStrength', 'aerialStrength', 'defending', 'gk1', 'gk2', 'gk3'];
 
 const SAFE_DEFAULT_TRAINING_BUDGET = 64;
+const MIN_AUTO_TRAINING_BUDGET = 20;
+const MAX_AUTO_TRAINING_BUDGET = 80;
+// Cartas especiais/booster do eFHUB/eFootBase normalmente ficam nessa faixa.
+// Se o OCR ler 116, 140 etc. vindo de outro número da tela, o app descarta e usa fallback seguro.
 
 function normalizeTrainingBudget(value: number | null | undefined): number {
   const n = Number(value);
-  if (!Number.isFinite(n) || n < 20 || n > 220) return SAFE_DEFAULT_TRAINING_BUDGET;
+  if (!Number.isFinite(n) || n < MIN_AUTO_TRAINING_BUDGET || n > MAX_AUTO_TRAINING_BUDGET) return SAFE_DEFAULT_TRAINING_BUDGET;
   return Math.round(n);
 }
 
@@ -804,10 +875,10 @@ function removeTrainingLevel(plan: TrainingPlan, key: TrainingKey): boolean {
 
 function trainingBudgetFromCard(parsed: ParsedCard): number {
   const inferred = inferTrainingPointsFromLevel(parsed.level);
-  if (inferred && inferred >= 20) return normalizeTrainingBudget(inferred);
+  if (inferred && inferred >= MIN_AUTO_TRAINING_BUDGET && inferred <= MAX_AUTO_TRAINING_BUDGET) return normalizeTrainingBudget(inferred);
 
   const total = Number(parsed.trainingPointsTotal ?? NaN);
-  if (Number.isFinite(total) && total >= 20) return normalizeTrainingBudget(total);
+  if (Number.isFinite(total) && total >= MIN_AUTO_TRAINING_BUDGET && total <= MAX_AUTO_TRAINING_BUDGET) return normalizeTrainingBudget(total);
 
   return SAFE_DEFAULT_TRAINING_BUDGET;
 }
@@ -908,14 +979,192 @@ function fitTrainingToBudget(target: TrainingPlan, priority: TrainingKey[], budg
   return plan;
 }
 
-function trainingFor(position: PositionCode, objective: Objective, a: Required<Attributes>, parsed: ParsedCard): TrainingPlan {
+const TRAINING_ATTRIBUTE_GAINS: Record<TrainingKey, Partial<Record<AttributeKey, number>>> = {
+  shooting: { finishing: 1, placeKicking: 1, curl: 1 },
+  passing: { lowPass: 1, loftedPass: 1 },
+  dribbling: { ballControl: 1, dribbling: 1, tightPossession: 1 },
+  dexterity: { offensiveAwareness: 1, acceleration: 1, balance: 1 },
+  lowerBodyStrength: { speed: 1, kickingPower: 1, stamina: 1 },
+  aerialStrength: { heading: 1, jump: 1, physicalContact: 1 },
+  defending: { defensiveAwareness: 1, defensiveEngagement: 1, tackling: 1, aggression: 1 },
+  gk1: { goalkeeperAwareness: 1, goalkeeperCatching: 1 },
+  gk2: { goalkeeperParrying: 1, goalkeeperReflexes: 1 },
+  gk3: { goalkeeperReach: 1, jump: 1 }
+};
+
+function applyTrainingToAttributes(base: Required<Attributes>, plan: TrainingPlan): Required<Attributes> {
+  const boosted = { ...base } as Required<Attributes>;
+  for (const key of TRAINING_KEYS) {
+    const level = plan[key] ?? 0;
+    const gains = TRAINING_ATTRIBUTE_GAINS[key] ?? {};
+    for (const [attribute, gain] of Object.entries(gains) as Array<[AttributeKey, number]>) {
+      boosted[attribute] = clamp((boosted[attribute] ?? 0) + level * gain, 1, 110);
+    }
+  }
+  return boosted;
+}
+
+function trainingCaps(position: PositionCode, objective: Objective, a: Required<Attributes>, parsed: ParsedCard): TrainingPlan {
+  const playstyle = normalize(parsed.playstyle ?? '').toLowerCase();
+  const isAreaStriker = position === 'CF' && /homem de area|pivo|target man|fox|artilheiro|goal poacher|atacante matador/.test(playstyle);
+  const highAerial = a.heading >= 78 || a.physicalContact >= 82 || isAreaStriker;
+  const caps = emptyTraining();
+
+  const set = (entries: Partial<TrainingPlan>) => Object.assign(caps, entries);
+
+  if (position === 'CF') {
+    set({ shooting: 13, dexterity: 11, lowerBodyStrength: 11, aerialStrength: highAerial ? 10 : 6, dribbling: 7, passing: 5 });
+  } else if (position === 'SS') {
+    set({ shooting: 10, passing: 8, dribbling: 10, dexterity: 11, lowerBodyStrength: 8, aerialStrength: 3 });
+  } else if (position === 'LWF' || position === 'RWF') {
+    set({ shooting: 8, passing: 6, dribbling: 11, dexterity: 11, lowerBodyStrength: 10, aerialStrength: 2 });
+  } else if (position === 'LMF' || position === 'RMF') {
+    set({ shooting: 4, passing: 9, dribbling: 8, dexterity: 9, lowerBodyStrength: 10, aerialStrength: 4, defending: 8 });
+  } else if (position === 'AMF') {
+    set({ shooting: 7, passing: 11, dribbling: 10, dexterity: 9, lowerBodyStrength: 6, aerialStrength: 2, defending: 2 });
+  } else if (position === 'CMF') {
+    set({ shooting: 4, passing: 10, dribbling: 7, dexterity: 7, lowerBodyStrength: 10, aerialStrength: 5, defending: 10 });
+  } else if (position === 'DMF') {
+    set({ shooting: 2, passing: 9, dribbling: 6, dexterity: 7, lowerBodyStrength: 9, aerialStrength: 6, defending: 14 });
+  } else if (position === 'CB') {
+    set({ passing: 5, dribbling: 2, dexterity: 6, lowerBodyStrength: 8, aerialStrength: 10, defending: 15 });
+  } else if (position === 'LB' || position === 'RB') {
+    set({ shooting: 2, passing: 8, dribbling: 7, dexterity: 9, lowerBodyStrength: 10, aerialStrength: 5, defending: 11 });
+  } else if (position === 'GK') {
+    set({ aerialStrength: 6, lowerBodyStrength: 4, gk1: 12, gk2: 12, gk3: 12 });
+  }
+
+  if (objective === 'FINISHER') {
+    caps.shooting = Math.min(16, caps.shooting + 2);
+    caps.dexterity = Math.min(16, caps.dexterity + 1);
+  }
+  if (objective === 'CREATOR' || objective === 'POSSESSION') {
+    caps.passing = Math.min(16, caps.passing + 2);
+    caps.dribbling = Math.min(16, caps.dribbling + 1);
+  }
+  if (objective === 'DRIBBLER') {
+    caps.dribbling = Math.min(16, caps.dribbling + 2);
+    caps.dexterity = Math.min(16, caps.dexterity + 1);
+  }
+  if (objective === 'DEFENSIVE' || objective === 'PRESSING') {
+    caps.defending = Math.min(16, caps.defending + 2);
+    caps.lowerBodyStrength = Math.min(16, caps.lowerBodyStrength + 1);
+  }
+  if (objective === 'AERIAL') caps.aerialStrength = Math.min(16, caps.aerialStrength + 3);
+  if (objective === 'QUICK_COUNTER') {
+    caps.lowerBodyStrength = Math.min(16, caps.lowerBodyStrength + 2);
+    caps.dexterity = Math.min(16, caps.dexterity + 1);
+  }
+
+  return caps;
+}
+
+function objectiveBonus(objective: Objective, position: PositionCode, a: Required<Attributes>) {
+  const values: Record<Objective, number> = {
+    COMPETITIVE: avg(a.stamina, a.balance, a.physicalContact, position === 'CF' ? a.finishing : a.lowPass),
+    FINISHER: avg(a.finishing, a.offensiveAwareness, a.kickingPower, a.curl),
+    CREATOR: avg(a.lowPass, a.loftedPass, a.ballControl, a.tightPossession),
+    DRIBBLER: avg(a.dribbling, a.ballControl, a.tightPossession, a.balance, a.acceleration),
+    PRESSING: avg(a.stamina, a.aggression, a.defensiveEngagement, a.speed),
+    POSSESSION: avg(a.lowPass, a.ballControl, a.tightPossession, a.balance),
+    QUICK_COUNTER: avg(a.speed, a.acceleration, a.finishing, a.kickingPower),
+    DEFENSIVE: avg(a.defensiveAwareness, a.tackling, a.defensiveEngagement, a.physicalContact),
+    AERIAL: avg(a.heading, a.jump, a.physicalContact)
+  };
+  return values[objective] ?? values.COMPETITIVE;
+}
+
+function eliteBuildScore(position: PositionCode, objective: Objective, base: Required<Attributes>, plan: TrainingPlan, parsed: ParsedCard): number {
+  const a = applyTrainingToAttributes(base, plan);
+  const pri = calculatePri(position, a, parsed.nativeSkills).overall;
+  let score = pri * 1.85 + objectiveBonus(objective, position, a) * 0.85;
+
+  // Thresholds de gameplay real. O motor prefere passar de cortes úteis em campo, não inflar overall.
+  if (position === 'CF') {
+    score += Math.min(8, Math.max(0, a.finishing - 88) * 0.6);
+    score += Math.min(6, Math.max(0, a.offensiveAwareness - 88) * 0.45);
+    score += Math.min(5, Math.max(0, a.kickingPower - 86) * 0.35);
+    if (/homem de area|pivo|target man|fox/.test(normalize(parsed.playstyle ?? '').toLowerCase())) {
+      score += Math.min(7, Math.max(0, avg(a.heading, a.jump, a.physicalContact) - 82) * 0.45);
+    }
+    if (a.lowPass < 68) score -= 3;
+  }
+  if (position === 'DMF' || position === 'CB') {
+    score += Math.min(10, Math.max(0, avg(a.defensiveAwareness, a.tackling, a.defensiveEngagement) - 86) * 0.55);
+    score += Math.min(5, Math.max(0, a.physicalContact - 82) * 0.35);
+    if (position === 'DMF') score += Math.min(4, Math.max(0, a.lowPass - 78) * 0.25);
+  }
+  if (position === 'AMF' || position === 'CMF' || position === 'SS') {
+    score += Math.min(8, Math.max(0, avg(a.lowPass, a.ballControl, a.tightPossession) - 84) * 0.45);
+  }
+  if (position === 'LWF' || position === 'RWF' || position === 'LB' || position === 'RB' || position === 'LMF' || position === 'RMF') {
+    score += Math.min(8, Math.max(0, avg(a.speed, a.acceleration, a.stamina) - 86) * 0.4);
+  }
+
+  // Penaliza gastar ponto em atributo que não conversa com a função.
+  if (position !== 'GK' && (plan.gk1 || plan.gk2 || plan.gk3)) score -= 100;
+  if (position === 'CF' && plan.defending > 0) score -= plan.defending * 3;
+  if ((position === 'CB' || position === 'DMF') && plan.shooting > 4) score -= (plan.shooting - 4) * 2;
+  return score;
+}
+
+function optimizeEliteTraining(position: PositionCode, objective: Objective, base: Required<Attributes>, parsed: ParsedCard): TrainingPlan {
   const budget = trainingBudgetFromCard(parsed);
-  const { target, priority } = trainingTemplate(position, objective, a, parsed);
-  return fitTrainingToBudget(target, priority, budget);
+  const caps = trainingCaps(position, objective, base, parsed);
+  const plan = emptyTraining();
+
+  let guard = 0;
+  while (trainingPlanTotalCost(plan) < budget && guard < 800) {
+    guard += 1;
+    const currentCost = trainingPlanTotalCost(plan);
+    const currentScore = eliteBuildScore(position, objective, base, plan, parsed);
+    let best: { key: TrainingKey; value: number } | null = null;
+
+    for (const key of TRAINING_KEYS) {
+      const nextLevel = (plan[key] ?? 0) + 1;
+      const cap = caps[key] ?? 0;
+      if (nextLevel > cap || nextLevel > 16) continue;
+      const addCost = trainingLevelCost(nextLevel);
+      if (currentCost + addCost > budget) continue;
+      const candidate = { ...plan, [key]: nextLevel } as TrainingPlan;
+      const scoreGain = eliteBuildScore(position, objective, base, candidate, parsed) - currentScore;
+      const efficiency = scoreGain / Math.max(1, addCost);
+      if (!best || efficiency > best.value) best = { key, value: efficiency };
+    }
+
+    if (!best || best.value <= 0.02) break;
+    addTrainingLevel(plan, best.key);
+  }
+
+  // Se ainda sobrar ponto, preenche por prioridade de impacto da posição, respeitando caps.
+  const { priority } = trainingTemplate(position, objective, base, parsed);
+  let guardFill = 0;
+  while (trainingPlanTotalCost(plan) < budget && guardFill < 500) {
+    guardFill += 1;
+    const currentCost = trainingPlanTotalCost(plan);
+    let added = false;
+    for (const key of priority) {
+      const nextLevel = (plan[key] ?? 0) + 1;
+      if (nextLevel > (caps[key] ?? 0) || nextLevel > 16) continue;
+      const nextCost = trainingLevelCost(nextLevel);
+      if (currentCost + nextCost <= budget) {
+        addTrainingLevel(plan, key);
+        added = true;
+        break;
+      }
+    }
+    if (!added) break;
+  }
+
+  return plan;
+}
+
+function trainingFor(position: PositionCode, objective: Objective, a: Required<Attributes>, parsed: ParsedCard): TrainingPlan {
+  return optimizeEliteTraining(position, objective, a, parsed);
 }
 
 function trainingCostRuleText() {
-  return 'Custo real do eFootball: níveis 1–4 custam 1 ponto cada; 5–8 custam 2; 9–12 custam 3; 13–16 custam 4. Por isso uma ficha com soma 41 pode gastar 64 pontos.';
+  return 'Motor Elite v4: usa custo real do eFootball e otimiza por desempenho em campo. Não copia a ficha automática do jogo; prioriza cortes úteis de gameplay, função, estilo e habilidades.';
 }
 
 function skillPriority(position: PositionCode, objective: Objective) {
@@ -1205,9 +1454,10 @@ function parseTrainingPoints(text: string, inferredPoints: number | null): { use
 
   // Correção definitiva do 2/2: nenhum valor abaixo de 20 é orçamento real de ficha.
   // Esses números pequenos quase sempre vêm de boosters, estrelas, ícones ou OCR quebrado.
-  const hardMinimum = 20;
+  const hardMinimum = MIN_AUTO_TRAINING_BUDGET;
+  const hardMaximum = MAX_AUTO_TRAINING_BUDGET;
   const valid = candidates
-    .filter((candidate) => candidate.total >= hardMinimum && candidate.total <= 220)
+    .filter((candidate) => candidate.total >= hardMinimum && candidate.total <= hardMaximum)
     .filter((candidate) => {
       if (!inferredPoints || inferredPoints < hardMinimum) return true;
       const minimumPlausible = Math.max(hardMinimum, Math.floor(inferredPoints * 0.55));
@@ -1235,16 +1485,21 @@ function parseTrainingPoints(text: string, inferredPoints: number | null): { use
 function inferTrainingPointsFromLevel(level?: number | null): number | null {
   if (!Number.isFinite(level ?? NaN)) return null;
   const safeLevel = Number(level);
-  if (safeLevel < 10 || safeLevel > 99) return null;
-  return Math.max(20, (safeLevel - 1) * 2);
+  // Níveis muito baixos ou muito altos quase sempre são ruído do OCR.
+  // Para eFHUB/eFootBase, cartas de jogador lidas por print normalmente ficam nessa faixa.
+  if (safeLevel < 10 || safeLevel > 45) return null;
+  const points = (safeLevel - 1) * 2;
+  if (points < MIN_AUTO_TRAINING_BUDGET || points > MAX_AUTO_TRAINING_BUDGET) return null;
+  return points;
 }
 
 function resolveTrainingPointBudget(
   parsedPoints: { used: number | null; total: number | null; ignoredReason?: string },
   inferredPoints: number | null
 ): { used: number; total: number; source: 'OCR' | 'LEVEL_INFERRED' | 'FALLBACK'; warning?: string } {
-  // Prioridade para o nível máximo. Ele é mais estável que OCR solto de "Pontos".
-  if (inferredPoints && inferredPoints >= 20) {
+  // Regra nova v4: orçamento automático vem do NÍVEL MÁXIMO, não de números soltos do print.
+  // Isso elimina casos 2/2, 116/116 e qualquer número de atributo confundido como pontos.
+  if (inferredPoints && inferredPoints >= MIN_AUTO_TRAINING_BUDGET && inferredPoints <= MAX_AUTO_TRAINING_BUDGET) {
     return {
       used: inferredPoints,
       total: inferredPoints,
@@ -1253,20 +1508,20 @@ function resolveTrainingPointBudget(
     };
   }
 
-  if (parsedPoints.total && parsedPoints.total >= 20) {
+  // Só aceita OCR de pontos quando a linha é plausível e bem limitada. Mesmo assim, nunca aceita acima do teto seguro.
+  if (parsedPoints.total && parsedPoints.total >= MIN_AUTO_TRAINING_BUDGET && parsedPoints.total <= MAX_AUTO_TRAINING_BUDGET) {
     const safeTotal = normalizeTrainingBudget(parsedPoints.total);
-    const safeUsed = parsedPoints.used !== null && Number.isFinite(parsedPoints.used) && parsedPoints.used >= 20 && parsedPoints.used <= safeTotal
+    const safeUsed = parsedPoints.used !== null && Number.isFinite(parsedPoints.used) && parsedPoints.used >= MIN_AUTO_TRAINING_BUDGET && parsedPoints.used <= safeTotal
       ? parsedPoints.used
       : safeTotal;
     return { used: safeUsed, total: safeTotal, source: 'OCR', warning: parsedPoints.ignoredReason };
   }
 
-  // Padrão seguro. O motor nunca mais pode cair em 2/2.
   return {
     used: SAFE_DEFAULT_TRAINING_BUDGET,
     total: SAFE_DEFAULT_TRAINING_BUDGET,
     source: 'FALLBACK',
-    warning: parsedPoints.ignoredReason ?? 'Pontos e nível não foram lidos com segurança; usando orçamento padrão seguro de 64 pontos.'
+    warning: parsedPoints.ignoredReason ?? 'Nível máximo não foi lido com segurança; usando orçamento competitivo padrão de 64 pontos.'
   };
 }
 
@@ -1275,13 +1530,19 @@ export function parseCard(rawText: string, imageFileName?: string | null): Parse
   const attributes = parseAttributes(text);
   const positionRatings = detectPositionRatings(text);
   const positions = Array.from(new Set([...detectPositions(text), ...(Object.keys(positionRatings) as PositionCode[])]));
-  const allNumbers = [...text.matchAll(/\b(\d{2,3})\b/g)].map((match) => Number(match[1])).filter((value) => value >= 40 && value <= 120);
+  const allNumbers = [...text.matchAll(/\b(\d{2,3})\b/g)].map((match) => Number(match[1])).filter((value) => value >= 40 && value <= 110);
   const ratingValues = Object.values(positionRatings).filter((v): v is number => Number.isFinite(v));
-  const overall = readNumber(text, [/overall\s*(?:base|inicial)?\s*(\d{2,3})/i, /\bovr\s*(\d{2,3})/i]) ?? (ratingValues.sort((a, b) => b - a)[0] ?? allNumbers.find((value) => value >= 80 && value <= 110) ?? null);
-  const maxOverall = readNumber(text, [/overall\s*(?:m[aá]x(?:imo)?|max)\s*(\d{2,3})/i, /max\s*overall\s*(\d{2,3})/i]) ?? (ratingValues.sort((a, b) => b - a)[0] ?? allNumbers.filter((value) => value >= 80 && value <= 110).sort((a, b) => b - a)[0] ?? overall);
+  const readOverallValue = readNumber(text, [/overall\s*(?:base|inicial)?\s*(\d{2,3})/i, /\bovr\s*(\d{2,3})/i]);
+  const safeReadOverall = readOverallValue && readOverallValue >= 40 && readOverallValue <= 110 ? readOverallValue : null;
+  const overall = safeReadOverall ?? (ratingValues.sort((a, b) => b - a)[0] ?? allNumbers.find((value) => value >= 80 && value <= 110) ?? null);
+  const readMaxOverallValue = readNumber(text, [/overall\s*(?:m[aá]x(?:imo)?|max)\s*(\d{2,3})/i, /max\s*overall\s*(\d{2,3})/i]);
+  const safeReadMaxOverall = readMaxOverallValue && readMaxOverallValue >= 40 && readMaxOverallValue <= 110 ? readMaxOverallValue : null;
+  const maxOverall = safeReadMaxOverall ?? (ratingValues.sort((a, b) => b - a)[0] ?? allNumbers.filter((value) => value >= 80 && value <= 110).sort((a, b) => b - a)[0] ?? overall);
   const playerName = detectName(text, imageFileName);
   const playstyle = detectPlaystyle(text);
-  const mainPosition = detectMainPosition(positions, positionRatings, attributes, playstyle);
+  const explicitMainPosition = detectExplicitMainPosition(text);
+  const primaryPositionFromCard = detectPrimaryPositionFromTop(text);
+  const mainPosition = explicitMainPosition ?? primaryPositionFromCard ?? detectMainPosition(positions, positionRatings, attributes, playstyle);
   const nativeSkills = detectSkills(text);
   const specialSkills = nativeSkills.filter((skill) => SPECIAL_SKILL_NAMES.includes(skill));
   const height = readNumber(text, [/altura\s*(\d{3})\s*cm/i, /height\s*(\d{3})\s*cm/i]);
@@ -1314,15 +1575,24 @@ export function parseCard(rawText: string, imageFileName?: string | null): Parse
   confidence += Math.min(8, modelCount);
   confidence += Math.min(6, impetos.length * 2);
   const warnings: string[] = [];
-  if (attributeCount < 12) warnings.push('O OCR leu poucos atributos. Confirme o texto no campo de revisão; mesmo print em HD pode falhar se os números estiverem pequenos no recorte.');
-  if (Object.keys(positionRatings).length < 4) warnings.push('A grade de posições não foi lida por completo. Se a posição sair errada, revise as linhas CF/CA, SS/SA, PE/PD, VOL/MC etc. antes de gerar.');
+  if (attributeCount < 12) warnings.push('O OCR/IA leu poucos atributos. O app usou motor seguro por posição, mas quanto mais atributos lidos, melhor fica a ficha.');
+  if (Object.keys(positionRatings).length < 4) warnings.push('A grade de posições não foi lida por completo. O app travou a análise na posição principal/estilo para evitar posição absurda.');
   if (!overall && !maxOverall) warnings.push('Overall não identificado. O app estimou a análise pela posição e atributos lidos.');
   if (trainingPointSource === 'LEVEL_INFERRED') warnings.push(`Orçamento de pontos calculado pelo nível máximo ${level}: ${trainingPointsTotal} pontos.`);
-  if (trainingPointSource === 'FALLBACK') warnings.push(pointBudget.warning ?? 'Pontos e nível não foram lidos com segurança; usando orçamento padrão de 64 pontos. Corrija o campo se necessário.');
+  if (trainingPointSource === 'FALLBACK') warnings.push(pointBudget.warning ?? 'Pontos e nível não foram lidos com segurança; usando orçamento competitivo padrão de 64 pontos.');
   if (pointBudget.warning && trainingPointSource !== 'FALLBACK') warnings.push(pointBudget.warning);
   const id = `${slug(playerName)}-${slug(cardType)}-${slug(specialTag ?? playstyle ?? mainPosition)}-${maxOverall ?? overall ?? 'sem-ovr'}`;
+  const bestRating = Math.max(0, ...Object.values(positionRatings).filter((value): value is number => Number.isFinite(value)));
   const usablePositions = positions.length
-    ? Array.from(new Set([mainPosition, ...positions])).sort((left, right) => Number(positionRatings[right] ?? 0) - Number(positionRatings[left] ?? 0))
+    ? Array.from(new Set([mainPosition, ...positions]))
+        .filter((position) => {
+          if (position === mainPosition) return true;
+          const rating = Number(positionRatings[position] ?? 0);
+          if (position === 'GK' && mainPosition !== 'GK') return false;
+          if (rating > 0) return rating >= 75 && (!bestRating || rating >= bestRating - 18);
+          return false;
+        })
+        .sort((left, right) => Number(positionRatings[right] ?? 0) - Number(positionRatings[left] ?? 0))
     : [mainPosition];
 
   return {
@@ -1367,10 +1637,8 @@ export function analyzeCard(rawText: string, objective: Objective = 'COMPETITIVE
       return { code, label: POSITION_PT[code], score: clampDecimal(rawScore, 1, 100), role: roleName(code, attributes), cardRating: parsed.positionRatings[code] ?? null };
     })
     .sort((left, right) => right.score - left.score);
-  const stylePreferred = preferredPositionFromPlaystyle(parsed.playstyle, parsed.positionRatings, parsed.attributes);
-  const selected = targetPosition === 'AUTO'
-    ? (stylePreferred ? positionScores.find((item) => item.code === stylePreferred) ?? positionScores[0] : positionScores[0])
-    : positionScores.find((item) => item.code === targetPosition) ?? positionScores[0];
+  const selectedCode = targetPosition === 'AUTO' ? parsed.mainPosition : targetPosition;
+  const selected = positionScores.find((item) => item.code === selectedCode) ?? positionScores[0];
   const pri = calculatePri(selected.code, attributes, parsed.nativeSkills);
   const tacticalFit = calculateTacticalFit(selected.code, attributes, pri);
   const trainingPointsTotal = trainingBudgetFromCard(parsed);
@@ -1383,9 +1651,9 @@ export function analyzeCard(rawText: string, objective: Objective = 'COMPETITIVE
   const tips = usageTips(selected.code, objective, attributes);
   const buildName = `${POSITION_PT[selected.code]} ${selected.role}`;
   const note = parsed.confidence >= 85
-    ? 'Alta confiança. A ficha foi gerada com boa quantidade de dados lidos.'
+    ? 'Alta confiança. A ficha foi gerada em modo automático com boa quantidade de dados lidos.'
     : parsed.confidence >= 60
-      ? 'Confiança média. Revise nome, posição, overalls e atributos para melhorar a recomendação.'
-      : 'Confiança baixa. Para máxima precisão, corrija manualmente os dados lidos antes de usar a ficha.';
+      ? 'Confiança média. O motor automático compensou dados faltantes com regras seguras de posição e estilo.'
+      : 'Confiança baixa. O motor automático usou fallback seguro; para precisão extrema, use o modo IA Vision com chave configurada.';
   return { parsed, bestPosition: selected, positionScores: positionScores.slice(0, 10), pri, tacticalFit, training, trainingCost, trainingPointsUsed, trainingPointsTotal, trainingPointsRemaining, trainingCostRule: trainingCostRuleText(), recommendedSkills, buildName, strengths, weaknesses, usageTips: tips, note };
 }

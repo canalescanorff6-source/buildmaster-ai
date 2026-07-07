@@ -1,50 +1,36 @@
-# BuildMaster AI Vision Pro — Premium Focus
+# BuildMaster AI Vision Pro v4 Auto Elite
 
-Versão focada somente na análise por imagem da carta.
+Versão focada em leitura automática e ficha competitiva para eFootball.
 
-## O que esta versão faz
+## Principais mudanças
 
-- Upload de print/galeria e opção separada para câmera no celular.
-- OCR em modo rápido ou precisão máxima.
-- Leitura por áreas da imagem: topo/posições, atributos e habilidades/ímpetos.
-- Revisão manual do OCR antes de gerar a ficha.
-- Melhor posição real em PT-BR: CA, SA, PE, PD, MAT, MC, VOL, ZAG, LE, LD, GOL.
-- Ficha recomendada com custo real de pontos do eFootball.
-- Habilidades adicionais recomendadas sem repetir as habilidades que a carta já possui.
-- Ímpetos/boosters, atributos, overalls por posição e gameplay ideal.
-- Layout premium compacto em abas.
-- PWA para instalar no celular.
+- Modo **IA Vision** para leitura automática avançada da imagem.
+- Fallback com **OCR local premium** caso a chave da IA não esteja configurada.
+- Motor de pontos v4: não aceita 2/2, 116/116 ou números soltos do print como orçamento de ficha.
+- Pontos são priorizados pelo **Nível máximo**: pontos = (nível - 1) × 2.
+- Motor **Elite Build**: não copia a ficha automática do jogo/eFHUB; otimiza por posição, estilo, atributos, custo real e gameplay.
+- Posição automática travada pela posição principal/estilo para evitar CA virar ponta ou volante sem sentido.
+- Habilidades adicionais continuam removendo as habilidades que o jogador já possui.
 
-## Como rodar localmente
+## IA Vision opcional
 
-```bash
-npm install
-npm run dev
+Para a melhor leitura automática na Vercel, configure a variável de ambiente:
+
+```txt
+OPENAI_API_KEY=sua_chave
 ```
 
-Abra:
+Opcional:
 
-```text
-http://localhost:3000
+```txt
+OPENAI_VISION_MODEL=gpt-4.1-mini
 ```
 
-## Como publicar na Vercel
+Sem essa variável, o app funciona com OCR local seguro.
 
-Suba os arquivos no GitHub e faça o deploy na Vercel. Esta versão não usa banco, Neon, Prisma, login ou dashboard antigo.
+## Deploy
 
-## Observação sobre precisão
-
-OCR não garante 100% quando o print vem cortado, escuro ou com texto pequeno. Para máxima precisão, use print direto da tela e revise o texto no campo de revisão antes de gerar a ficha.
-
-
-## Correção v3.1 — Pontos por nível
-
-Esta versão corrige o caso em que o OCR lia falsamente `Pontos 2/2` em prints do eFHUB/eFootBase. Quando isso acontece, o app ignora o valor impossível e calcula os pontos pelo nível máximo da carta. Exemplo: nível 32 = 62 pontos; nível 33 = 64 pontos.
-
-## Correção de pontos 2/2
-
-Esta versão inclui uma proteção definitiva contra o erro de OCR que transformava a ficha em `2/2` pontos. O app descarta orçamentos abaixo de 20, calcula pelo nível máximo quando possível e usa 64 pontos como fallback seguro.
-
-
-## Correção final pontos
-Esta versão bloqueia leituras inválidas como 2/2 e força atualização do cache/PWA.
+1. Suba o conteúdo desta pasta na raiz do GitHub.
+2. Faça commit.
+3. Redeploy na Vercel.
+4. No celular, limpe os dados/cache do site para não carregar versão antiga.

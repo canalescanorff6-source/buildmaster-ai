@@ -1,8 +1,8 @@
 {
-  "name": "buildmaster-ai-vision-only",
-  "version": "2.0.0",
+  "name": "buildmaster-ai-vision-pro-v4-auto",
+  "version": "4.0.0",
   "private": true,
-  "description": "BuildMaster AI Vision Only - app premium mobile/PWA para analisar cartas do eFootball por imagem, gerar ficha, PRI, posição e habilidades adicionais.",
+  "description": "BuildMaster AI Vision Pro v4 - leitura automática com Vision API opcional, OCR local seguro e motor elite de ficha para eFootball.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

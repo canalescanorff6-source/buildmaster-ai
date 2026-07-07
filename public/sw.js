@@ -1,4 +1,4 @@
-const CACHE_NAME = 'buildmaster-vision-v3-points-final-20260707';
+const CACHE_NAME = 'buildmaster-vision-v4-auto-elite-20260707c';
 const STATIC_ASSETS = ['/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
