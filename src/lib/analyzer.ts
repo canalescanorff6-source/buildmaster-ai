@@ -673,6 +673,129 @@ function skillPriority(position: PositionCode, objective: Objective) {
   return Array.from(new Set([...(extras[objective] ?? []), ...(byPosition[position] ?? [])]));
 }
 
+
+function topRatedPositions(positionRatings: PositionRatings): PositionCode[] {
+  return Object.entries(positionRatings)
+    .filter((entry): entry is [PositionCode, number] => Number.isFinite(entry[1]))
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 5)
+    .map(([position]) => position);
+}
+
+function recommendAdditionalSkills(parsed: ParsedCard, selectedPosition: PositionCode, objective: Objective, attributes: Required<Attributes>): string[] {
+  const candidateScores = new Map<string, number>();
+  const ownedSkillKeys = new Set([
+    ...parsed.nativeSkills.map(skillKey),
+    ...parsed.specialSkills.map(skillKey),
+    ...parsed.impetos.map((item) => skillKey(item.name))
+  ]);
+  const bannedAdditional = new Set(SPECIAL_SKILL_NAMES.map(skillKey));
+
+  const add = (skill: string, score: number) => {
+    if (!SKILL_PROFILES[skill]) return;
+    const key = skillKey(skill);
+    if (ownedSkillKeys.has(key)) return;
+    if (bannedAdditional.has(key)) return;
+    candidateScores.set(skill, Math.max(candidateScores.get(skill) ?? 0, score));
+  };
+
+  // 1) Função principal escolhida pela IA.
+  skillPriority(selectedPosition, objective).forEach((skill, index) => add(skill, 100 - index * 6));
+
+  // 2) Posições reais da carta lidas no grid do eFHUB/eFootBase.
+  // Isso evita recomendar só por "LE" quando a carta também rende como VOL/MC/ZAG etc.
+  const ratedPositions = topRatedPositions(parsed.positionRatings);
+  const cardPositions = ratedPositions.length ? ratedPositions : parsed.positions;
+  cardPositions.slice(0, 4).forEach((position, posIndex) => {
+    skillPriority(position, objective).forEach((skill, index) => add(skill, 78 - posIndex * 8 - index * 4));
+  });
+
+  const playstyle = normalize(parsed.playstyle ?? '').toLowerCase();
+  const isDestroyer = /destruidor|destroyer/.test(playstyle);
+  const isFullback = selectedPosition === 'LB' || selectedPosition === 'RB' || cardPositions.includes('LB') || cardPositions.includes('RB');
+  const isMidfielder = selectedPosition === 'DMF' || selectedPosition === 'CMF' || selectedPosition === 'AMF' || cardPositions.some((p) => ['DMF', 'CMF', 'AMF'].includes(p));
+  const isForward = ['CF', 'SS', 'LWF', 'RWF'].includes(selectedPosition) || cardPositions.some((p) => ['CF', 'SS', 'LWF', 'RWF'].includes(p));
+
+  // 3) Ajuste por estilo de jogo.
+  if (isDestroyer) {
+    add('Interceptação', 112);
+    add('Bloqueador', 108);
+    add('Marcação individual', 104);
+    add('Volta para marcar', 98);
+    add('Passe de primeira', 92);
+    add('Espírito guerreiro', 88);
+    add('Passe em profundidade', 84);
+    add('Passe na medida', 78);
+    add('Superioridade aérea', 70);
+  }
+
+  if (/criador|orquestrador|creative|orchestrator/.test(playstyle)) {
+    add('Passe de primeira', 112);
+    add('Passe em profundidade', 108);
+    add('Passe na medida', 102);
+    add('Passe sem olhar', 86);
+    add('Controle com a sola', 82);
+  }
+
+  if (/artilheiro|goal poacher|atacante matador|fox/.test(playstyle)) {
+    add('Chute de primeira', 112);
+    add('Precisão à distância', 98);
+    add('Finalização acrobática', 92);
+    add('Cabeçada', 86);
+    add('Superioridade aérea', 82);
+  }
+
+  // 4) Ajuste por atributos. Aqui é onde a recomendação fica mais "gameplay real".
+  if (attributes.defensiveAwareness >= 78 || attributes.tackling >= 78 || attributes.defensiveEngagement >= 78) {
+    add('Interceptação', 106);
+    add('Bloqueador', 102);
+    add('Marcação individual', 96);
+  }
+  if (attributes.aggression >= 78 || attributes.stamina >= 80) {
+    add('Volta para marcar', 92);
+    add('Espírito guerreiro', 84);
+  }
+  if (attributes.lowPass >= 76 || isMidfielder) {
+    add('Passe de primeira', 96);
+    add('Passe em profundidade', 90);
+  }
+  if (attributes.loftedPass >= 74 || isFullback) {
+    add('Passe na medida', 84);
+    add('Cruzamento preciso', isFullback ? 88 : 74);
+    add('Passe aéreo baixo', 66);
+  }
+  if (attributes.ballControl >= 76 || attributes.tightPossession >= 76 || attributes.dribbling >= 76) {
+    add('Controle com a sola', 78);
+    add('Toque duplo', 74);
+  }
+  if (attributes.speed >= 82 || attributes.acceleration >= 82) {
+    add('Toque duplo', 82);
+    if (isForward) add('Elástico', 74);
+  }
+  if (attributes.finishing >= 78 || isForward) {
+    add('Chute de primeira', 94);
+    add('Precisão à distância', 82);
+    add('Finalização acrobática', 74);
+  }
+  if (attributes.heading >= 76 || attributes.jump >= 76 || attributes.physicalContact >= 80) {
+    add('Superioridade aérea', 86);
+    add('Cabeçada', 78);
+  }
+  if (selectedPosition === 'CB') {
+    add('Afastamento acrobático', 80);
+    add('Carrinho', 76);
+  }
+  if (selectedPosition === 'GK') {
+    add('Liderança', 92);
+    add('Espírito guerreiro', 82);
+  }
+
+  return Array.from(candidateScores.entries())
+    .sort((left, right) => right[1] - left[1])
+    .map(([skill]) => skill)
+    .slice(0, 5);
+}
+
 function strengthsWeaknesses(a: Required<Attributes>, pri: Record<string, number>) {
   const ranked = Object.entries({
     Finalização: pri.finishing,
@@ -820,10 +943,7 @@ export function analyzeCard(rawText: string, objective: Objective = 'COMPETITIVE
   const pri = calculatePri(selected.code, attributes, parsed.nativeSkills);
   const tacticalFit = calculateTacticalFit(selected.code, attributes, pri);
   const training = trainingFor(selected.code, objective, attributes);
-  const ownedSkillKeys = new Set(parsed.nativeSkills.map(skillKey));
-  const recommendedSkills = uniqueSkillList(skillPriority(selected.code, objective))
-    .filter((skill) => !ownedSkillKeys.has(skillKey(skill)))
-    .slice(0, 5);
+  const recommendedSkills = recommendAdditionalSkills(parsed, selected.code, objective, attributes);
   const { strengths, weaknesses } = strengthsWeaknesses(attributes, pri);
   const tips = usageTips(selected.code, objective, attributes);
   const buildName = `${POSITION_PT[selected.code]} ${selected.role}`;

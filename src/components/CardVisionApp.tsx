@@ -225,12 +225,12 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
           <div className="section-head">
             <div>
               <p className="eyebrow">Somente faltantes</p>
-              <h3>Habilidades adicionais</h3>
+              <h3>Habilidades para adicionar</h3>
             </div>
             <span className="premium-badge">Top {result.recommendedSkills.length}</span>
           </div>
           <div className="skill-priority-list">
-            {result.recommendedSkills.map((skill, index) => (
+            {result.recommendedSkills.length ? result.recommendedSkills.map((skill, index) => (
               <div key={skill} className="skill-priority-card">
                 <strong>{String(index + 1).padStart(2, '0')}</strong>
                 <div>
@@ -238,9 +238,17 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
                   <small>{skillReason(skill)}</small>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="skill-priority-card">
+                <strong>OK</strong>
+                <div>
+                  <span>A carta já tem as principais habilidades da função</span>
+                  <small>revise o texto lido se alguma habilidade nativa não foi reconhecida</small>
+                </div>
+              </div>
+            )}
           </div>
-          <p className="microcopy">O app remove automaticamente as habilidades que a carta já possui e recomenda apenas as melhores adicionais.</p>
+          <p className="microcopy">Lista final: o app remove as habilidades que a carta já possui e mostra somente as melhores para adicionar conforme posição, atributos, estilo e gameplay.</p>
         </div>
       </section>
 
