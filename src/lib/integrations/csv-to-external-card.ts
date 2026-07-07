@@ -285,7 +285,7 @@ export function csvToExternalCards(csv: string): CsvImportResult {
       nativeSkills: parseList(raw.nativeSkills),
       recommendedSkills: parseList(raw.recommendedSkills),
       attributes
-    } as Partial<ExternalCardInput>;
+    } as unknown as Partial<ExternalCardInput>;
   });
 
   return { rows, warnings };
