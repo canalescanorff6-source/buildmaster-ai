@@ -272,12 +272,18 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
   const trainingItems = Object.entries(result.training).filter(([, value]) => Number(value) > 0);
   const pointPercent = Math.min(100, Math.round((result.trainingPointsUsed / Math.max(1, result.trainingPointsTotal)) * 100));
 
+  const pointsSourceLabel = card.trainingPointSource === 'OCR'
+    ? 'lidos no print'
+    : card.trainingPointSource === 'LEVEL_INFERRED'
+      ? 'calculados pelo nível'
+      : 'padrão do app';
+
   const infoItems = [
     ['Altura', card.height ? `${card.height} cm` : '—'],
     ['Peso', card.weight ? `${card.weight} kg` : '—'],
     ['Idade', card.age ?? '—'],
     ['Nível máximo', card.level ?? '—'],
-    ['Pontos lidos', card.trainingPointsTotal ? `${card.trainingPointsUsed ?? result.trainingPointsUsed}/${card.trainingPointsTotal}` : '—'],
+    ['Pontos da ficha', card.trainingPointsTotal ? `${card.trainingPointsUsed ?? result.trainingPointsUsed}/${card.trainingPointsTotal} (${pointsSourceLabel})` : '—'],
     ['Pior pé frequência', card.condition.weakFootFrequency ?? '—'],
     ['Pior pé precisão', card.condition.weakFootAccuracy ?? '—'],
     ['Condição física', card.condition.form ?? '—'],
@@ -667,7 +673,7 @@ export function CardVisionApp() {
               rows={12}
               value={rawText}
               onChange={(event) => setRawText(event.target.value)}
-              placeholder={'O texto lido aparece aqui. Corrija se precisar:\nDidier Drogba\nEstilo: Homem de área\nCA 101  SA 92\nNível máximo 33  Pontos 64/64\nFinalização 95  Cabeçada 92  Contato físico 90\nHabilidades: Chute de primeira, Cabeçada...'}
+              placeholder={'O texto lido aparece aqui. Corrija se precisar:\nEl-Hadji Diouf\nEstilo: Artilheiro\nCA 102  PE 100  PD 100  SA 100\nNível máximo 32  Pontos 62/62\nChute 10  Passe 4  Destreza 12  Força nas pernas 8  Bola aérea 4\nFinalização 91  Velocidade 92  Aceleração 95\nHabilidades: Chute de primeira, Cabeçada...'}
             />
           </div>
 

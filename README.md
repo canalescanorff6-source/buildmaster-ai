@@ -35,3 +35,8 @@ Suba os arquivos no GitHub e faça o deploy na Vercel. Esta versão não usa ban
 ## Observação sobre precisão
 
 OCR não garante 100% quando o print vem cortado, escuro ou com texto pequeno. Para máxima precisão, use print direto da tela e revise o texto no campo de revisão antes de gerar a ficha.
+
+
+## Correção v3.1 — Pontos por nível
+
+Esta versão corrige o caso em que o OCR lia falsamente `Pontos 2/2` em prints do eFHUB/eFootBase. Quando isso acontece, o app ignora o valor impossível e calcula os pontos pelo nível máximo da carta. Exemplo: nível 32 = 62 pontos; nível 33 = 64 pontos.

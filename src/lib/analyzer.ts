@@ -1132,9 +1132,9 @@ function detectMainPosition(positions: PositionCode[], positionRatings: Position
 
 function parseTrainingPoints(text: string): { used: number | null; total: number | null } {
   const compact = normalize(text).replace(/\r?\n/g, ' ');
-  const direct = compact.match(/(?:pontos|points)\s*(\d{1,3})\s*[\/\\]\s*(\d{1,3})/i);
+  const direct = compact.match(/(?:pontos|points)\s*(?:usados|used)?\s*[:\-]?\s*(\d{1,3})\s*[\/\\]\s*(\d{1,3})/i);
   if (direct) return { used: Number(direct[1]), total: Number(direct[2]) };
-  const totalOnly = compact.match(/(?:pontos|points)\s*(?:totais|total)?\s*[:\-]?\s*(\d{1,3})/i);
+  const totalOnly = compact.match(/(?:pontos|points)\s*(?:totais|total|dispon[ií]veis)?\s*[:\-]?\s*(\d{1,3})/i);
   if (totalOnly) return { used: null, total: Number(totalOnly[1]) };
   return { used: null, total: null };
 }
@@ -1142,6 +1142,42 @@ function parseTrainingPoints(text: string): { used: number | null; total: number
 function inferTrainingPointsFromLevel(level?: number | null): number | null {
   if (!Number.isFinite(level ?? NaN) || (level ?? 0) <= 1) return null;
   return Math.max(1, (Number(level) - 1) * 2);
+}
+
+function sanitizeParsedTrainingPoints(
+  parsedPoints: { used: number | null; total: number | null },
+  inferredPoints: number | null
+): { used: number | null; total: number | null; ignoredReason?: string } {
+  const total = parsedPoints.total;
+  const used = parsedPoints.used;
+
+  if (!Number.isFinite(total ?? NaN) || total === null) return { used: null, total: null };
+
+  // O OCR do eFHUB às vezes transforma pequenos textos/boosters em "Pontos 2/2".
+  // Uma carta com nível 32, por exemplo, deve ter 62 pontos. Então valores muito
+  // abaixo do orçamento inferido pelo nível são descartados.
+  if (total <= 3) {
+    return { used: null, total: null, ignoredReason: `Pontos OCR ${used ?? total}/${total} descartados por serem baixos demais.` };
+  }
+
+  if (total > 220) {
+    return { used: null, total: null, ignoredReason: `Pontos OCR ${total} descartados por passarem do limite plausível.` };
+  }
+
+  if (inferredPoints && inferredPoints >= 20) {
+    const minimumPlausible = Math.max(8, Math.floor(inferredPoints * 0.55));
+    const maximumPlausible = Math.ceil(inferredPoints * 1.45);
+    if (total < minimumPlausible || total > maximumPlausible) {
+      return {
+        used: null,
+        total: null,
+        ignoredReason: `Pontos OCR ${used ?? total}/${total} não batem com o nível máximo; usando ${inferredPoints} pontos pelo nível.`
+      };
+    }
+  }
+
+  const safeUsed = Number.isFinite(used ?? NaN) && used !== null && used >= 0 && used <= total ? used : null;
+  return { used: safeUsed, total };
 }
 
 export function parseCard(rawText: string, imageFileName?: string | null): ParsedCard {
@@ -1164,9 +1200,10 @@ export function parseCard(rawText: string, imageFileName?: string | null): Parse
   const level = readNumber(text, [/n[ií]vel(?:\s+m[aá]ximo)?\s*(\d{1,3})/i, /level(?:\s+max)?\s*(\d{1,3})/i]);
   const parsedPoints = parseTrainingPoints(text);
   const inferredPoints = inferTrainingPointsFromLevel(level);
-  const trainingPointsTotal = parsedPoints.total ?? inferredPoints ?? 64;
-  const trainingPointsUsed = parsedPoints.used ?? trainingPointsTotal;
-  const trainingPointSource: ParsedCard['trainingPointSource'] = parsedPoints.total ? 'OCR' : inferredPoints ? 'LEVEL_INFERRED' : 'FALLBACK';
+  const sanitizedPoints = sanitizeParsedTrainingPoints(parsedPoints, inferredPoints);
+  const trainingPointsTotal = sanitizedPoints.total ?? inferredPoints ?? 64;
+  const trainingPointsUsed = sanitizedPoints.used ?? trainingPointsTotal;
+  const trainingPointSource: ParsedCard['trainingPointSource'] = sanitizedPoints.total ? 'OCR' : inferredPoints ? 'LEVEL_INFERRED' : 'FALLBACK';
   const specialTag = detectSpecialTag(text);
   const cardType = detectCardType(text);
   const country = text.match(/\b(Argentina|Brasil|Brazil|França|France|Portugal|Espanha|Spain|Inglaterra|England|Alemanha|Germany|Itália|Italy|Holanda|Netherlands|Países Baixos|Uruguai|Uruguay)\b/i)?.[1] ?? null;
@@ -1190,6 +1227,8 @@ export function parseCard(rawText: string, imageFileName?: string | null): Parse
   if (attributeCount < 12) warnings.push('O OCR leu poucos atributos. Confirme o texto no campo de revisão; mesmo print em HD pode falhar se os números estiverem pequenos no recorte.');
   if (Object.keys(positionRatings).length < 4) warnings.push('A grade de posições não foi lida por completo. Se a posição sair errada, revise as linhas CF/CA, SS/SA, PE/PD, VOL/MC etc. antes de gerar.');
   if (!overall && !maxOverall) warnings.push('Overall não identificado. O app estimou a análise pela posição e atributos lidos.');
+  if (sanitizedPoints.ignoredReason) warnings.push(sanitizedPoints.ignoredReason);
+  if (trainingPointSource === 'LEVEL_INFERRED') warnings.push(`Pontos não lidos com segurança; orçamento calculado pelo nível máximo ${level}: ${trainingPointsTotal} pontos.`);
   const id = `${slug(playerName)}-${slug(cardType)}-${slug(specialTag ?? playstyle ?? mainPosition)}-${maxOverall ?? overall ?? 'sem-ovr'}`;
   const usablePositions = positions.length
     ? Array.from(new Set([mainPosition, ...positions])).sort((left, right) => Number(positionRatings[right] ?? 0) - Number(positionRatings[left] ?? 0))
