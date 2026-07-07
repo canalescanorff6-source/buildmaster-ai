@@ -757,6 +757,14 @@ function calculateTacticalFit(position: PositionCode, a: Required<Attributes>, p
 
 const TRAINING_KEYS: TrainingKey[] = ['shooting', 'passing', 'dribbling', 'dexterity', 'lowerBodyStrength', 'aerialStrength', 'defending', 'gk1', 'gk2', 'gk3'];
 
+const SAFE_DEFAULT_TRAINING_BUDGET = 64;
+
+function normalizeTrainingBudget(value: number | null | undefined): number {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 20 || n > 220) return SAFE_DEFAULT_TRAINING_BUDGET;
+  return Math.round(n);
+}
+
 function emptyTraining(): TrainingPlan {
   return { shooting: 0, passing: 0, dribbling: 0, dexterity: 0, lowerBodyStrength: 0, aerialStrength: 0, defending: 0, gk1: 0, gk2: 0, gk3: 0 };
 }
@@ -795,9 +803,13 @@ function removeTrainingLevel(plan: TrainingPlan, key: TrainingKey): boolean {
 }
 
 function trainingBudgetFromCard(parsed: ParsedCard): number {
-  if (Number.isFinite(parsed.trainingPointsTotal ?? NaN) && (parsed.trainingPointsTotal ?? 0) > 0) return Number(parsed.trainingPointsTotal);
-  if (Number.isFinite(parsed.level ?? NaN) && (parsed.level ?? 0) > 1) return Math.max(1, (Number(parsed.level) - 1) * 2);
-  return 64;
+  const inferred = inferTrainingPointsFromLevel(parsed.level);
+  if (inferred && inferred >= 20) return normalizeTrainingBudget(inferred);
+
+  const total = Number(parsed.trainingPointsTotal ?? NaN);
+  if (Number.isFinite(total) && total >= 20) return normalizeTrainingBudget(total);
+
+  return SAFE_DEFAULT_TRAINING_BUDGET;
 }
 
 function applyPlanEntries(entries: Partial<TrainingPlan>): TrainingPlan {
@@ -861,6 +873,7 @@ function trainingTemplate(position: PositionCode, objective: Objective, a: Requi
 }
 
 function fitTrainingToBudget(target: TrainingPlan, priority: TrainingKey[], budget: number): TrainingPlan {
+  budget = normalizeTrainingBudget(budget);
   const plan = { ...target };
   const cleanPriority = priority.length ? priority : TRAINING_KEYS;
 
@@ -1130,54 +1143,131 @@ function detectMainPosition(positions: PositionCode[], positionRatings: Position
 }
 
 
-function parseTrainingPoints(text: string): { used: number | null; total: number | null } {
+type TrainingPointCandidate = { used: number | null; total: number; source: string };
+
+function parseLevel(text: string): number | null {
   const compact = normalize(text).replace(/\r?\n/g, ' ');
-  const direct = compact.match(/(?:pontos|points)\s*(?:usados|used)?\s*[:\-]?\s*(\d{1,3})\s*[\/\\]\s*(\d{1,3})/i);
-  if (direct) return { used: Number(direct[1]), total: Number(direct[2]) };
-  const totalOnly = compact.match(/(?:pontos|points)\s*(?:totais|total|dispon[ií]veis)?\s*[:\-]?\s*(\d{1,3})/i);
-  if (totalOnly) return { used: null, total: Number(totalOnly[1]) };
-  return { used: null, total: null };
-}
+  const candidates: number[] = [];
+  const patterns = [
+    /(?:n[ií]vel|nivel|level)(?:\s*(?:m[aá]ximo|max|maximo))?[^0-9]{0,18}(\d{1,3})/gi,
+    /(?:lv|lvl)[^0-9]{0,8}(\d{1,3})/gi
+  ];
 
-function inferTrainingPointsFromLevel(level?: number | null): number | null {
-  if (!Number.isFinite(level ?? NaN) || (level ?? 0) <= 1) return null;
-  return Math.max(1, (Number(level) - 1) * 2);
-}
-
-function sanitizeParsedTrainingPoints(
-  parsedPoints: { used: number | null; total: number | null },
-  inferredPoints: number | null
-): { used: number | null; total: number | null; ignoredReason?: string } {
-  const total = parsedPoints.total;
-  const used = parsedPoints.used;
-
-  if (!Number.isFinite(total ?? NaN) || total === null) return { used: null, total: null };
-
-  // O OCR do eFHUB às vezes transforma pequenos textos/boosters em "Pontos 2/2".
-  // Uma carta com nível 32, por exemplo, deve ter 62 pontos. Então valores muito
-  // abaixo do orçamento inferido pelo nível são descartados.
-  if (total <= 3) {
-    return { used: null, total: null, ignoredReason: `Pontos OCR ${used ?? total}/${total} descartados por serem baixos demais.` };
-  }
-
-  if (total > 220) {
-    return { used: null, total: null, ignoredReason: `Pontos OCR ${total} descartados por passarem do limite plausível.` };
-  }
-
-  if (inferredPoints && inferredPoints >= 20) {
-    const minimumPlausible = Math.max(8, Math.floor(inferredPoints * 0.55));
-    const maximumPlausible = Math.ceil(inferredPoints * 1.45);
-    if (total < minimumPlausible || total > maximumPlausible) {
-      return {
-        used: null,
-        total: null,
-        ignoredReason: `Pontos OCR ${used ?? total}/${total} não batem com o nível máximo; usando ${inferredPoints} pontos pelo nível.`
-      };
+  for (const pattern of patterns) {
+    for (const match of compact.matchAll(pattern)) {
+      const value = Number(match[1]);
+      if (Number.isFinite(value)) candidates.push(value);
     }
   }
 
-  const safeUsed = Number.isFinite(used ?? NaN) && used !== null && used >= 0 && used <= total ? used : null;
-  return { used: safeUsed, total };
+  // Erro comum: OCR lê "Nível 32" como "Nível 2".
+  // Nível 1–9 não deve virar orçamento 2/2, 4/4 etc.
+  const plausible = candidates.filter((value) => value >= 10 && value <= 99);
+  if (plausible.length) return plausible[0];
+  return null;
+}
+
+function collectTrainingPointCandidates(text: string): TrainingPointCandidate[] {
+  const compact = normalize(text).replace(/\r?\n/g, ' ');
+  const candidates: TrainingPointCandidate[] = [];
+
+  const directPatterns = [
+    /(?:pontos|points)\s*(?:usados|used|da\s*ficha|ficha)?\s*[:\-]?\s*(\d{1,3})\s*[\/\\]\s*(\d{1,3})/gi,
+    /(?:training\s*points|progression\s*points)\s*[:\-]?\s*(\d{1,3})\s*[\/\\]\s*(\d{1,3})/gi
+  ];
+
+  for (const pattern of directPatterns) {
+    for (const match of compact.matchAll(pattern)) {
+      const used = Number(match[1]);
+      const total = Number(match[2]);
+      if (Number.isFinite(total)) candidates.push({ used: Number.isFinite(used) ? used : null, total, source: 'OCR_RATIO' });
+    }
+  }
+
+  const totalPatterns = [
+    /(?:pontos|points)\s*(?:totais|total|dispon[ií]veis|da\s*ficha|ficha)?\s*[:\-]?\s*(\d{1,3})/gi,
+    /(?:training\s*points|progression\s*points)\s*[:\-]?\s*(\d{1,3})/gi
+  ];
+
+  for (const pattern of totalPatterns) {
+    for (const match of compact.matchAll(pattern)) {
+      const total = Number(match[1]);
+      if (Number.isFinite(total)) candidates.push({ used: null, total, source: 'OCR_TOTAL' });
+    }
+  }
+
+  return candidates;
+}
+
+function parseTrainingPoints(text: string, inferredPoints: number | null): { used: number | null; total: number | null; ignoredReason?: string } {
+  const candidates = collectTrainingPointCandidates(text);
+  if (!candidates.length) return { used: null, total: null };
+
+  // Correção definitiva do 2/2: nenhum valor abaixo de 20 é orçamento real de ficha.
+  // Esses números pequenos quase sempre vêm de boosters, estrelas, ícones ou OCR quebrado.
+  const hardMinimum = 20;
+  const valid = candidates
+    .filter((candidate) => candidate.total >= hardMinimum && candidate.total <= 220)
+    .filter((candidate) => {
+      if (!inferredPoints || inferredPoints < hardMinimum) return true;
+      const minimumPlausible = Math.max(hardMinimum, Math.floor(inferredPoints * 0.55));
+      const maximumPlausible = Math.ceil(inferredPoints * 1.45);
+      return candidate.total >= minimumPlausible && candidate.total <= maximumPlausible;
+    })
+    .sort((a, b) => b.total - a.total);
+
+  if (!valid.length) {
+    const first = candidates[0];
+    return {
+      used: null,
+      total: null,
+      ignoredReason: `Pontos OCR ${first.used ?? first.total}/${first.total} descartados; valor inválido para ficha de jogador.`
+    };
+  }
+
+  const selected = valid[0];
+  const safeUsed = Number.isFinite(selected.used ?? NaN) && selected.used !== null && selected.used >= 0 && selected.used <= selected.total
+    ? selected.used
+    : null;
+  return { used: safeUsed, total: selected.total };
+}
+
+function inferTrainingPointsFromLevel(level?: number | null): number | null {
+  if (!Number.isFinite(level ?? NaN)) return null;
+  const safeLevel = Number(level);
+  if (safeLevel < 10 || safeLevel > 99) return null;
+  return Math.max(20, (safeLevel - 1) * 2);
+}
+
+function resolveTrainingPointBudget(
+  parsedPoints: { used: number | null; total: number | null; ignoredReason?: string },
+  inferredPoints: number | null
+): { used: number; total: number; source: 'OCR' | 'LEVEL_INFERRED' | 'FALLBACK'; warning?: string } {
+  // Prioridade para o nível máximo. Ele é mais estável que OCR solto de "Pontos".
+  if (inferredPoints && inferredPoints >= 20) {
+    return {
+      used: inferredPoints,
+      total: inferredPoints,
+      source: 'LEVEL_INFERRED',
+      warning: parsedPoints.ignoredReason
+    };
+  }
+
+  if (parsedPoints.total && parsedPoints.total >= 20) {
+    const safeTotal = normalizeTrainingBudget(parsedPoints.total);
+    const safeUsed = parsedPoints.used !== null && Number.isFinite(parsedPoints.used) && parsedPoints.used >= 20 && parsedPoints.used <= safeTotal
+      ? parsedPoints.used
+      : safeTotal;
+    return { used: safeUsed, total: safeTotal, source: 'OCR', warning: parsedPoints.ignoredReason };
+  }
+
+  // Padrão seguro. O motor nunca mais pode cair em 2/2.
+  return {
+    used: SAFE_DEFAULT_TRAINING_BUDGET,
+    total: SAFE_DEFAULT_TRAINING_BUDGET,
+    source: 'FALLBACK',
+    warning: parsedPoints.ignoredReason ?? 'Pontos e nível não foram lidos com segurança; usando orçamento padrão seguro de 64 pontos.'
+  };
 }
 
 export function parseCard(rawText: string, imageFileName?: string | null): ParsedCard {
@@ -1197,13 +1287,13 @@ export function parseCard(rawText: string, imageFileName?: string | null): Parse
   const height = readNumber(text, [/altura\s*(\d{3})\s*cm/i, /height\s*(\d{3})\s*cm/i]);
   const weight = readNumber(text, [/peso\s*(\d{2,3})\s*kg/i, /weight\s*(\d{2,3})\s*kg/i]);
   const age = readNumber(text, [/idade\s*(\d{1,2})/i, /age\s*(\d{1,2})/i]);
-  const level = readNumber(text, [/n[ií]vel(?:\s+m[aá]ximo)?\s*(\d{1,3})/i, /level(?:\s+max)?\s*(\d{1,3})/i]);
-  const parsedPoints = parseTrainingPoints(text);
+  const level = parseLevel(text);
   const inferredPoints = inferTrainingPointsFromLevel(level);
-  const sanitizedPoints = sanitizeParsedTrainingPoints(parsedPoints, inferredPoints);
-  const trainingPointsTotal = sanitizedPoints.total ?? inferredPoints ?? 64;
-  const trainingPointsUsed = sanitizedPoints.used ?? trainingPointsTotal;
-  const trainingPointSource: ParsedCard['trainingPointSource'] = sanitizedPoints.total ? 'OCR' : inferredPoints ? 'LEVEL_INFERRED' : 'FALLBACK';
+  const parsedPoints = parseTrainingPoints(text, inferredPoints);
+  const pointBudget = resolveTrainingPointBudget(parsedPoints, inferredPoints);
+  const trainingPointsTotal = pointBudget.total;
+  const trainingPointsUsed = pointBudget.used;
+  const trainingPointSource: ParsedCard['trainingPointSource'] = pointBudget.source;
   const specialTag = detectSpecialTag(text);
   const cardType = detectCardType(text);
   const country = text.match(/\b(Argentina|Brasil|Brazil|França|France|Portugal|Espanha|Spain|Inglaterra|England|Alemanha|Germany|Itália|Italy|Holanda|Netherlands|Países Baixos|Uruguai|Uruguay)\b/i)?.[1] ?? null;
@@ -1227,8 +1317,9 @@ export function parseCard(rawText: string, imageFileName?: string | null): Parse
   if (attributeCount < 12) warnings.push('O OCR leu poucos atributos. Confirme o texto no campo de revisão; mesmo print em HD pode falhar se os números estiverem pequenos no recorte.');
   if (Object.keys(positionRatings).length < 4) warnings.push('A grade de posições não foi lida por completo. Se a posição sair errada, revise as linhas CF/CA, SS/SA, PE/PD, VOL/MC etc. antes de gerar.');
   if (!overall && !maxOverall) warnings.push('Overall não identificado. O app estimou a análise pela posição e atributos lidos.');
-  if (sanitizedPoints.ignoredReason) warnings.push(sanitizedPoints.ignoredReason);
-  if (trainingPointSource === 'LEVEL_INFERRED') warnings.push(`Pontos não lidos com segurança; orçamento calculado pelo nível máximo ${level}: ${trainingPointsTotal} pontos.`);
+  if (trainingPointSource === 'LEVEL_INFERRED') warnings.push(`Orçamento de pontos calculado pelo nível máximo ${level}: ${trainingPointsTotal} pontos.`);
+  if (trainingPointSource === 'FALLBACK') warnings.push(pointBudget.warning ?? 'Pontos e nível não foram lidos com segurança; usando orçamento padrão de 64 pontos. Corrija o campo se necessário.');
+  if (pointBudget.warning && trainingPointSource !== 'FALLBACK') warnings.push(pointBudget.warning);
   const id = `${slug(playerName)}-${slug(cardType)}-${slug(specialTag ?? playstyle ?? mainPosition)}-${maxOverall ?? overall ?? 'sem-ovr'}`;
   const usablePositions = positions.length
     ? Array.from(new Set([mainPosition, ...positions])).sort((left, right) => Number(positionRatings[right] ?? 0) - Number(positionRatings[left] ?? 0))
@@ -1282,10 +1373,10 @@ export function analyzeCard(rawText: string, objective: Objective = 'COMPETITIVE
     : positionScores.find((item) => item.code === targetPosition) ?? positionScores[0];
   const pri = calculatePri(selected.code, attributes, parsed.nativeSkills);
   const tacticalFit = calculateTacticalFit(selected.code, attributes, pri);
+  const trainingPointsTotal = trainingBudgetFromCard(parsed);
   const training = trainingFor(selected.code, objective, attributes, parsed);
   const trainingCost = trainingPlanCost(training);
-  const trainingPointsUsed = trainingPlanTotalCost(training);
-  const trainingPointsTotal = trainingBudgetFromCard(parsed);
+  const trainingPointsUsed = Math.min(trainingPlanTotalCost(training), trainingPointsTotal);
   const trainingPointsRemaining = Math.max(0, trainingPointsTotal - trainingPointsUsed);
   const recommendedSkills = recommendAdditionalSkills(parsed, selected.code, objective, attributes);
   const { strengths, weaknesses } = strengthsWeaknesses(attributes, pri);
