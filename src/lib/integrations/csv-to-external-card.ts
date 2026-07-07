@@ -1,7 +1,5 @@
-import type { ExternalCardInput } from './external-card-schema';
-
 export type CsvImportResult = {
-  rows: Partial<ExternalCardInput>[];
+  rows: unknown[];
   warnings: string[];
 };
 
@@ -154,6 +152,13 @@ function emptyToUndefined(value?: string) {
   return v === '' ? undefined : v;
 }
 
+function numberOrUndefined(value?: string) {
+  const v = clean(value);
+  if (!v) return undefined;
+  const parsed = Number(v.replace(',', '.'));
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
 function parseList(value?: string) {
   const v = clean(value);
   if (!v) return [];
@@ -251,10 +256,11 @@ export function csvToExternalCards(csv: string): CsvImportResult {
 
   const rows = lines.slice(1).map((line, index) => {
     const raw = buildObject(headers, parseCsvLine(line));
-    const attributes: Record<AttributeKey, string> = {} as Record<AttributeKey, string>;
+    const attributes: Partial<Record<AttributeKey, number>> = {};
 
     for (const key of ATTRIBUTE_KEYS) {
-      if (raw[key] !== undefined && raw[key] !== '') attributes[key] = raw[key] as string;
+      const value = numberOrUndefined(raw[key]);
+      if (value !== undefined) attributes[key] = value;
     }
 
     const sourceExternalId = emptyToUndefined(raw.sourceExternalId) ?? `upload-row-${index + 1}-${clean(raw.playerName || raw.nome).toLowerCase().replace(/\s+/g, '-')}`;
@@ -269,23 +275,23 @@ export function csvToExternalCards(csv: string): CsvImportResult {
       mainPosition: emptyToUndefined(raw.mainPosition),
       secondaryPositions: parseList(raw.secondaryPositions),
       playerPlaystyle: emptyToUndefined(raw.playerPlaystyle),
-      height: emptyToUndefined(raw.height) as unknown as number,
-      weight: emptyToUndefined(raw.weight) as unknown as number,
-      age: emptyToUndefined(raw.age) as unknown as number,
+      height: numberOrUndefined(raw.height),
+      weight: numberOrUndefined(raw.weight),
+      age: numberOrUndefined(raw.age),
       dominantFoot: normalizeFoot(raw.dominantFoot),
       cardName: emptyToUndefined(raw.cardName),
       season: emptyToUndefined(raw.season),
       rarity: normalizeRarity(raw.rarity),
-      overall: emptyToUndefined(raw.overall) as unknown as number,
-      maxOverall: emptyToUndefined(raw.maxOverall) as unknown as number,
+      overall: numberOrUndefined(raw.overall),
+      maxOverall: numberOrUndefined(raw.maxOverall),
       cardPlaystyle: emptyToUndefined(raw.cardPlaystyle),
       imageUrl: emptyToUndefined(raw.imageUrl),
       positions: parseList(raw.positions),
       releaseDate: emptyToUndefined(raw.releaseDate),
       nativeSkills: parseList(raw.nativeSkills),
       recommendedSkills: parseList(raw.recommendedSkills),
-      attributes
-    } as unknown as Partial<ExternalCardInput>;
+      attributes: Object.keys(attributes).length ? attributes : undefined
+    };
   });
 
   return { rows, warnings };

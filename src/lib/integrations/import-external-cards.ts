@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { externalCardSchema, type ExternalCardInput } from './external-card-schema';
 import { cardDisplayName, joinField, safeExternalPlayerId } from './normalizer';
@@ -118,7 +119,6 @@ export async function importExternalCards(rows: unknown[], options: ImportOption
       });
 
       const cardData = {
-        playerId: player.id,
         name: cardDisplayName(row),
         season: row.season ?? null,
         rarity: row.rarity,
@@ -130,29 +130,45 @@ export async function importExternalCards(rows: unknown[], options: ImportOption
         releaseDate: row.releaseDate ? new Date(row.releaseDate) : null
       };
 
+      const attributeData = row.attributes;
       let cardId: string;
       if (existingCardMap?.card) {
+        const updateData: Prisma.CardUpdateInput = {
+          ...cardData,
+          ...(attributeData
+            ? {
+                attributes: {
+                  upsert: {
+                    create: attributeData,
+                    update: attributeData
+                  }
+                }
+              }
+            : {})
+        };
+
         const card = await prisma.card.update({
           where: { id: existingCardMap.card.id },
-          data: {
-            ...cardData,
-            attributes: {
-              upsert: {
-                create: row.attributes,
-                update: row.attributes
-              }
-            }
-          }
+          data: updateData
         });
         cardId = card.id;
         updatedRows += 1;
       } else {
-        const card = await prisma.card.create({
-          data: {
-            ...cardData,
-            attributes: { create: row.attributes }
-          }
-        });
+        const createData: Prisma.CardCreateInput = {
+          player: { connect: { id: player.id } },
+          name: cardData.name,
+          season: cardData.season,
+          rarity: cardData.rarity,
+          overall: cardData.overall,
+          maxOverall: cardData.maxOverall,
+          playstyle: cardData.playstyle,
+          imageUrl: cardData.imageUrl,
+          positions: cardData.positions,
+          releaseDate: cardData.releaseDate,
+          ...(attributeData ? { attributes: { create: attributeData } } : {})
+        };
+
+        const card = await prisma.card.create({ data: createData });
         cardId = card.id;
         await prisma.externalCardMap.create({
           data: { sourceId: source.id, externalId: row.sourceExternalId, cardId, raw: row, rawHash }
