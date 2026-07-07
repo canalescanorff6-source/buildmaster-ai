@@ -1,65 +1,37 @@
-# BuildMaster AI Vision Only Premium
+# BuildMaster AI Vision Pro — Premium Focus
 
-Versão focada apenas no que interessa: analisar imagem/print da carta do eFootball e gerar ficha de jogabilidade.
+Versão focada somente na análise por imagem da carta.
 
-## O que lê da imagem
+## O que esta versão faz
 
-- Nome do jogador
-- Estilo de jogo
-- Tipo da carta
-- Overall principal
-- Overalls por posição: CF, SS, LWF, RWF, LMF, RMF, AMF, CMF, DMF, CB, LB, RB, GK
-- Conversão de posições para PT-BR: CA, SA, PE, PD, ME, MD, MAT, MC, VOL, ZAG, LE, LD, GOL
-- Altura, peso, idade e nível
-- Pior pé: frequência e precisão
-- Condição física
-- Resistência a lesão
-- Atributos técnicos, defensivos, físicos e de goleiro
-- Habilidades nativas
-- Ímpetos/boosters, como Duelo +3, Sem Impulso, Esticada de Perna, Sombra veloz e Finalizador nato
-- Modelo de jogador/biometria quando o OCR conseguir ler
+- Upload de print/galeria e opção separada para câmera no celular.
+- OCR em modo rápido ou precisão máxima.
+- Leitura por áreas da imagem: topo/posições, atributos e habilidades/ímpetos.
+- Revisão manual do OCR antes de gerar a ficha.
+- Melhor posição real em PT-BR: CA, SA, PE, PD, MAT, MC, VOL, ZAG, LE, LD, GOL.
+- Ficha recomendada com custo real de pontos do eFootball.
+- Habilidades adicionais recomendadas sem repetir as habilidades que a carta já possui.
+- Ímpetos/boosters, atributos, overalls por posição e gameplay ideal.
+- Layout premium compacto em abas.
+- PWA para instalar no celular.
 
-## O que gera
-
-- Melhor ficha/build
-- PRI geral e PRI por setor
-- Melhor posição real
-- Ranking de posições
-- Habilidades adicionais recomendadas
-- Compatibilidade tática
-- Como usar o jogador em campo
-
-## Importante sobre precisão
-
-O app usa OCR local no navegador. Print nítido direto do eFHUB/eFootBase oferece melhor resultado. Foto da tela pode errar letras/números; por isso o app mostra o texto extraído para revisão manual antes de gerar a ficha.
-
-## Rodar local
+## Como rodar localmente
 
 ```bash
 npm install
 npm run dev
 ```
 
-## Deploy na Vercel
+Abra:
 
-```bash
-npm install
-npm run build
+```text
+http://localhost:3000
 ```
 
-Este projeto não usa banco, Prisma, login ou Neon.
+## Como publicar na Vercel
 
+Suba os arquivos no GitHub e faça o deploy na Vercel. Esta versão não usa banco, Neon, Prisma, login ou dashboard antigo.
 
-## Atualização: card com imagem do jogador
+## Observação sobre precisão
 
-O resultado premium agora usa a imagem enviada pelo usuário dentro do card visual. O app tenta recortar automaticamente a área da carta do jogador em prints do eFHUB/eFootBase e aplica essa imagem no card do BuildMaster AI, mantendo overall, posição em PT-BR, estilo, PRI, ficha e habilidades adicionais.
-
-## Atualização — Vision Smart Parser
-
-Esta versão remove o exemplo fixo e prioriza a leitura real da imagem enviada. O motor agora considera estilo de jogo para evitar erros como colocar um centroavante Homem de área como PE quando o OCR confunde a grade de posições.
-
-Build testado com:
-
-```bash
-npm run build
-```
+OCR não garante 100% quando o print vem cortado, escuro ou com texto pequeno. Para máxima precisão, use print direto da tela e revise o texto no campo de revisão antes de gerar a ficha.

@@ -387,27 +387,66 @@ function detectPositions(text: string): PositionCode[] {
 function detectPositionRatings(text: string): PositionRatings {
   const ratings: PositionRatings = {};
   const normalized = normalize(text).toUpperCase();
-  for (const code of ALL_POSITIONS) {
-    const pattern = new RegExp(`\\b${code}\\s*(\\d{2,3})\\b`, 'i');
-    const match = normalized.match(pattern);
-    if (match?.[1]) {
-      const value = Number(match[1]);
-      if (value >= 40 && value <= 110) ratings[code] = value;
+  const lines = normalized.split(/\r?\n/).map(cleanLine).filter(Boolean);
+  const setRating = (code: PositionCode, value: number) => {
+    if (value >= 40 && value <= 110 && ratings[code] === undefined) ratings[code] = value;
+  };
+
+  const ptMap: Array<[PositionCode, string[]]> = [
+    ['CF', ['CF', 'CA', 'CENTROAVANTE']],
+    ['SS', ['SS', 'SA', 'SEGUNDO ATACANTE']],
+    ['LWF', ['LWF', 'PE', 'PTE', 'PONTA ESQUERDA']],
+    ['RWF', ['RWF', 'PD', 'PTD', 'PONTA DIREITA']],
+    ['LMF', ['LMF', 'ME', 'MEIA ESQUERDA']],
+    ['RMF', ['RMF', 'MD', 'MEIA DIREITA']],
+    ['AMF', ['AMF', 'MAT', 'MEIA ATACANTE']],
+    ['CMF', ['CMF', 'MC', 'MEIA CENTRAL']],
+    ['DMF', ['DMF', 'VOL', 'VOLANTE']],
+    ['CB', ['CB', 'ZAG', 'ZAGUEIRO']],
+    ['LB', ['LB', 'LE', 'LATERAL ESQUERDO']],
+    ['RB', ['RB', 'LD', 'LATERAL DIREITO']],
+    ['GK', ['GK', 'GOL', 'GOLEIRO']]
+  ];
+
+  // 1) Leitura clássica: CA 101, CF 101, VOL 97 etc.
+  for (const [code, aliases] of ptMap) {
+    for (const alias of aliases) {
+      const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const match = normalized.match(new RegExp(`\\b${escaped}\\s*[:\\-]?\\s*(\\d{2,3})\\b`, 'i'));
+      if (match?.[1]) setRating(code, Number(match[1]));
     }
   }
-  const ptMap: Array<[PositionCode, string[]]> = [
-    ['CF', ['CA']], ['SS', ['SA']], ['LWF', ['PE', 'PTE']], ['RWF', ['PD', 'PTD']], ['LMF', ['ME']], ['RMF', ['MD']], ['AMF', ['MAT']], ['CMF', ['MC']], ['DMF', ['VOL']], ['CB', ['ZAG']], ['LB', ['LE']], ['RB', ['LD']], ['GK', ['GOL']]
-  ];
-  for (const [code, aliases] of ptMap) {
-    if (ratings[code] !== undefined) continue;
-    for (const alias of aliases) {
-      const match = normalized.match(new RegExp(`\\b${alias}\\s*(\\d{2,3})\\b`, 'i'));
-      if (match?.[1]) {
-        const value = Number(match[1]);
-        if (value >= 40 && value <= 110) ratings[code] = value;
+
+  // 2) Leitura quando o OCR separa posição e número em linhas diferentes.
+  // Exemplo: linha "CA" e na linha seguinte "101".
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    for (const [code, aliases] of ptMap) {
+      if (ratings[code] !== undefined) continue;
+      const hasPosition = aliases.some((alias) => new RegExp(`\\b${alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(line));
+      if (!hasPosition) continue;
+      const nearby = [line, lines[index + 1] ?? '', lines[index + 2] ?? ''].join(' ');
+      const number = nearby.match(/\b(\d{2,3})\b/);
+      if (number?.[1]) setRating(code, Number(number[1]));
+    }
+  }
+
+  // 3) Leitura de grades em duas linhas: uma linha com posições, outra com números.
+  for (let index = 0; index < lines.length - 1; index += 1) {
+    const current = lines[index];
+    const next = lines[index + 1];
+    const positionTokens: PositionCode[] = [];
+    for (const [code, aliases] of ptMap) {
+      if (aliases.some((alias) => new RegExp(`\\b${alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(current))) {
+        positionTokens.push(code);
       }
     }
+    const numbers = [...next.matchAll(/\b(\d{2,3})\b/g)].map((match) => Number(match[1])).filter((value) => value >= 40 && value <= 110);
+    if (positionTokens.length >= 2 && numbers.length >= 2) {
+      positionTokens.slice(0, numbers.length).forEach((code, posIndex) => setRating(code, numbers[posIndex]));
+    }
   }
+
   return ratings;
 }
 
