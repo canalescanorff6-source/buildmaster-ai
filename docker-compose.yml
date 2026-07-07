@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: buildmaster-ai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: buildmaster_ai
+    ports:
+      - "5432:5432"
+    volumes:
+      - buildmaster_ai_pgdata:/var/lib/postgresql/data
+
+volumes:
+  buildmaster_ai_pgdata:

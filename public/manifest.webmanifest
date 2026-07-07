@@ -1,0 +1,25 @@
+{
+  "name": "BuildMaster AI",
+  "short_name": "BuildMaster",
+  "description": "Análise premium de cartas, PRI, posições e habilidades para eFootball.",
+  "start_url": "/dashboard/analisar-imagem",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#080c15",
+  "theme_color": "#080c15",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "name": "buildmaster-ai-mobile-pwa",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BuildMaster AI Mobile/PWA para eFootball - análise de cartas por imagem, OCR local, PRI, posições PT-BR e habilidades adicionais.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "db:seed": "prisma db seed",
+    "typecheck": "tsc --noEmit",
+    "import:cards:csv": "tsx scripts/import-cards-csv.ts",
+    "import:cards:json": "tsx scripts/import-cards-json.ts",
+    "start:mobile-lan": "next dev -H 0.0.0.0",
+    "start:prod": "next start -H 0.0.0.0",
+    "vercel-build": "prisma generate && prisma db push && prisma db seed && next build",
+    "render-build": "prisma generate && prisma db push && prisma db seed && next build",
+    "db:push": "prisma db push",
+    "db:deploy": "prisma migrate deploy",
+    "db:reset:local": "prisma migrate reset",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "latest",
+    "bcryptjs": "latest",
+    "clsx": "latest",
+    "jose": "latest",
+    "lucide-react": "latest",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "zod": "latest",
+    "tesseract.js": "^5.1.1"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "prisma": "latest",
+    "tsx": "latest",
+    "typescript": "latest"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}
