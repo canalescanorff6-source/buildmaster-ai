@@ -355,3 +355,252 @@ select:focus, textarea:focus { border-color: rgba(73,255,135,.6); box-shadow: 0 
   z-index: 2;
   text-shadow: 0 3px 18px rgba(0,0,0,.8);
 }
+
+/* Premium compact v3: interface mais limpa, menos bagunçada */
+.app-frame {
+  padding: max(14px, env(safe-area-inset-top)) 14px 20px;
+}
+.compact-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  padding: clamp(18px, 3.4vw, 34px);
+  margin-bottom: 14px;
+  border-radius: 26px;
+}
+.compact-hero h1 {
+  font-size: clamp(32px, 5.2vw, 58px);
+  margin: 12px 0 8px;
+  max-width: 740px;
+}
+.compact-hero p {
+  max-width: 740px;
+  font-size: 15px;
+  line-height: 1.48;
+}
+.compact-hero .hero-badges {
+  margin-top: 0;
+  justify-content: flex-end;
+  max-width: 360px;
+}
+.main-grid {
+  grid-template-columns: minmax(330px, 390px) minmax(0, 1fr);
+  gap: 14px;
+}
+.glass-panel {
+  border-radius: 22px;
+  box-shadow: 0 18px 48px rgba(0,0,0,.32);
+}
+.input-panel {
+  padding: 16px;
+  top: 12px;
+}
+.panel-title {
+  margin-bottom: 12px;
+}
+.dropzone {
+  min-height: 250px;
+  border-radius: 20px;
+}
+.dropzone img {
+  max-height: 310px;
+}
+.form-grid {
+  gap: 8px;
+  margin-top: 10px;
+}
+select, textarea {
+  border-radius: 14px;
+  padding: 10px 11px;
+  font-size: 13px;
+}
+textarea {
+  min-height: 160px;
+  margin-top: 10px;
+}
+.actions {
+  gap: 8px;
+  margin-top: 10px;
+}
+.primary-button, .soft-button {
+  min-height: 42px;
+  border-radius: 13px;
+  font-size: 13px;
+}
+.status-line {
+  font-size: 13px;
+  margin: 10px 0 6px;
+}
+.result-shell {
+  gap: 12px;
+}
+.player-card-panel {
+  padding: 16px;
+  grid-template-columns: 178px 1fr;
+  gap: 18px;
+}
+.virtual-card {
+  min-height: 244px;
+  border-radius: 28px;
+  padding: 18px;
+  border-width: 3px;
+}
+.virtual-card strong {
+  font-size: 58px;
+}
+.virtual-card span {
+  font-size: 30px;
+}
+.virtual-card em {
+  font-size: 16px;
+}
+.player-summary h2 {
+  font-size: clamp(30px, 4vw, 48px);
+}
+.summary-grid, .training-grid, .tactical-grid, .strengths-grid {
+  gap: 8px;
+  margin-top: 12px;
+}
+.summary-grid div, .training-grid div, .tactical-grid div, .position-list div, .data-grid div {
+  border-radius: 14px;
+  padding: 10px;
+}
+.summary-grid strong, .training-grid strong, .tactical-grid strong {
+  font-size: 19px;
+}
+.grid-area {
+  gap: 12px;
+}
+.stack {
+  padding: 14px;
+  gap: 10px;
+}
+.stack h3 {
+  font-size: 16px;
+}
+.data-grid {
+  gap: 8px;
+}
+.data-grid strong {
+  font-size: 15px;
+}
+.attributes-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.chip-list {
+  gap: 7px;
+}
+.chip-list span {
+  padding: 7px 10px;
+  font-size: 12px;
+}
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.section-head h3 {
+  margin-top: 3px;
+}
+.premium-badge {
+  border: 1px solid rgba(255,216,77,.28);
+  background: rgba(255,216,77,.1);
+  color: #ffe58b;
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 1000;
+  white-space: nowrap;
+}
+.priority-panel {
+  border-color: rgba(73,255,135,.3);
+  background:
+    linear-gradient(180deg, rgba(10,22,31,.92), rgba(7,13,24,.82)),
+    radial-gradient(circle at 95% 0%, rgba(73,255,135,.18), transparent 36%);
+}
+.skill-priority-list {
+  display: grid;
+  gap: 8px;
+}
+.skill-priority-card {
+  display: grid;
+  grid-template-columns: 38px 1fr;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(148,163,184,.16);
+  background: rgba(255,255,255,.055);
+  border-radius: 16px;
+  padding: 9px 10px;
+}
+.skill-priority-card > strong {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--primary), var(--cyan));
+  color: #020617;
+  font-size: 13px;
+  box-shadow: 0 8px 18px rgba(73,255,135,.16);
+}
+.skill-priority-card span {
+  display: block;
+  font-weight: 1000;
+  color: #f8fbff;
+  font-size: 14px;
+}
+.skill-priority-card small {
+  display: block;
+  color: #9fb1cc;
+  font-size: 11px;
+  line-height: 1.35;
+  margin-top: 2px;
+}
+.bar-list {
+  gap: 8px;
+}
+.bar-row > div {
+  font-size: 12px;
+}
+.position-list {
+  gap: 8px;
+}
+.position-list strong {
+  font-size: 17px;
+}
+.tip-list {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.warning-panel {
+  padding: 10px 14px;
+  border-radius: 18px;
+  font-size: 13px;
+}
+.empty-result {
+  min-height: 520px;
+}
+
+@media (max-width: 1120px) {
+  .compact-hero { align-items: flex-start; flex-direction: column; }
+  .compact-hero .hero-badges { justify-content: flex-start; max-width: none; }
+  .main-grid, .player-card-panel, .grid-area { grid-template-columns: 1fr; }
+  .virtual-card { width: min(100%, 245px); }
+}
+@media (max-width: 760px) {
+  .app-frame { padding: 10px 10px 18px; }
+  .compact-hero { padding: 18px 14px; border-radius: 22px; }
+  .hero-badges span { padding: 8px 9px; font-size: 12px; }
+  .input-panel { padding: 13px; }
+  .dropzone { min-height: 210px; }
+  .dropzone img { max-height: 260px; }
+  .player-card-panel { padding: 14px; }
+  .virtual-card { min-height: 220px; }
+  .attributes-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .data-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 460px) {
+  .attributes-grid, .data-grid, .form-grid, .summary-grid, .training-grid, .tactical-grid, .strengths-grid { grid-template-columns: 1fr; }
+}

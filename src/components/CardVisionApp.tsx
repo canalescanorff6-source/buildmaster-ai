@@ -111,6 +111,34 @@ async function createPlayerCardPreview(file: File): Promise<string | null> {
     return null;
   }
 }
+
+function skillReason(skill: string) {
+  const reasons: Record<string, string> = {
+    'Toque duplo': 'melhora o 1 contra 1 e a saída curta',
+    'Controle com a sola': 'deixa o giro e o domínio mais limpos',
+    'Elástico': 'abre espaço em pontas e meias ofensivos',
+    'Cruzamento preciso': 'aumenta criação pelas laterais',
+    'Curva para fora': 'melhora passes e finalizações de trivela',
+    'Passe de primeira': 'acelera triangulações e contra-pressão',
+    'Passe em profundidade': 'melhora bolas verticais e rupturas',
+    'Passe na medida': 'qualifica lançamentos e inversões',
+    'Interceptação': 'aumenta cortes automáticos de passe',
+    'Bloqueador': 'melhora bloqueios de chute e passe',
+    'Marcação individual': 'gruda melhor no alvo defensivo',
+    'Volta para marcar': 'ajuda na pressão e recomposição',
+    'Espírito guerreiro': 'mantém precisão mesmo cansado ou pressionado',
+    'Chute de primeira': 'finaliza rápido sem dominar a bola',
+    'Precisão à distância': 'melhora chute de fora da área',
+    'Finalização acrobática': 'aumenta gols em posição ruim',
+    'Cabeçada': 'melhora finalização aérea',
+    'Superioridade aérea': 'vence duelos pelo alto com mais frequência',
+    'Carrinho': 'aumenta precisão no desarme de emergência',
+    'Afastamento acrobático': 'limpa bolas difíceis na defesa',
+    'Super substituto': 'melhora impacto vindo do banco'
+  };
+  return reasons[skill] ?? 'completa a função real da carta sem repetir habilidade nativa';
+}
+
 function ResultCard({ result, playerImage }: { result: AnalysisResult; playerImage: string | null }) {
   const card = result.parsed;
   const infoItems = [
@@ -193,14 +221,26 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
           </div>
         </div>
 
-        <div className="glass-panel stack">
-          <h3>Habilidades adicionais</h3>
-          <div className="chip-list">
-            {result.recommendedSkills.map((skill) => <span key={skill}>{skill}</span>)}
+        <div className="glass-panel stack priority-panel">
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">Somente faltantes</p>
+              <h3>Habilidades adicionais</h3>
+            </div>
+            <span className="premium-badge">Top {result.recommendedSkills.length}</span>
           </div>
-          {card.nativeSkills.length > 0 && (
-            <p className="microcopy">Já lidas na carta: {card.nativeSkills.join(', ')}</p>
-          )}
+          <div className="skill-priority-list">
+            {result.recommendedSkills.map((skill, index) => (
+              <div key={skill} className="skill-priority-card">
+                <strong>{String(index + 1).padStart(2, '0')}</strong>
+                <div>
+                  <span>{skill}</span>
+                  <small>{skillReason(skill)}</small>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="microcopy">O app remove automaticamente as habilidades que a carta já possui e recomenda apenas as melhores adicionais.</p>
         </div>
       </section>
 
@@ -355,17 +395,16 @@ export function CardVisionApp() {
 
   return (
     <main className="app-frame">
-      <section className="hero">
-        <div className="brand-pill"><Sparkles size={16} /> BuildMaster AI Vision</div>
-        <h1>Ficha premium por imagem para eFootball</h1>
-        <p>
-          O app agora fica focado apenas no que importa: enviar a imagem da carta, ler os dados, gerar melhor ficha, PRI, posição real,
-          habilidades adicionais e plano de gameplay.
-        </p>
+      <section className="hero compact-hero">
+        <div>
+          <div className="brand-pill"><Sparkles size={16} /> BuildMaster AI Vision Pro</div>
+          <h1>Ficha máxima por imagem</h1>
+          <p>Envie o print da carta, revise o OCR e gere build, posição real, PRI e habilidades adicionais sem repetir o que o jogador já tem.</p>
+        </div>
         <div className="hero-badges">
-          <span><ShieldCheck size={16} /> Sem banco obrigatório</span>
-          <span><ScanText size={16} /> OCR local</span>
-          <span><CheckCircle2 size={16} /> Posições PT-BR</span>
+          <span><ShieldCheck size={16} /> Vision only</span>
+          <span><ScanText size={16} /> OCR + revisão</span>
+          <span><CheckCircle2 size={16} /> PT-BR</span>
         </div>
       </section>
 
