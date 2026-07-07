@@ -210,8 +210,7 @@ function guessPlayerName(rawText: string, fileName?: string | null) {
     .filter((line) => !ignored.test(line));
 
   const uppercaseName = rawText
-    .split('
-')
+    .split('\n')
     .map(cleanLine)
     .find((line) => /^[A-ZÀ-Ÿ][A-ZÀ-Ÿ.'\-]+(?:\s+[A-ZÀ-Ÿ][A-ZÀ-Ÿ.'\-]+){1,3}$/.test(line) && !ignored.test(line));
 
@@ -222,7 +221,7 @@ function guessPlayerName(rawText: string, fileName?: string | null) {
 
   if (uppercaseName && uppercaseName.length > 2) return uppercaseName
     .toLowerCase()
-    .replace(/\w/g, (char) => char.toUpperCase());
+    .replace(/\b\w/g, (char) => char.toUpperCase());
   if (explicit && explicit.length > 2) return explicit;
   if (lines[0] && /[A-Za-zÀ-ÿ]/.test(lines[0]) && lines[0].length <= 50) return lines[0];
   if (fileName) {
