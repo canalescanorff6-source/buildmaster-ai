@@ -1,5 +1,4 @@
-import { Bot, Camera, CreditCard, DatabaseZap, GitCompareArrows, Home, Upload, UsersRound } from 'lucide-react';
-import { NavLink } from '@/components/nav-link';
+import { NavLink, type NavIconName } from '@/components/nav-link';
 import { LogoutButton } from '@/components/logout-button';
 
 type AppShellProps = {
@@ -7,11 +6,28 @@ type AppShellProps = {
   user: { name: string; email: string; role: string };
 };
 
-const primaryMobileNav = [
-  { href: '/dashboard', icon: Home, label: 'Início' },
-  { href: '/dashboard/analisar-imagem', icon: Camera, label: 'Analisar' },
-  { href: '/dashboard/cartas', icon: CreditCard, label: 'Cartas' },
-  { href: '/dashboard/recomendacoes', icon: Bot, label: 'Build AI' }
+type NavItem = {
+  href: string;
+  icon: NavIconName;
+  label: string;
+};
+
+const primaryMobileNav: NavItem[] = [
+  { href: '/dashboard', icon: 'home', label: 'Início' },
+  { href: '/dashboard/analisar-imagem', icon: 'camera', label: 'Analisar' },
+  { href: '/dashboard/cartas', icon: 'cards', label: 'Cartas' },
+  { href: '/dashboard/recomendacoes', icon: 'build', label: 'Build AI' }
+];
+
+const sidebarNav: NavItem[] = [
+  { href: '/dashboard', icon: 'home', label: 'Dashboard' },
+  { href: '/dashboard/jogadores', icon: 'players', label: 'Jogadores' },
+  { href: '/dashboard/cartas', icon: 'cards', label: 'Cartas' },
+  { href: '/dashboard/recomendacoes', icon: 'build', label: 'Build AI' },
+  { href: '/dashboard/analisar-imagem', icon: 'camera', label: 'Analisar Imagem' },
+  { href: '/dashboard/comparador', icon: 'compare', label: 'Comparador' },
+  { href: '/dashboard/importar', icon: 'upload', label: 'Importar' },
+  { href: '/dashboard/sincronizacao', icon: 'sync', label: 'Sincronização' }
 ];
 
 export function AppShell({ children, user }: AppShellProps) {
@@ -34,14 +50,9 @@ export function AppShell({ children, user }: AppShellProps) {
         </div>
 
         <nav className="nav">
-          <NavLink href="/dashboard" icon={Home} label="Dashboard" />
-          <NavLink href="/dashboard/jogadores" icon={UsersRound} label="Jogadores" />
-          <NavLink href="/dashboard/cartas" icon={CreditCard} label="Cartas" />
-          <NavLink href="/dashboard/recomendacoes" icon={Bot} label="Build AI" />
-          <NavLink href="/dashboard/analisar-imagem" icon={Camera} label="Analisar Imagem" />
-          <NavLink href="/dashboard/comparador" icon={GitCompareArrows} label="Comparador" />
-          <NavLink href="/dashboard/importar" icon={Upload} label="Importar" />
-          <NavLink href="/dashboard/sincronizacao" icon={DatabaseZap} label="Sincronização" />
+          {sidebarNav.map((item) => (
+            <NavLink key={item.href} href={item.href} icon={item.icon} label={item.label} />
+          ))}
         </nav>
       </aside>
 
