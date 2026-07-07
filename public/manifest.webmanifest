@@ -1,25 +1,14 @@
 {
-  "name": "BuildMaster AI",
+  "name": "BuildMaster AI Vision",
   "short_name": "BuildMaster",
-  "description": "Análise premium de cartas, PRI, posições e habilidades para eFootball.",
-  "start_url": "/dashboard/analisar-imagem",
-  "scope": "/",
+  "description": "Ficha premium de eFootball por imagem.",
+  "start_url": "/",
   "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#080c15",
-  "theme_color": "#080c15",
+  "background_color": "#050816",
+  "theme_color": "#050816",
+  "orientation": "portrait-primary",
   "icons": [
-    {
-      "src": "/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }

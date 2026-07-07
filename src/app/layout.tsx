@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from 'next';
-import { ServiceWorkerRegister } from '@/components/service-worker-register';
+import type { ReactNode } from 'react';
+import { RegisterServiceWorker } from '@/components/RegisterServiceWorker';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'BuildMaster AI',
-  description: 'Plataforma inteligente para builds, cartas e PRI no eFootball.',
+  title: 'BuildMaster AI Vision',
+  description: 'App premium para gerar fichas de jogabilidade do eFootball por imagem.',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
@@ -25,16 +26,13 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: 'cover',
-  themeColor: '#080c15'
+  themeColor: '#050816'
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="pt-BR">
-      <body>
-        {children}
-        <ServiceWorkerRegister />
-      </body>
+      <body><RegisterServiceWorker />{children}</body>
     </html>
   );
 }
