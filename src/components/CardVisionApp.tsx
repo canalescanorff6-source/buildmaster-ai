@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Camera, CheckCircle2, ClipboardPaste, Download, Loader2, ScanText, ShieldCheck, Sparkles, UploadCloud, Wand2 } from 'lucide-react';
-import { analyzeCard, type AnalysisResult, type Objective, type PositionCode, EXAMPLE_TEXT, POSITION_LABELS } from '@/lib/analyzer';
+import { Camera, CheckCircle2, Download, Loader2, ScanText, ShieldCheck, Sparkles, UploadCloud, Wand2 } from 'lucide-react';
+import { analyzeCard, type AnalysisResult, type Objective, type PositionCode, POSITION_LABELS } from '@/lib/analyzer';
 
 const objectives: Array<{ value: Objective; label: string; hint: string }> = [
   { value: 'COMPETITIVE', label: 'Competitivo', hint: 'melhor rendimento geral em campo' },
@@ -83,6 +83,16 @@ async function preprocessImage(file: File): Promise<Blob | File> {
 }
 
 
+function mergeOcrTexts(primary: string, secondary: string) {
+  const lines = new Map<string, string>();
+  for (const text of [primary, secondary]) {
+    for (const line of text.split(/\r?\n/).map((item) => item.trim()).filter(Boolean)) {
+      const key = line.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '');
+      if (key && !lines.has(key)) lines.set(key, line);
+    }
+  }
+  return Array.from(lines.values()).join('\n');
+}
 
 async function createPlayerCardPreview(file: File): Promise<string | null> {
   if (typeof document === 'undefined' || typeof createImageBitmap === 'undefined') return null;
@@ -392,15 +402,23 @@ export function CardVisionApp() {
       const croppedPreview = await createPlayerCardPreview(file);
       if (croppedPreview) setPlayerCardImage(croppedPreview);
       const processed = await preprocessImage(file);
-      const { data } = await Tesseract.recognize(processed, 'por+eng', {
+      const firstPass = await Tesseract.recognize(file, 'por+eng', {
         logger: (message) => {
           if (message.status) {
-            setStatus(`OCR: ${message.status}${message.progress ? ` ${Math.round(message.progress * 100)}%` : ''}`);
+            setStatus(`OCR original: ${message.status}${message.progress ? ` ${Math.round(message.progress * 100)}%` : ''}`);
           }
         }
       });
-      setRawText(data.text.trim());
-      setStatus('Texto lido. Revise os dados e toque em Gerar ficha premium.');
+      const secondPass = await Tesseract.recognize(processed, 'por+eng', {
+        logger: (message) => {
+          if (message.status) {
+            setStatus(`OCR otimizado: ${message.status}${message.progress ? ` ${Math.round(message.progress * 100)}%` : ''}`);
+          }
+        }
+      });
+      const mergedText = mergeOcrTexts(firstPass.data.text.trim(), secondPass.data.text.trim());
+      setRawText(mergedText);
+      setStatus('Texto lido e combinado. Confira se nome, estilo, posição e atributos principais estão corretos antes de gerar.');
     } catch {
       setStatus('Não consegui ler automaticamente. Cole ou digite os dados da carta no campo de revisão.');
     } finally {
@@ -421,7 +439,7 @@ export function CardVisionApp() {
         <div>
           <div className="brand-pill"><Sparkles size={16} /> BuildMaster AI Vision Pro</div>
           <h1>Ficha máxima por imagem</h1>
-          <p>Envie o print da carta, revise o OCR e gere build, posição real, PRI e habilidades adicionais sem repetir o que o jogador já tem.</p>
+          <p>Envie qualquer print da carta. O app lê a ficha, organiza as estatísticas e entrega posição real, ficha por pontos e habilidades adicionais faltantes.</p>
         </div>
         <div className="hero-badges">
           <span><ShieldCheck size={16} /> Vision only</span>
@@ -502,14 +520,11 @@ export function CardVisionApp() {
               rows={12}
               value={rawText}
               onChange={(event) => setRawText(event.target.value)}
-              placeholder={'Exemplo:\nLionel Messi\nShow Time — Blitz Curler\nSA / PD / MAT\nPé esquerdo\nFinalização 92\nDrible 97\nVelocidade 85\nHabilidades: Toque duplo, Controle com a sola'}
+              placeholder={'Cole ou corrija aqui, se precisar:\nNome do jogador\nEstilo de jogo: Homem de área / Destruidor / Artilheiro...\nCA 90  SA 86  PE 80  PD 80  VOL 70...\nAltura 185cm  Peso 80kg  Nível máximo 33  Pontos 64/64\nFinalização 90  Velocidade 82  Contato físico 88...\nHabilidades: Chute de primeira, Cabeçada, Passe de primeira...'}
             />
           </label>
 
           <div className="actions">
-            <button type="button" className="soft-button" onClick={() => { setRawText(EXAMPLE_TEXT); setStatus('Exemplo carregado. Toque em Gerar ficha premium.'); }}>
-              <ClipboardPaste size={18} /> Testar exemplo
-            </button>
             <button type="button" className="primary-button" disabled={loading || !canAnalyze} onClick={runAnalysis}>
               {loading ? <Loader2 className="spin" size={18} /> : <Wand2 size={18} />}
               Gerar ficha premium
@@ -518,7 +533,7 @@ export function CardVisionApp() {
 
           <p className="status-line">{status}</p>
           <p className="microcopy">
-            Para maior precisão, use print nítido direto do eFHUB/eFootBase. Foto da tela funciona, mas pode exigir correção manual do texto.
+            Use print direto da tela sempre que puder. O app combina OCR original + otimizado, mas a revisão ainda evita ficha ou posição errada quando algum número for lido fora do lugar.
           </p>
         </section>
 
@@ -527,7 +542,7 @@ export function CardVisionApp() {
             <div className="glass-panel empty-result">
               <Sparkles size={42} />
               <h2>Resultado premium</h2>
-              <p>Depois da análise, aqui aparecem a ficha, PRI, melhores posições, habilidades e gameplay ideal.</p>
+              <p>O resultado fica organizado em card do jogador, ficha por pontos, habilidades faltantes, posições reais e instruções de gameplay.</p>
               <div className="preview-card-mini">
                 <strong>--</strong><span>CA</span><em>BuildMaster AI</em>
               </div>

@@ -53,3 +53,13 @@ Este projeto não usa banco, Prisma, login ou Neon.
 ## Atualização: card com imagem do jogador
 
 O resultado premium agora usa a imagem enviada pelo usuário dentro do card visual. O app tenta recortar automaticamente a área da carta do jogador em prints do eFHUB/eFootBase e aplica essa imagem no card do BuildMaster AI, mantendo overall, posição em PT-BR, estilo, PRI, ficha e habilidades adicionais.
+
+## Atualização — Vision Smart Parser
+
+Esta versão remove o exemplo fixo e prioriza a leitura real da imagem enviada. O motor agora considera estilo de jogo para evitar erros como colocar um centroavante Homem de área como PE quando o OCR confunde a grade de posições.
+
+Build testado com:
+
+```bash
+npm run build
+```
