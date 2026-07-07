@@ -1,30 +1,37 @@
-# BuildMaster AI Vision Only
+# BuildMaster AI Vision Only Premium
 
-Versão enxuta e premium do BuildMaster AI, focada somente em análise por imagem da carta do eFootball.
+Versão focada apenas no que interessa: analisar imagem/print da carta do eFootball e gerar ficha de jogabilidade.
 
-## O que esta versão faz
+## O que lê da imagem
 
-- Envia print/foto da carta.
-- Roda OCR local no navegador com Tesseract.js.
-- Permite revisar e corrigir o texto lido.
-- Gera ficha/build recomendada.
-- Calcula PRI por setor.
-- Mostra melhor posição real em PT-BR.
-- Recomenda habilidades adicionais com nomes em PT-BR.
-- Mostra como usar o jogador em campo.
-- Funciona como PWA instalável no celular.
-- Não depende de banco PostgreSQL, Prisma, login, CRUD, dashboard antigo ou servidor pesado.
+- Nome do jogador
+- Estilo de jogo
+- Tipo da carta
+- Overall principal
+- Overalls por posição: CF, SS, LWF, RWF, LMF, RMF, AMF, CMF, DMF, CB, LB, RB, GK
+- Conversão de posições para PT-BR: CA, SA, PE, PD, ME, MD, MAT, MC, VOL, ZAG, LE, LD, GOL
+- Altura, peso, idade e nível
+- Pior pé: frequência e precisão
+- Condição física
+- Resistência a lesão
+- Atributos técnicos, defensivos, físicos e de goleiro
+- Habilidades nativas
+- Ímpetos/boosters, como Duelo +3, Sem Impulso, Esticada de Perna, Sombra veloz e Finalizador nato
+- Modelo de jogador/biometria quando o OCR conseguir ler
+
+## O que gera
+
+- Melhor ficha/build
+- PRI geral e PRI por setor
+- Melhor posição real
+- Ranking de posições
+- Habilidades adicionais recomendadas
+- Compatibilidade tática
+- Como usar o jogador em campo
 
 ## Importante sobre precisão
 
-Nenhum OCR consegue garantir 100% de acerto em foto tremida, cortada, escura ou com texto pequeno. Por isso esta versão usa o fluxo mais seguro:
-
-1. Ler a imagem automaticamente.
-2. Mostrar o texto extraído.
-3. Permitir correção manual.
-4. Gerar a ficha depois da confirmação.
-
-Com print nítido e revisão manual, a recomendação fica muito mais confiável.
+O app usa OCR local no navegador. Print nítido direto do eFHUB/eFootBase oferece melhor resultado. Foto da tela pode errar letras/números; por isso o app mostra o texto extraído para revisão manual antes de gerar a ficha.
 
 ## Rodar local
 
@@ -33,36 +40,11 @@ npm install
 npm run dev
 ```
 
-Abra:
-
-```text
-http://localhost:3000
-```
-
 ## Deploy na Vercel
 
-Não precisa configurar Neon nem DATABASE_URL.
-
-1. Suba os arquivos para o GitHub.
-2. Importe na Vercel.
-3. Framework: Next.js.
-4. Build command: `npm run vercel-build`.
-5. Deploy.
-
-## Instalar no celular
-
-Depois de publicar:
-
-1. Abra o link no Chrome do Android.
-2. Toque em `⋮`.
-3. Escolha `Adicionar à tela inicial` ou `Instalar app`.
-
-## Arquivos principais
-
-```text
-src/components/CardVisionApp.tsx
-src/lib/analyzer.ts
-src/app/page.tsx
-src/app/globals.css
-public/manifest.webmanifest
+```bash
+npm install
+npm run build
 ```
+
+Este projeto não usa banco, Prisma, login ou Neon.

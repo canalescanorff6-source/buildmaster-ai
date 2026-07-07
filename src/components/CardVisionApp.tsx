@@ -84,6 +84,19 @@ async function preprocessImage(file: File): Promise<Blob | File> {
 
 function ResultCard({ result }: { result: AnalysisResult }) {
   const card = result.parsed;
+  const infoItems = [
+    ['Altura', card.height ? `${card.height} cm` : '—'],
+    ['Peso', card.weight ? `${card.weight} kg` : '—'],
+    ['Idade', card.age ?? '—'],
+    ['Nível', card.level ?? '—'],
+    ['Pior pé frequência', card.condition.weakFootFrequency ?? '—'],
+    ['Pior pé precisão', card.condition.weakFootAccuracy ?? '—'],
+    ['Condição física', card.condition.form ?? '—'],
+    ['Resistência a lesão', card.condition.injuryResistance ?? '—']
+  ];
+  const attributeItems = Object.entries(card.attributes).filter(([, value]) => Number.isFinite(value));
+  const physicalItems = Object.entries(card.physicalProfile).filter(([, value]) => Number.isFinite(value));
+  const positionRatingItems = Object.entries(card.positionRatings).filter(([, value]) => Number.isFinite(value));
 
   return (
     <div className="result-shell">
@@ -115,6 +128,27 @@ function ResultCard({ result }: { result: AnalysisResult }) {
 
       <section className="grid-area">
         <div className="glass-panel stack">
+          <h3>Dados lidos da carta</h3>
+          <div className="data-grid">
+            {infoItems.map(([label, value]) => (
+              <div key={String(label)}><span>{label}</span><strong>{String(value)}</strong></div>
+            ))}
+          </div>
+        </div>
+
+        <div className="glass-panel stack">
+          <h3>Ímpetos / boosters</h3>
+          <div className="chip-list">
+            {card.impetos.length ? card.impetos.map((item) => (
+              <span key={`${item.name}-${item.value ?? ''}`}>{item.name}{item.value ? ` +${item.value}` : ''}{item.active === false ? ' — inativo' : ''}</span>
+            )) : <span>Nenhum ímpeto lido</span>}
+          </div>
+          {card.specialSkills.length > 0 && <p className="microcopy">Habilidades especiais lidas: {card.specialSkills.join(', ')}</p>}
+        </div>
+      </section>
+
+      <section className="grid-area">
+        <div className="glass-panel stack">
           <h3>Ficha recomendada</h3>
           <div className="training-grid">
             {Object.entries(result.training).filter(([, value]) => Number(value) > 0).map(([key, value]) => (
@@ -138,6 +172,15 @@ function ResultCard({ result }: { result: AnalysisResult }) {
       </section>
 
       <section className="glass-panel stack">
+        <h3>Todos os atributos lidos</h3>
+        <div className="data-grid attributes-grid">
+          {attributeItems.length ? attributeItems.map(([key, value]) => (
+            <div key={key}><span>{attributeNamePt(key)}</span><strong>{value}</strong></div>
+          )) : <p className="microcopy">Nenhum atributo lido com segurança.</p>}
+        </div>
+      </section>
+
+      <section className="glass-panel stack">
         <h3>PRI por setor</h3>
         <div className="bar-list">
           {Object.entries(result.pri).map(([key, value]) => (
@@ -153,15 +196,26 @@ function ResultCard({ result }: { result: AnalysisResult }) {
         <div className="glass-panel stack">
           <h3>Melhores posições reais</h3>
           <div className="position-list">
-            {result.positionScores.slice(0, 6).map((item) => (
+            {result.positionScores.slice(0, 10).map((item) => (
               <div key={item.code}>
                 <strong>{item.label}</strong>
-                <span>{item.score}/100 • {item.role}</span>
+                <span>{item.score}/100 • {item.role}{item.cardRating ? ` • rating da carta ${item.cardRating}` : ''}</span>
               </div>
             ))}
           </div>
         </div>
 
+        <div className="glass-panel stack">
+          <h3>Overalls por posição lidos</h3>
+          <div className="data-grid">
+            {positionRatingItems.length ? positionRatingItems.map(([code, value]) => (
+              <div key={code}><span>{code} → {positionPt(code)}</span><strong>{value}</strong></div>
+            )) : <p className="microcopy">A tabela de posição não foi lida.</p>}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid-area">
         <div className="glass-panel stack">
           <h3>Compatibilidade tática</h3>
           <div className="tactical-grid">
@@ -171,6 +225,15 @@ function ResultCard({ result }: { result: AnalysisResult }) {
                 <strong>{value}/10</strong>
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="glass-panel stack">
+          <h3>Modelo de jogador lido</h3>
+          <div className="data-grid">
+            {physicalItems.length ? physicalItems.map(([key, value]) => (
+              <div key={key}><span>{modelNamePt(key)}</span><strong>{String(value)}</strong></div>
+            )) : <p className="microcopy">Modelo corporal não lido com segurança.</p>}
           </div>
         </div>
       </section>
@@ -187,6 +250,25 @@ function ResultCard({ result }: { result: AnalysisResult }) {
       </section>
     </div>
   );
+}
+
+function attributeNamePt(key: string) {
+  const labels: Record<string, string> = {
+    offensiveAwareness: 'Talento ofensivo', ballControl: 'Controle de bola', dribbling: 'Drible', tightPossession: 'Condução firme', lowPass: 'Passe rasteiro', loftedPass: 'Passe alto', finishing: 'Finalização', heading: 'Cabeçada', placeKicking: 'Cobrança de bola parada', curl: 'Curva', defensiveAwareness: 'Talento defensivo', defensiveEngagement: 'Dedicação defensiva', tackling: 'Desarme', aggression: 'Agressividade', goalkeeperAwareness: 'Talento de GO', goalkeeperCatching: 'Firmeza do GO', goalkeeperParrying: 'Defesa do GO', goalkeeperReflexes: 'Reflexos do GO', goalkeeperReach: 'Alcance do GO', speed: 'Velocidade', acceleration: 'Aceleração', kickingPower: 'Força do chute', jump: 'Salto', physicalContact: 'Contato físico', balance: 'Equilíbrio', stamina: 'Resistência'
+  };
+  return labels[key] ?? key;
+}
+
+function modelNamePt(key: string) {
+  const labels: Record<string, string> = {
+    armLength: 'Comprimento do braço', shoulderWidth: 'Largura dos ombros', neckLength: 'Comprimento do pescoço', chest: 'Chest', neckSize: 'Tamanho do pescoço', shoulderHeight: 'Altura do ombro', legLength: 'Comprimento da perna', thighSize: 'Tamanho da coxa', waistSize: 'Tamanho da cintura', armSize: 'Tamanho do braço', calfSize: 'Tamanho da panturrilha', legCoverageRadius: 'Raio cobertura pernas', armCoverageRadius: 'Raio cobertura braços', jumpHeight: 'Altura de salto', trunkCollision: 'Colisão do tronco', baseHeight: 'Altura com base'
+  };
+  return labels[key] ?? key;
+}
+
+function positionPt(code: string) {
+  const labels: Record<string, string> = { CF: 'CA', SS: 'SA', LWF: 'PE', RWF: 'PD', LMF: 'ME', RMF: 'MD', AMF: 'MAT', CMF: 'MC', DMF: 'VOL', CB: 'ZAG', LB: 'LE', RB: 'LD', GK: 'GOL' };
+  return labels[code] ?? code;
 }
 
 export function CardVisionApp() {
