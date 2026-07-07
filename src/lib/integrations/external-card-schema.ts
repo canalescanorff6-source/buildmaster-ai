@@ -46,7 +46,7 @@ export const externalCardSchema = z.object({
 
   nativeSkills: z.array(z.string()).default([]),
   recommendedSkills: z.array(z.string()).default([]),
-  attributes: attributeSchema.default({})
+  attributes: attributeSchema.optional()
 });
 
 export const externalCardFeedSchema = z.object({
