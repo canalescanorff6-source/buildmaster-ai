@@ -90,6 +90,32 @@ const SKILL_CANDIDATES = Array.from(
 );
 
 
+const PLAYSTYLE_PTBR: Record<string, string> = {
+  'Goal Poacher': 'Artilheiro',
+  'Fox in the Box': 'Atacante matador',
+  'Deep-Lying Forward': 'Pivô',
+  'Creative Playmaker': 'Criador de jogadas',
+  'Hole Player': 'Jogador sem bola',
+  'Prolific Winger': 'Ponta prolífico',
+  'Roaming Flank': 'Jogador de ligação',
+  'Anchor Man': 'Âncora',
+  Destroyer: 'Destruidor',
+  'Build Up': 'Construtor',
+  'Offensive Full-back': 'Lateral ofensivo',
+  'Defensive Full-back': 'Lateral defensivo',
+  'Box-to-Box': 'Box-to-Box',
+  'Orchestrator': 'Orquestrador',
+  'Extra Frontman': 'Zagueiro ofensivo'
+};
+
+function toPtBrPlaystyle(value: string | null) {
+  if (!value) return null;
+  const normalized = normalizeText(value).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const entry = Object.entries(PLAYSTYLE_PTBR).find(([key]) => normalizeText(key).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim() === normalized);
+  return entry?.[1] ?? value;
+}
+
+
 const ATTRIBUTE_PATTERNS: Array<[keyof ParsedCardAttributes, RegExp[]]> = [
   ['offensiveAwareness', [/talento\s+ofensivo\s*(\d{2,3})/i, /offensive\s+awareness\s*(\d{2,3})/i]],
   ['ballControl', [/controle\s+de\s+bola\s*(\d{2,3})/i, /ball\s+control\s*(\d{2,3})/i]],
@@ -183,11 +209,20 @@ function guessPlayerName(rawText: string, fileName?: string | null) {
     .filter(Boolean)
     .filter((line) => !ignored.test(line));
 
+  const uppercaseName = rawText
+    .split('
+')
+    .map(cleanLine)
+    .find((line) => /^[A-ZÀ-Ÿ][A-ZÀ-Ÿ.'\-]+(?:\s+[A-ZÀ-Ÿ][A-ZÀ-Ÿ.'\-]+){1,3}$/.test(line) && !ignored.test(line));
+
   const explicit = findFirst(rawText, [
     /(?:jogador|player|nome)\s*[:\-]\s*([A-Za-zÀ-ÿ.'\-\s]{3,50})/i,
     /^([A-ZÀ-Ÿ][A-Za-zÀ-ÿ.'\-]+(?:\s+[A-ZÀ-Ÿ][A-Za-zÀ-ÿ.'\-]+){0,3})$/m
   ]);
 
+  if (uppercaseName && uppercaseName.length > 2) return uppercaseName
+    .toLowerCase()
+    .replace(/\w/g, (char) => char.toUpperCase());
   if (explicit && explicit.length > 2) return explicit;
   if (lines[0] && /[A-Za-zÀ-ÿ]/.test(lines[0]) && lines[0].length <= 50) return lines[0];
   if (fileName) {
@@ -205,10 +240,11 @@ function detectCountry(rawText: string) {
 }
 
 function detectPlaystyle(rawText: string) {
-  return findFirst(rawText, [
+  const detected = findFirst(rawText, [
     /(?:estilo|playstyle|playing\s*style)\s*[:\-]\s*([A-Za-zÀ-ÿ\s\-]{3,45})/i,
-    /\b(Artilheiro|Criador de jogadas|Jogador sem bola|Atacante matador|Pivô|Ponta prolífico|Jogador de ligação|Âncora|Destruidor|Construtor|Lateral ofensivo|Lateral defensivo|Creative Playmaker|Hole Player|Goal Poacher|Fox in the Box|Deep-Lying Forward|Roaming Flank|Prolific Winger|Anchor Man|Destroyer|Build Up|Offensive Full-back|Defensive Full-back)\b/i
+    /\b(Artilheiro|Criador de jogadas|Jogador sem bola|Atacante matador|Pivô|Ponta prolífico|Jogador de ligação|Âncora|Destruidor|Construtor|Lateral ofensivo|Lateral defensivo|Creative Playmaker|Hole Player|Goal Poacher|Fox in the Box|Deep-Lying Forward|Roaming Flank|Prolific Winger|Anchor Man|Destroyer|Build Up|Offensive Full-back|Defensive Full-back|Box-to-Box|Orchestrator|Extra Frontman)\b/i
   ]);
+  return toPtBrPlaystyle(detected);
 }
 
 function parseAttributes(text: string): ParsedCardAttributes {
@@ -265,7 +301,7 @@ export function parseCardImageText(rawText: string, imageFileName?: string | nul
   if (playerName === 'Jogador não identificado') warnings.push('Não consegui identificar o nome com segurança. Corrija o texto extraído antes de salvar/analisar.');
   if (!playstyle) warnings.push('Estilo de jogo não encontrado no OCR. A recomendação usará posição e atributos.');
   if (!overall && !maxOverall) warnings.push('Overall não encontrado. A análise usará uma carta temporária equilibrada.');
-  if (attributeCount < 8) warnings.push('Poucos atributos foram lidos. Se o OCR falhar, cole os dados da imagem no campo de revisão.');
+  if (attributeCount < 8) warnings.push('Poucos atributos foram lidos. Envie um print mais nítido/recortado na ficha ou corrija o texto antes de analisar.');
   if (!specialTag && rarity === 'SHOW_TIME') warnings.push('A habilidade especial/booster da carta Show Time não foi encontrada. Corrija se quiser diferenciar versões parecidas.');
 
   const identityParts = [playerName, rarity.toLowerCase().replace('_', '-'), specialTag ?? playstyle ?? mainPosition, season ?? 'manual', String(maxOverall ?? overall ?? 'na')];

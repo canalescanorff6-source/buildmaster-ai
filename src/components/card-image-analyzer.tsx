@@ -121,6 +121,44 @@ Equilíbrio 68
 Resistência 72
 Habilidades: Cabeçada, Efeito de longe, Precisão à distância, Chute com o peito do pé, Chute ascendente, Finalização acrobática, Chute de primeira, Espírito guerreiro, Superioridade aérea, Finalizador nato`;
 
+
+async function prepareImageForOcr(file: File): Promise<Blob | File> {
+  // Melhora a leitura de prints escuros do eFHUB/eFootBase antes de enviar ao Tesseract.
+  // O OCR continua local, no navegador do usuário.
+  if (typeof document === 'undefined' || typeof createImageBitmap === 'undefined') return file;
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const maxWidth = 2400;
+    const scale = Math.max(1.6, Math.min(3, maxWidth / Math.max(1, bitmap.width)));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return file;
+
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const gray = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+      // Aumenta contraste sem binarizar demais. Mantém textos brancos, amarelos e verdes legíveis.
+      const contrasted = Math.max(0, Math.min(255, (gray - 120) * 1.75 + 145));
+      data[i] = contrasted;
+      data[i + 1] = contrasted;
+      data[i + 2] = contrasted;
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    return await new Promise<Blob | File>((resolve) => {
+      canvas.toBlob((blob) => resolve(blob ?? file), 'image/png', 0.95);
+    });
+  } catch {
+    return file;
+  }
+}
+
 export function CardImageAnalyzer() {
   const [preview, setPreview] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
@@ -143,7 +181,9 @@ export function CardImageAnalyzer() {
 
     try {
       const Tesseract = await import('tesseract.js');
-      const { data } = await Tesseract.recognize(file, 'por+eng', {
+      setStatus('Preparando imagem para melhorar a leitura do OCR...');
+      const ocrImage = await prepareImageForOcr(file);
+      const { data } = await Tesseract.recognize(ocrImage, 'por+eng', {
         logger: (message) => {
           if (message.status) setStatus(`OCR: ${message.status}${message.progress ? ` ${Math.round(message.progress * 100)}%` : ''}`);
         }
