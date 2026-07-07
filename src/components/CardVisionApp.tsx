@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { Camera, CheckCircle2, Copy, Download, ImagePlus, Loader2, ScanText, ShieldCheck, Sparkles, UploadCloud, Wand2, Zap } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Camera, CheckCircle2, Copy, Download, History, ImagePlus, Loader2, LogOut, RotateCcw, ScanText, ShieldCheck, Sparkles, UploadCloud, Wand2, Zap } from 'lucide-react';
 import { analyzeCard, type AnalysisResult, type Objective, type PositionCode, POSITION_LABELS } from '@/lib/analyzer';
 
 const objectives: Array<{ value: Objective; label: string; hint: string }> = [
@@ -52,6 +52,14 @@ const tacticalLabels: Record<string, string> = {
 
 type ReadingMode = 'vision' | 'precision' | 'fast';
 type ResultTab = 'resumo' | 'ficha' | 'habilidades' | 'posicoes' | 'dados';
+
+type SavedAnalysis = {
+  id: string;
+  savedAt: string;
+  rawText: string;
+  playerImage: string | null;
+  result: AnalysisResult;
+};
 
 function mergeOcrTexts(...texts: string[]) {
   const lines = new Map<string, string>();
@@ -596,8 +604,67 @@ export function CardVisionApp() {
   const [status, setStatus] = useState('Envie o print da carta para começar.');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [history, setHistory] = useState<SavedAnalysis[]>([]);
+  const lastSavedKey = useRef<string | null>(null);
 
   const canAnalyze = useMemo(() => rawText.trim().length > 2, [rawText]);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('buildmaster_history_v5');
+      if (stored) setHistory(JSON.parse(stored).slice(0, 8));
+    } catch {
+      setHistory([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!result) return;
+    const key = `${result.parsed.playerName}-${result.bestPosition.code}-${result.trainingPointsUsed}-${result.trainingPointsTotal}`;
+    if (lastSavedKey.current === key) return;
+    lastSavedKey.current = key;
+
+    const item: SavedAnalysis = {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      savedAt: new Date().toLocaleString('pt-BR'),
+      rawText,
+      playerImage: playerCardImage,
+      result
+    };
+
+    setHistory((current) => {
+      const next = [item, ...current.filter((entry) => entry.result.parsed.playerName !== result.parsed.playerName)].slice(0, 8);
+      try {
+        localStorage.setItem('buildmaster_history_v5', JSON.stringify(next));
+      } catch {
+        // Alguns navegadores bloqueiam localStorage em modo privado. O app continua funcionando.
+      }
+      return next;
+    });
+  }, [result, rawText, playerCardImage, preview]);
+
+  async function handleLogout() {
+    await fetch('/api/logout', { method: 'POST' }).catch(() => null);
+    window.location.href = '/login';
+  }
+
+  function resetAnalysis() {
+    setPreview(null);
+    setPlayerCardImage(null);
+    setFileName(null);
+    setRawText('');
+    setResult(null);
+    setStatus('Envie outro print da carta para começar.');
+  }
+
+  function restoreHistory(item: SavedAnalysis) {
+    lastSavedKey.current = `${item.result.parsed.playerName}-${item.result.bestPosition.code}-${item.result.trainingPointsUsed}-${item.result.trainingPointsTotal}`;
+    setRawText(item.rawText);
+    setPlayerCardImage(item.playerImage);
+    setPreview(item.playerImage);
+    setResult(item.result);
+    setStatus(`Análise restaurada: ${item.result.parsed.playerName}.`);
+  }
 
   async function handleFile(file: File) {
     setFileName(file.name);
@@ -670,16 +737,28 @@ export function CardVisionApp() {
 
   return (
     <main className="app-frame">
-      <section className="hero compact-hero premium-hero">
+      <div className="top-command-bar">
         <div>
-          <div className="brand-pill"><Sparkles size={16} /> BuildMaster AI Vision Pro v4</div>
-          <h1>Ficha Elite automática por imagem</h1>
-          <p>Envie o print da carta. O app tenta ler tudo automaticamente, trava pontos/posições absurdas e gera uma ficha Elite de gameplay real, sem copiar a ficha automática do jogo.</p>
+          <span className="secure-dot" />
+          <strong>Sessão protegida</strong>
+          <small>BuildMaster AI Vision Pro v5</small>
+        </div>
+        <div className="top-actions">
+          <button type="button" className="soft-button mini-button" onClick={resetAnalysis}><RotateCcw size={15} /> Nova análise</button>
+          <button type="button" className="soft-button mini-button logout-button" onClick={handleLogout}><LogOut size={15} /> Sair</button>
+        </div>
+      </div>
+
+      <section className="hero compact-hero premium-hero v5-hero">
+        <div>
+          <div className="brand-pill"><Sparkles size={16} /> BuildMaster AI Vision Pro v5</div>
+          <h1>Ficha Elite privada, automática e mais precisa.</h1>
+          <p>Envie o print da carta. O app usa IA Vision quando disponível, OCR local como reserva, travas anti-erro e motor Elite para gerar uma ficha de gameplay real — não uma cópia da ficha automática do jogo.</p>
         </div>
         <div className="hero-badges">
-          <span><ShieldCheck size={16} /> Sem banco</span>
+          <span><ShieldCheck size={16} /> Login privado</span>
           <span><ScanText size={16} /> Vision + OCR</span>
-          <span><CheckCircle2 size={16} /> PT-BR</span>
+          <span><CheckCircle2 size={16} /> Auto Guard</span>
         </div>
       </section>
 
@@ -785,6 +864,33 @@ Habilidades: Chute de primeira, Cabeçada...`}
 
           <p className="status-line">{status}</p>
           <p className="microcopy upload-help">Modo IA Vision entrega a melhor leitura automática quando a chave está configurada na Vercel. Sem chave, o app usa OCR local seguro com fallback de pontos e posição.</p>
+
+          <div className="pro-feature-board">
+            <div><ShieldCheck size={16} /><span>Auto Guard</span><small>bloqueia pontos e posições absurdas</small></div>
+            <div><Zap size={16} /><span>Elite Build</span><small>treino pensado para gameplay real</small></div>
+            <div><History size={16} /><span>Histórico</span><small>salvo no próprio celular</small></div>
+          </div>
+
+          {history.length > 0 && (
+            <div className="history-panel">
+              <div className="section-head compact-section-head">
+                <div>
+                  <p className="eyebrow">Últimas análises</p>
+                  <h3>Histórico local</h3>
+                </div>
+                <History size={18} />
+              </div>
+              <div className="history-list">
+                {history.slice(0, 4).map((item) => (
+                  <button key={item.id} type="button" onClick={() => restoreHistory(item)}>
+                    <strong>{item.result.parsed.playerName}</strong>
+                    <span>{item.result.bestPosition.label} • PRI {item.result.pri.overall} • {item.result.trainingPointsUsed}/{item.result.trainingPointsTotal} pts</span>
+                    <small>{item.savedAt}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="output-panel">

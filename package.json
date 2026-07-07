@@ -1,8 +1,8 @@
 {
-  "name": "buildmaster-ai-vision-pro-v4-auto",
-  "version": "4.0.0",
+  "name": "buildmaster-ai-vision-pro-v5-secure",
+  "version": "5.0.0",
   "private": true,
-  "description": "BuildMaster AI Vision Pro v4 - leitura automática com Vision API opcional, OCR local seguro e motor elite de ficha para eFootball.",
+  "description": "BuildMaster AI Vision Pro v5 - login privado, visual premium, Vision API opcional, OCR local seguro, histórico e motor elite de ficha para eFootball.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

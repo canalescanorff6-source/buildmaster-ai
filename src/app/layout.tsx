@@ -4,8 +4,8 @@ import { RegisterServiceWorker } from '@/components/RegisterServiceWorker';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'BuildMaster AI Vision',
-  description: 'App premium para gerar fichas de jogabilidade do eFootball por imagem.',
+  title: 'BuildMaster AI Vision Pro v5',
+  description: 'App privado e premium para gerar fichas Elite de eFootball por imagem.',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,

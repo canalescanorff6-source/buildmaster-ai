@@ -1,7 +1,7 @@
 {
-  "name": "BuildMaster AI Vision",
+  "name": "BuildMaster AI Vision Pro",
   "short_name": "BuildMaster",
-  "description": "Ficha premium de eFootball por imagem.",
+  "description": "App privado para ficha Elite de eFootball por imagem.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#050816",
