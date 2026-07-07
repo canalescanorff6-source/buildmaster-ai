@@ -42,6 +42,20 @@ export type AttributeKey =
 export type Attributes = Partial<Record<AttributeKey, number>>;
 export type PositionRatings = Partial<Record<PositionCode, number>>;
 
+export type TrainingKey =
+  | 'shooting'
+  | 'passing'
+  | 'dribbling'
+  | 'dexterity'
+  | 'lowerBodyStrength'
+  | 'aerialStrength'
+  | 'defending'
+  | 'gk1'
+  | 'gk2'
+  | 'gk3';
+
+export type TrainingPlan = Record<TrainingKey, number>;
+
 export type Impetus = {
   name: string;
   value?: number | null;
@@ -92,6 +106,9 @@ export type ParsedCard = {
   weight?: number | null;
   age?: number | null;
   level?: number | null;
+  trainingPointsTotal?: number | null;
+  trainingPointsUsed?: number | null;
+  trainingPointSource?: 'OCR' | 'LEVEL_INFERRED' | 'FALLBACK';
   condition: PlayerCondition;
   impetos: Impetus[];
   nativeSkills: string[];
@@ -109,7 +126,12 @@ export type AnalysisResult = {
   positionScores: Array<{ code: PositionCode; label: string; score: number; role: string; cardRating?: number | null }>;
   pri: Record<string, number>;
   tacticalFit: Record<string, number>;
-  training: Record<string, number>;
+  training: TrainingPlan;
+  trainingCost: TrainingPlan;
+  trainingPointsUsed: number;
+  trainingPointsTotal: number;
+  trainingPointsRemaining: number;
+  trainingCostRule: string;
   recommendedSkills: string[];
   buildName: string;
   strengths: string[];
@@ -621,26 +643,155 @@ function calculateTacticalFit(position: PositionCode, a: Required<Attributes>, p
   };
 }
 
-function trainingFor(position: PositionCode, objective: Objective, a: Required<Attributes>) {
-  const training = { shooting: 0, passing: 0, dribbling: 0, dexterity: 0, lowerBodyStrength: 0, aerialStrength: 0, defending: 0, gk1: 0, gk2: 0, gk3: 0 };
-  const add = (key: keyof typeof training, value: number) => { training[key] += value; };
-  if (position === 'CF') { add('shooting', 8); add('dexterity', 6); add('lowerBodyStrength', 7); add('aerialStrength', a.heading >= 76 ? 5 : 2); }
-  if (position === 'SS') { add('shooting', 5); add('dribbling', 5); add('dexterity', 7); add('passing', 3); add('lowerBodyStrength', 4); }
-  if (position === 'LWF' || position === 'RWF') { add('dribbling', 8); add('dexterity', 7); add('lowerBodyStrength', 5); add('shooting', 3); add('passing', 2); }
-  if (position === 'LMF' || position === 'RMF') { add('passing', 5); add('dribbling', 4); add('dexterity', 4); add('lowerBodyStrength', 5); add('defending', 4); }
-  if (position === 'AMF') { add('passing', 8); add('dribbling', 5); add('dexterity', 4); add('shooting', 2); }
-  if (position === 'CMF') { add('passing', 6); add('dribbling', 3); add('lowerBodyStrength', 4); add('defending', 4); add('dexterity', 3); }
-  if (position === 'DMF') { add('defending', 10); add('lowerBodyStrength', 5); add('passing', 4); add('aerialStrength', 2); }
-  if (position === 'CB') { add('defending', 12); add('aerialStrength', 6); add('lowerBodyStrength', 4); add('dexterity', 2); }
-  if (position === 'LB' || position === 'RB') { add('defending', 6); add('lowerBodyStrength', 6); add('passing', 4); add('dexterity', 4); add('dribbling', 2); }
-  if (position === 'GK') { add('gk1', 8); add('gk2', 8); add('gk3', 8); add('aerialStrength', 3); }
-  if (objective === 'FINISHER') { add('shooting', 2); add('dexterity', 1); }
-  if (objective === 'CREATOR' || objective === 'POSSESSION') add('passing', 2);
-  if (objective === 'DRIBBLER') add('dribbling', 3);
-  if (objective === 'PRESSING' || objective === 'DEFENSIVE') add('defending', 2);
-  if (objective === 'QUICK_COUNTER') add('lowerBodyStrength', 2);
-  if (objective === 'AERIAL') add('aerialStrength', 3);
-  return training;
+
+const TRAINING_KEYS: TrainingKey[] = ['shooting', 'passing', 'dribbling', 'dexterity', 'lowerBodyStrength', 'aerialStrength', 'defending', 'gk1', 'gk2', 'gk3'];
+
+function emptyTraining(): TrainingPlan {
+  return { shooting: 0, passing: 0, dribbling: 0, dexterity: 0, lowerBodyStrength: 0, aerialStrength: 0, defending: 0, gk1: 0, gk2: 0, gk3: 0 };
+}
+
+function trainingLevelCost(level: number): number {
+  if (level <= 0) return 0;
+  return Math.ceil(level / 4);
+}
+
+function trainingTotalCost(level: number): number {
+  let cost = 0;
+  for (let current = 1; current <= Math.max(0, level); current += 1) cost += trainingLevelCost(current);
+  return cost;
+}
+
+function trainingPlanCost(plan: TrainingPlan): TrainingPlan {
+  const costs = emptyTraining();
+  for (const key of TRAINING_KEYS) costs[key] = trainingTotalCost(plan[key] ?? 0);
+  return costs;
+}
+
+function trainingPlanTotalCost(plan: TrainingPlan): number {
+  return Object.values(trainingPlanCost(plan)).reduce((sum, value) => sum + value, 0);
+}
+
+function addTrainingLevel(plan: TrainingPlan, key: TrainingKey, maxLevel = 16): boolean {
+  if ((plan[key] ?? 0) >= maxLevel) return false;
+  plan[key] = (plan[key] ?? 0) + 1;
+  return true;
+}
+
+function removeTrainingLevel(plan: TrainingPlan, key: TrainingKey): boolean {
+  if ((plan[key] ?? 0) <= 0) return false;
+  plan[key] = (plan[key] ?? 0) - 1;
+  return true;
+}
+
+function trainingBudgetFromCard(parsed: ParsedCard): number {
+  if (Number.isFinite(parsed.trainingPointsTotal ?? NaN) && (parsed.trainingPointsTotal ?? 0) > 0) return Number(parsed.trainingPointsTotal);
+  if (Number.isFinite(parsed.level ?? NaN) && (parsed.level ?? 0) > 1) return Math.max(1, (Number(parsed.level) - 1) * 2);
+  return 64;
+}
+
+function applyPlanEntries(entries: Partial<TrainingPlan>): TrainingPlan {
+  return { ...emptyTraining(), ...entries };
+}
+
+function trainingTemplate(position: PositionCode, objective: Objective, a: Required<Attributes>, parsed: ParsedCard): { target: TrainingPlan; priority: TrainingKey[] } {
+  const playstyle = normalize(parsed.playstyle ?? '').toLowerCase();
+  const isDestroyer = /destruidor|destroyer/.test(playstyle);
+  const isFullback = position === 'LB' || position === 'RB';
+  const highAerial = a.heading >= 76 || a.jump >= 76 || a.physicalContact >= 80;
+
+  let target: TrainingPlan = emptyTraining();
+  let priority: TrainingKey[] = ['dexterity', 'lowerBodyStrength', 'passing', 'dribbling', 'defending', 'shooting', 'aerialStrength'];
+
+  if (position === 'CF') {
+    target = applyPlanEntries({ shooting: 10, dexterity: 8, lowerBodyStrength: 8, aerialStrength: highAerial ? 6 : 3, dribbling: 3 });
+    priority = ['shooting', 'dexterity', 'lowerBodyStrength', 'aerialStrength', 'dribbling', 'passing'];
+  } else if (position === 'SS') {
+    target = applyPlanEntries({ shooting: 7, dribbling: 7, dexterity: 8, passing: 5, lowerBodyStrength: 5 });
+    priority = ['dexterity', 'dribbling', 'shooting', 'passing', 'lowerBodyStrength'];
+  } else if (position === 'LWF' || position === 'RWF') {
+    target = applyPlanEntries({ dribbling: 9, dexterity: 9, lowerBodyStrength: 6, shooting: 5, passing: 3 });
+    priority = ['dribbling', 'dexterity', 'lowerBodyStrength', 'shooting', 'passing'];
+  } else if (position === 'LMF' || position === 'RMF') {
+    target = applyPlanEntries({ passing: 7, dribbling: 5, dexterity: 6, lowerBodyStrength: 7, defending: 6, aerialStrength: 2 });
+    priority = ['lowerBodyStrength', 'passing', 'dexterity', 'defending', 'dribbling', 'aerialStrength'];
+  } else if (position === 'AMF') {
+    target = applyPlanEntries({ passing: 9, dribbling: 7, dexterity: 6, shooting: 4, lowerBodyStrength: 3 });
+    priority = ['passing', 'dribbling', 'dexterity', 'shooting', 'lowerBodyStrength'];
+  } else if (position === 'CMF') {
+    target = applyPlanEntries({ passing: 8, dribbling: 4, dexterity: 4, lowerBodyStrength: 7, defending: 8, aerialStrength: 2 });
+    priority = ['passing', 'defending', 'lowerBodyStrength', 'dexterity', 'dribbling', 'aerialStrength'];
+  } else if (position === 'DMF') {
+    // Modelo competitivo inspirado no próprio eFHUB: em 64 pontos vira 8/4/4/8/4/13.
+    target = isDestroyer
+      ? applyPlanEntries({ passing: 8, dribbling: 4, dexterity: 4, lowerBodyStrength: 8, aerialStrength: 4, defending: 13 })
+      : applyPlanEntries({ passing: 7, dribbling: 3, dexterity: 4, lowerBodyStrength: 7, aerialStrength: 3, defending: 12 });
+    priority = ['defending', 'passing', 'lowerBodyStrength', 'dexterity', 'dribbling', 'aerialStrength'];
+  } else if (position === 'CB') {
+    target = applyPlanEntries({ defending: 14, aerialStrength: 8, lowerBodyStrength: 6, dexterity: 3, passing: 2 });
+    priority = ['defending', 'aerialStrength', 'lowerBodyStrength', 'dexterity', 'passing'];
+  } else if (isFullback) {
+    target = isDestroyer
+      ? applyPlanEntries({ defending: 10, lowerBodyStrength: 8, passing: 6, dexterity: 6, dribbling: 3, aerialStrength: 3 })
+      : applyPlanEntries({ defending: 8, lowerBodyStrength: 8, passing: 7, dexterity: 6, dribbling: 4, aerialStrength: 2 });
+    priority = ['lowerBodyStrength', 'defending', 'dexterity', 'passing', 'dribbling', 'aerialStrength'];
+  } else if (position === 'GK') {
+    target = applyPlanEntries({ gk1: 9, gk2: 9, gk3: 9, aerialStrength: 4, lowerBodyStrength: 2 });
+    priority = ['gk1', 'gk2', 'gk3', 'aerialStrength', 'lowerBodyStrength'];
+  }
+
+  if (objective === 'FINISHER') priority = ['shooting', 'dexterity', ...priority.filter((key) => !['shooting', 'dexterity'].includes(key))];
+  if (objective === 'CREATOR' || objective === 'POSSESSION') priority = ['passing', 'dribbling', ...priority.filter((key) => !['passing', 'dribbling'].includes(key))];
+  if (objective === 'DRIBBLER') priority = ['dribbling', 'dexterity', ...priority.filter((key) => !['dribbling', 'dexterity'].includes(key))];
+  if (objective === 'PRESSING' || objective === 'DEFENSIVE') priority = ['defending', 'lowerBodyStrength', ...priority.filter((key) => !['defending', 'lowerBodyStrength'].includes(key))];
+  if (objective === 'QUICK_COUNTER') priority = ['lowerBodyStrength', 'dexterity', ...priority.filter((key) => !['lowerBodyStrength', 'dexterity'].includes(key))];
+  if (objective === 'AERIAL') priority = ['aerialStrength', 'defending', ...priority.filter((key) => !['aerialStrength', 'defending'].includes(key))];
+
+  return { target, priority: Array.from(new Set(priority)) };
+}
+
+function fitTrainingToBudget(target: TrainingPlan, priority: TrainingKey[], budget: number): TrainingPlan {
+  const plan = { ...target };
+  const cleanPriority = priority.length ? priority : TRAINING_KEYS;
+
+  // Se passou do orçamento real do eFootball, remove primeiro das prioridades menores.
+  let guard = 0;
+  while (trainingPlanTotalCost(plan) > budget && guard < 500) {
+    guard += 1;
+    const removable = [...cleanPriority].reverse().find((key) => (plan[key] ?? 0) > 0) ?? TRAINING_KEYS.find((key) => (plan[key] ?? 0) > 0);
+    if (!removable) break;
+    removeTrainingLevel(plan, removable);
+  }
+
+  // Se ainda sobrar ponto, coloca onde tem mais impacto, respeitando custo progressivo.
+  guard = 0;
+  while (guard < 500) {
+    guard += 1;
+    const current = trainingPlanTotalCost(plan);
+    if (current >= budget) break;
+    let added = false;
+    for (const key of cleanPriority) {
+      const nextLevel = (plan[key] ?? 0) + 1;
+      const nextCost = trainingLevelCost(nextLevel);
+      if (current + nextCost <= budget && nextLevel <= 16) {
+        addTrainingLevel(plan, key);
+        added = true;
+        break;
+      }
+    }
+    if (!added) break;
+  }
+
+  return plan;
+}
+
+function trainingFor(position: PositionCode, objective: Objective, a: Required<Attributes>, parsed: ParsedCard): TrainingPlan {
+  const budget = trainingBudgetFromCard(parsed);
+  const { target, priority } = trainingTemplate(position, objective, a, parsed);
+  return fitTrainingToBudget(target, priority, budget);
+}
+
+function trainingCostRuleText() {
+  return 'Custo real do eFootball: níveis 1–4 custam 1 ponto cada; 5–8 custam 2; 9–12 custam 3; 13–16 custam 4. Por isso uma ficha com soma 41 pode gastar 64 pontos.';
 }
 
 function skillPriority(position: PositionCode, objective: Objective) {
@@ -859,6 +1010,21 @@ function detectMainPosition(positions: PositionCode[], positionRatings: Position
   return 'SS';
 }
 
+
+function parseTrainingPoints(text: string): { used: number | null; total: number | null } {
+  const compact = normalize(text).replace(/\r?\n/g, ' ');
+  const direct = compact.match(/(?:pontos|points)\s*(\d{1,3})\s*[\/\\]\s*(\d{1,3})/i);
+  if (direct) return { used: Number(direct[1]), total: Number(direct[2]) };
+  const totalOnly = compact.match(/(?:pontos|points)\s*(?:totais|total)?\s*[:\-]?\s*(\d{1,3})/i);
+  if (totalOnly) return { used: null, total: Number(totalOnly[1]) };
+  return { used: null, total: null };
+}
+
+function inferTrainingPointsFromLevel(level?: number | null): number | null {
+  if (!Number.isFinite(level ?? NaN) || (level ?? 0) <= 1) return null;
+  return Math.max(1, (Number(level) - 1) * 2);
+}
+
 export function parseCard(rawText: string, imageFileName?: string | null): ParsedCard {
   const text = rawText || '';
   const attributes = parseAttributes(text);
@@ -875,7 +1041,12 @@ export function parseCard(rawText: string, imageFileName?: string | null): Parse
   const height = readNumber(text, [/altura\s*(\d{3})\s*cm/i, /height\s*(\d{3})\s*cm/i]);
   const weight = readNumber(text, [/peso\s*(\d{2,3})\s*kg/i, /weight\s*(\d{2,3})\s*kg/i]);
   const age = readNumber(text, [/idade\s*(\d{1,2})/i, /age\s*(\d{1,2})/i]);
-  const level = readNumber(text, [/n[ií]vel\s*(\d{1,3})/i, /level\s*(\d{1,3})/i]);
+  const level = readNumber(text, [/n[ií]vel(?:\s+m[aá]ximo)?\s*(\d{1,3})/i, /level(?:\s+max)?\s*(\d{1,3})/i]);
+  const parsedPoints = parseTrainingPoints(text);
+  const inferredPoints = inferTrainingPointsFromLevel(level);
+  const trainingPointsTotal = parsedPoints.total ?? inferredPoints ?? 64;
+  const trainingPointsUsed = parsedPoints.used ?? trainingPointsTotal;
+  const trainingPointSource: ParsedCard['trainingPointSource'] = parsedPoints.total ? 'OCR' : inferredPoints ? 'LEVEL_INFERRED' : 'FALLBACK';
   const playstyle = detectPlaystyle(text);
   const specialTag = detectSpecialTag(text);
   const cardType = detectCardType(text);
@@ -921,6 +1092,9 @@ export function parseCard(rawText: string, imageFileName?: string | null): Parse
     weight,
     age,
     level,
+    trainingPointsTotal,
+    trainingPointsUsed,
+    trainingPointSource,
     condition,
     impetos,
     nativeSkills,
@@ -942,7 +1116,11 @@ export function analyzeCard(rawText: string, objective: Objective = 'COMPETITIVE
   const selected = targetPosition === 'AUTO' ? positionScores[0] : positionScores.find((item) => item.code === targetPosition) ?? positionScores[0];
   const pri = calculatePri(selected.code, attributes, parsed.nativeSkills);
   const tacticalFit = calculateTacticalFit(selected.code, attributes, pri);
-  const training = trainingFor(selected.code, objective, attributes);
+  const training = trainingFor(selected.code, objective, attributes, parsed);
+  const trainingCost = trainingPlanCost(training);
+  const trainingPointsUsed = trainingPlanTotalCost(training);
+  const trainingPointsTotal = trainingBudgetFromCard(parsed);
+  const trainingPointsRemaining = Math.max(0, trainingPointsTotal - trainingPointsUsed);
   const recommendedSkills = recommendAdditionalSkills(parsed, selected.code, objective, attributes);
   const { strengths, weaknesses } = strengthsWeaknesses(attributes, pri);
   const tips = usageTips(selected.code, objective, attributes);
@@ -952,7 +1130,7 @@ export function analyzeCard(rawText: string, objective: Objective = 'COMPETITIVE
     : parsed.confidence >= 60
       ? 'Confiança média. Revise nome, posição, overalls e atributos para melhorar a recomendação.'
       : 'Confiança baixa. Para máxima precisão, corrija manualmente os dados lidos antes de usar a ficha.';
-  return { parsed, bestPosition: selected, positionScores: positionScores.slice(0, 10), pri, tacticalFit, training, recommendedSkills, buildName, strengths, weaknesses, usageTips: tips, note };
+  return { parsed, bestPosition: selected, positionScores: positionScores.slice(0, 10), pri, tacticalFit, training, trainingCost, trainingPointsUsed, trainingPointsTotal, trainingPointsRemaining, trainingCostRule: trainingCostRuleText(), recommendedSkills, buildName, strengths, weaknesses, usageTips: tips, note };
 }
 
 export const EXAMPLE_TEXT = `Edgar Davids

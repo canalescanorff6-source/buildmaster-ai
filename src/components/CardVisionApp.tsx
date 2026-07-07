@@ -145,7 +145,8 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
     ['Altura', card.height ? `${card.height} cm` : '—'],
     ['Peso', card.weight ? `${card.weight} kg` : '—'],
     ['Idade', card.age ?? '—'],
-    ['Nível', card.level ?? '—'],
+    ['Nível máximo', card.level ?? '—'],
+    ['Pontos de treino', card.trainingPointsTotal ? `${card.trainingPointsTotal} pts` : '—'],
     ['Pior pé frequência', card.condition.weakFootFrequency ?? '—'],
     ['Pior pé precisão', card.condition.weakFootAccuracy ?? '—'],
     ['Condição física', card.condition.form ?? '—'],
@@ -177,6 +178,10 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
             <div><span>PRI geral</span><strong>{result.pri.overall}</strong></div>
             <div><span>Confiança</span><strong>{card.confidence}%</strong></div>
             <div><span>Função</span><strong>{result.buildName}</strong></div>
+          </div>
+          <div className="position-strip">
+            <span>Posições da carta</span>
+            <strong>{card.positionsPt.join(' • ')}</strong>
           </div>
         </div>
       </section>
@@ -210,15 +215,24 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
 
       <section className="grid-area">
         <div className="glass-panel stack">
-          <h3>Ficha recomendada</h3>
+          <div className="section-head">
+            <div>
+              <p className="eyebrow">Custo real do jogo</p>
+              <h3>Ficha recomendada</h3>
+            </div>
+            <span className="premium-badge">{result.trainingPointsUsed}/{result.trainingPointsTotal} pts</span>
+          </div>
           <div className="training-grid">
             {Object.entries(result.training).filter(([, value]) => Number(value) > 0).map(([key, value]) => (
               <div key={key}>
                 <span>{trainingLabels[key] ?? key}</span>
                 <strong>+{value}</strong>
+                <small>{result.trainingCost[key as keyof typeof result.trainingCost] ?? 0} pts</small>
               </div>
             ))}
           </div>
+          <p className="microcopy">{result.trainingCostRule}</p>
+          {result.trainingPointsRemaining > 0 && <p className="microcopy">Sobraram {result.trainingPointsRemaining} ponto(s) porque o próximo nível custa mais do que o saldo disponível.</p>}
         </div>
 
         <div className="glass-panel stack priority-panel">
