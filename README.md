@@ -48,3 +48,8 @@ npm run build
 ```
 
 Este projeto não usa banco, Prisma, login ou Neon.
+
+
+## Atualização: card com imagem do jogador
+
+O resultado premium agora usa a imagem enviada pelo usuário dentro do card visual. O app tenta recortar automaticamente a área da carta do jogador em prints do eFHUB/eFootBase e aplica essa imagem no card do BuildMaster AI, mantendo overall, posição em PT-BR, estilo, PRI, ficha e habilidades adicionais.

@@ -319,3 +319,39 @@ select:focus, textarea:focus { border-color: rgba(73,255,135,.6); box-shadow: 0 
 .data-grid strong { display: block; margin-top: 4px; font-size: 18px; }
 .attributes-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 680px) { .data-grid, .attributes-grid { grid-template-columns: 1fr; } }
+
+/* Card visual com imagem do jogador enviada pelo usuário */
+.virtual-card.has-player-image {
+  background: #060914;
+}
+.virtual-player-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  opacity: .9;
+  filter: saturate(1.08) contrast(1.06);
+  transform: scale(1.03);
+}
+.card-gradient {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(3,7,18,.12) 0%, rgba(3,7,18,.24) 42%, rgba(3,7,18,.86) 100%),
+    linear-gradient(135deg, rgba(81,56,229,.55), transparent 42%, rgba(5,8,22,.8) 72%);
+  pointer-events: none;
+}
+.card-top-info {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+}
+.virtual-card > em {
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 3px 18px rgba(0,0,0,.8);
+}

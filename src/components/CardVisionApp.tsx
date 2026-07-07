@@ -82,7 +82,36 @@ async function preprocessImage(file: File): Promise<Blob | File> {
   }
 }
 
-function ResultCard({ result }: { result: AnalysisResult }) {
+
+
+async function createPlayerCardPreview(file: File): Promise<string | null> {
+  if (typeof document === 'undefined' || typeof createImageBitmap === 'undefined') return null;
+
+  try {
+    const bitmap = await createImageBitmap(file);
+    const canvas = document.createElement('canvas');
+    const width = bitmap.width;
+    const height = bitmap.height;
+
+    // Recorte aproximado do card do jogador em prints do eFHUB/eFootBase.
+    // Mantém a imagem do jogador dentro do card visual premium sem distribuir base de imagens.
+    const cropX = Math.round(width * 0.055);
+    const cropY = Math.round(height * 0.075);
+    const cropW = Math.round(width * 0.185);
+    const cropH = Math.round(height * 0.245);
+
+    canvas.width = 520;
+    canvas.height = 700;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.drawImage(bitmap, cropX, cropY, cropW, cropH, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL('image/jpeg', 0.92);
+  } catch {
+    return null;
+  }
+}
+function ResultCard({ result, playerImage }: { result: AnalysisResult; playerImage: string | null }) {
   const card = result.parsed;
   const infoItems = [
     ['Altura', card.height ? `${card.height} cm` : '—'],
@@ -101,10 +130,14 @@ function ResultCard({ result }: { result: AnalysisResult }) {
   return (
     <div className="result-shell">
       <section className="player-card-panel glass-panel">
-        <div className="virtual-card">
+        <div className={`virtual-card ${playerImage ? 'has-player-image' : ''}`}>
+          {playerImage && <img className="virtual-player-image" src={playerImage} alt={`Imagem de ${card.playerName}`} />}
+          <div className="card-gradient" />
           <div className="card-lines" />
-          <strong>{card.maxOverall ?? card.overall ?? '--'}</strong>
-          <span>{card.mainPositionPt}</span>
+          <div className="card-top-info">
+            <strong>{card.maxOverall ?? card.overall ?? '--'}</strong>
+            <span>{card.mainPositionPt}</span>
+          </div>
           <em>{card.playstyle ?? result.buildName}</em>
         </div>
 
@@ -273,6 +306,7 @@ function positionPt(code: string) {
 
 export function CardVisionApp() {
   const [preview, setPreview] = useState<string | null>(null);
+  const [playerCardImage, setPlayerCardImage] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [rawText, setRawText] = useState('');
   const [objective, setObjective] = useState<Objective>('COMPETITIVE');
@@ -286,12 +320,15 @@ export function CardVisionApp() {
   async function handleFile(file: File) {
     setFileName(file.name);
     setPreview(URL.createObjectURL(file));
+    setPlayerCardImage(null);
     setResult(null);
     setLoading(true);
     setStatus('Preparando imagem para OCR...');
 
     try {
       const Tesseract = await import('tesseract.js');
+      const croppedPreview = await createPlayerCardPreview(file);
+      if (croppedPreview) setPlayerCardImage(croppedPreview);
       const processed = await preprocessImage(file);
       const { data } = await Tesseract.recognize(processed, 'por+eng', {
         logger: (message) => {
@@ -399,7 +436,7 @@ export function CardVisionApp() {
         </section>
 
         <section className="output-panel">
-          {result ? <ResultCard result={result} /> : (
+          {result ? <ResultCard result={result} playerImage={playerCardImage ?? preview} /> : (
             <div className="glass-panel empty-result">
               <Sparkles size={42} />
               <h2>Resultado premium</h2>
