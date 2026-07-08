@@ -1,51 +1,28 @@
-# BuildMaster Local Pro v6 Secure
+# BuildMaster Local Pro v6.1 — Login Hotfix
 
-Versão privada com login e leitura 100% local para eFootball/eFHUB/eFootBase.
+Versão corrigida para resolver o problema em que o usuário digitava a senha e o app não entrava.
 
-## Login padrão
+## Login
 
 - Usuário: `thiago0126`
 - Senha: `iu1fsaa67a`
 
-Você pode mudar na Vercel:
+## O que foi corrigido
 
-```env
-BUILDMASTER_LOGIN_USER=thiago0126
-BUILDMASTER_LOGIN_PASSWORD=iu1fsaa67a
-BUILDMASTER_SESSION_TOKEN=coloque_um_token_grande_aqui
-```
+- Removido bloqueio por middleware/cookie da Vercel, que podia travar em alguns celulares/PWA.
+- Login agora é local no navegador, usando `localStorage` por 14 dias.
+- Botão **Sair** limpa a sessão local e volta para a tela de login.
+- Atualizado cache do PWA para evitar versão antiga no celular.
 
-## O que mudou na v6
+## Observação de segurança
 
-- Removeu a parte de IA/API paga.
-- OCR local premium com Tesseract.js.
-- Leitura por áreas da imagem.
-- Soma os pontos reais a partir da ficha automática distribuída no print, quando ela aparece.
-- Se a ficha automática não for lida, calcula pelo nível máximo.
-- Nunca aceita pontos absurdos como `2/2`, `116/116` ou valores acima de 80.
-- Ranking de posições agora fica travado nas posições da carta lidas no print.
-- Se a posição alvo escolhida não existir na carta, o app ignora e usa a posição principal da carta.
-- Motor Elite Local redistribui os pontos para gameplay real, sem copiar a ficha automática do jogo.
-- Habilidades adicionais continuam sem repetir as habilidades nativas da carta.
-- Histórico local salvo no navegador/celular.
+Este login é uma trava local de acesso para uso privado do app. Ele evita acesso casual, mas não é um sistema corporativo com banco de usuários.
 
-## Como atualizar no GitHub/Vercel
+## Como atualizar
 
 1. Extraia o ZIP.
-2. Abra a pasta `buildmaster_vision_pro_v6_local_elite`.
-3. Suba o conteúdo dela por cima dos arquivos atuais do repositório.
-4. Faça commit: `BuildMaster Local Pro v6 OCR elite`.
+2. Abra a pasta `buildmaster_vision_pro_v6_1_login_local_hotfix`.
+3. Suba o conteúdo dela no GitHub por cima dos arquivos atuais.
+4. Commit sugerido: `Corrige login local do BuildMaster`.
 5. Faça Redeploy na Vercel.
-6. No celular, limpe os dados/cache do site ou teste em aba anônima.
-
-## Melhor print para leitura
-
-Use print direto da tela, não foto da tela. O ideal é que apareça:
-
-- carta do jogador;
-- posição principal;
-- nível máximo;
-- ficha automática/treino distribuído;
-- atributos;
-- habilidades.
-
+6. No celular, limpe os dados/cache do site ou abra em aba anônima.

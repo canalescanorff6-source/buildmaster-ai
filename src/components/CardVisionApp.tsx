@@ -586,9 +586,13 @@ export function CardVisionApp() {
     });
   }, [result, rawText, playerCardImage, preview]);
 
-  async function handleLogout() {
-    await fetch('/api/logout', { method: 'POST' }).catch(() => null);
-    window.location.href = '/login';
+  function handleLogout() {
+    try {
+      localStorage.removeItem('buildmaster_local_auth_v6_1');
+    } catch {
+      // Ignora bloqueio de localStorage.
+    }
+    window.location.href = '/';
   }
 
   function resetAnalysis() {
@@ -668,7 +672,7 @@ export function CardVisionApp() {
         <div>
           <span className="secure-dot" />
           <strong>Sessão protegida</strong>
-          <small>BuildMaster Local Pro v6</small>
+          <small>BuildMaster Local Pro v6.1.1</small>
         </div>
         <div className="top-actions">
           <button type="button" className="soft-button mini-button" onClick={resetAnalysis}><RotateCcw size={15} /> Nova análise</button>
@@ -678,7 +682,7 @@ export function CardVisionApp() {
 
       <section className="hero compact-hero premium-hero v5-hero">
         <div>
-          <div className="brand-pill"><Sparkles size={16} /> BuildMaster Local Pro v6</div>
+          <div className="brand-pill"><Sparkles size={16} /> BuildMaster Local Pro v6.1.1</div>
           <h1>Ficha Elite local, privada e mais estável.</h1>
           <p>Envie o print da carta com a ficha automática visível. O app faz OCR local, soma os pontos reais distribuídos, trava posições fora da carta e monta uma ficha Elite para gameplay real — melhor que a automática do jogo.</p>
         </div>
