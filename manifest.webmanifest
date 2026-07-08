@@ -1,0 +1,15 @@
+{
+  "name": "BuildMaster Local Pro",
+  "short_name": "BuildMaster",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020814",
+  "theme_color": "#12f08a",
+  "icons": [
+    {
+      "src": "assets/logo.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    }
+  ]
+}

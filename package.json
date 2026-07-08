@@ -1,26 +1,9 @@
 {
-  "name": "buildmaster-local-pro-v7-premium-redesign",
-  "version": "7.0.0",
+  "name": "buildmaster-local-pro-v8-premium",
+  "version": "8.0.0",
   "private": true,
-  "description": "BuildMaster Local Pro v7 - redesign premium completo, login local, OCR local e ficha Elite.",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "typecheck": "tsc --noEmit",
-    "vercel-build": "next build"
-  },
-  "dependencies": {
-    "lucide-react": "^1.23.0",
-    "next": "^16.2.10",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "tesseract.js": "^5.1.1"
-  },
-  "devDependencies": {
-    "@types/node": "^24.10.2",
-    "@types/react": "^19.2.7",
-    "@types/react-dom": "^19.2.3",
-    "typescript": "^5.9.3"
+    "start": "python3 -m http.server 4173",
+    "build": "echo \"Static app: no build step needed\""
   }
 }
