@@ -1,11 +1,11 @@
 {
-  "name": "BuildMaster AI Vision",
+  "name": "BuildMaster Local Pro v7",
   "short_name": "BuildMaster",
-  "description": "Ficha premium de eFootball por imagem.",
+  "description": "App premium privado com OCR local para ficha Elite por imagem.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#050816",
-  "theme_color": "#050816",
+  "background_color": "#020712",
+  "theme_color": "#020712",
   "orientation": "portrait-primary",
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },

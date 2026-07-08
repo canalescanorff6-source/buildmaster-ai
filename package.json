@@ -1,8 +1,8 @@
 {
-  "name": "buildmaster-ai-vision-only",
-  "version": "2.0.0",
+  "name": "buildmaster-local-pro-v12-gameplay-impetos",
+  "version": "12.0.0",
   "private": true,
-  "description": "BuildMaster AI Vision Only - app premium mobile/PWA para analisar cartas do eFootball por imagem, gerar ficha, PRI, posição e habilidades adicionais.",
+  "description": "BuildMaster Local Pro v12 - motor de gameplay real por posição, estilo de jogo e ímpetos recomendados, sem API paga.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

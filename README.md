@@ -1,55 +1,35 @@
-# BuildMaster AI Vision Only Premium
+# BuildMaster Local Pro v12
 
-Versão focada apenas no que interessa: analisar imagem/print da carta do eFootball e gerar ficha de jogabilidade.
+App Next.js/PWA com login local para analisar prints de cartas do eFootball/eFHUB/eFootBase e gerar ficha Elite focada em gameplay real.
 
-## O que lê da imagem
+## Login
 
-- Nome do jogador
-- Estilo de jogo
-- Tipo da carta
-- Overall principal
-- Overalls por posição: CF, SS, LWF, RWF, LMF, RMF, AMF, CMF, DMF, CB, LB, RB, GK
-- Conversão de posições para PT-BR: CA, SA, PE, PD, ME, MD, MAT, MC, VOL, ZAG, LE, LD, GOL
-- Altura, peso, idade e nível
-- Pior pé: frequência e precisão
-- Condição física
-- Resistência a lesão
-- Atributos técnicos, defensivos, físicos e de goleiro
-- Habilidades nativas
-- Ímpetos/boosters, como Duelo +3, Sem Impulso, Esticada de Perna, Sombra veloz e Finalizador nato
-- Modelo de jogador/biometria quando o OCR conseguir ler
+- Usuário: `thiago0126`
+- Senha: `iu1fsaa67a`
 
-## O que gera
+## Principais recursos
 
-- Melhor ficha/build
-- PRI geral e PRI por setor
-- Melhor posição real
-- Ranking de posições
-- Habilidades adicionais recomendadas
-- Compatibilidade tática
-- Como usar o jogador em campo
+- OCR local, sem API paga.
+- Visual premium dark.
+- Conversão automática de posições para PT-BR.
+- Motor de posição por gameplay real, não por overall.
+- Motor de estilos de jogo por grupo de função.
+- Motor de ímpetos recomendados por posição + estilo + objetivo.
+- Ficha Elite usando custo real de pontos.
+- Habilidades adicionais sem repetir as nativas.
 
-## Importante sobre precisão
+## Vercel
 
-O app usa OCR local no navegador. Print nítido direto do eFHUB/eFootBase oferece melhor resultado. Foto da tela pode errar letras/números; por isso o app mostra o texto extraído para revisão manual antes de gerar a ficha.
+Use:
 
-## Rodar local
+- Framework Preset: `Next.js`
+- Install Command: `npm install`
+- Build Command: `npm run vercel-build`
 
-```bash
-npm install
-npm run dev
-```
+Depois do redeploy, limpe o cache/dados do site no celular.
+## v13 — Prints reais e Gameplay Real reforçado
 
-## Deploy na Vercel
+Esta versão adiciona regras baseadas nos prints reais enviados: Ronaldinho AMF Armador criativo, Tchouaméni DMF Primeiro volante, Gattuso DMF O destruidor, Lamine Yamal RWF Lateral móvel, Diouf CF Artilheiro, Drogba CF Homem de área e Edgar Davids DMF O destruidor.
 
-```bash
-npm install
-npm run build
-```
+O app agora evita escolher posição apenas pelo maior overall da grade. Se a posição grande da carta não for lida com segurança, ele usa estilo de jogo + função real para manter o jogador na posição mais coerente em PT-BR.
 
-Este projeto não usa banco, Prisma, login ou Neon.
-
-
-## Atualização: card com imagem do jogador
-
-O resultado premium agora usa a imagem enviada pelo usuário dentro do card visual. O app tenta recortar automaticamente a área da carta do jogador em prints do eFHUB/eFootBase e aplica essa imagem no card do BuildMaster AI, mantendo overall, posição em PT-BR, estilo, PRI, ficha e habilidades adicionais.

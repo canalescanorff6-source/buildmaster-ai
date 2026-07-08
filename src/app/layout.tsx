@@ -4,12 +4,12 @@ import { RegisterServiceWorker } from '@/components/RegisterServiceWorker';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'BuildMaster AI Vision',
-  description: 'App premium para gerar fichas de jogabilidade do eFootball por imagem.',
+  title: 'BuildMaster Local Pro v7',
+  description: 'App premium privado, OCR local, ficha Elite e design mobile elegante para análise de cartas por imagem.',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
-    title: 'BuildMaster AI',
+    title: 'BuildMaster Local Pro',
     statusBarStyle: 'black-translucent'
   },
   icons: {
@@ -26,7 +26,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: 'cover',
-  themeColor: '#050816'
+  themeColor: '#020712'
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
