@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 const PUBLIC_FILE = /\.(.*)$/;
 
 function sessionToken() {
-  return process.env.BUILDMASTER_SESSION_TOKEN ?? 'buildmaster-ai-v5-thiago-secure-session';
+  return process.env.BUILDMASTER_SESSION_TOKEN ?? 'buildmaster-local-v6-thiago-secure-session';
 }
 
 export function middleware(request: NextRequest) {

@@ -9,7 +9,7 @@ function expectedPassword() {
 }
 
 function sessionToken() {
-  return process.env.BUILDMASTER_SESSION_TOKEN ?? 'buildmaster-ai-v5-thiago-secure-session';
+  return process.env.BUILDMASTER_SESSION_TOKEN ?? 'buildmaster-local-v6-thiago-secure-session';
 }
 
 export async function POST(request: Request) {

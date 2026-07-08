@@ -1,7 +1,7 @@
 {
-  "name": "BuildMaster AI Vision Pro",
+  "name": "BuildMaster Local Pro",
   "short_name": "BuildMaster",
-  "description": "App privado para ficha Elite de eFootball por imagem.",
+  "description": "App privado com OCR local para ficha Elite de eFootball por imagem.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#050816",

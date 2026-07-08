@@ -1,41 +1,51 @@
-# BuildMaster AI Vision Pro v5 Secure Premium
+# BuildMaster Local Pro v6 Secure
 
-Versão v5 com login privado, visual premium, histórico local e motor Elite para ficha de gameplay real no eFootball.
+Versão privada com login e leitura 100% local para eFootball/eFHUB/eFootBase.
 
 ## Login padrão
 
 - Usuário: `thiago0126`
 - Senha: `iu1fsaa67a`
 
-O login usa cookie HttpOnly por 14 dias. Para trocar depois na Vercel, configure:
+Você pode mudar na Vercel:
 
-```txt
-BUILDMASTER_LOGIN_USER=seu_usuario
-BUILDMASTER_LOGIN_PASSWORD=sua_senha
-BUILDMASTER_SESSION_TOKEN=um_token_grande_e_secreto
+```env
+BUILDMASTER_LOGIN_USER=thiago0126
+BUILDMASTER_LOGIN_PASSWORD=iu1fsaa67a
+BUILDMASTER_SESSION_TOKEN=coloque_um_token_grande_aqui
 ```
 
-## Recursos principais
+## O que mudou na v6
 
-- Tela de login antes de acessar o app.
-- Upload separado: galeria/arquivos e câmera.
-- IA Vision opcional via `OPENAI_API_KEY`.
-- OCR local premium como reserva.
-- Travas contra pontos absurdos como `2/2` e `116/116`.
-- Motor Elite para ficha de gameplay real, sem copiar a ficha automática do jogo.
-- Habilidades adicionais faltantes, sem repetir as que a carta já possui.
-- Histórico local das últimas análises no próprio navegador/celular.
-- Botão de sair e botão de nova análise.
+- Removeu a parte de IA/API paga.
+- OCR local premium com Tesseract.js.
+- Leitura por áreas da imagem.
+- Soma os pontos reais a partir da ficha automática distribuída no print, quando ela aparece.
+- Se a ficha automática não for lida, calcula pelo nível máximo.
+- Nunca aceita pontos absurdos como `2/2`, `116/116` ou valores acima de 80.
+- Ranking de posições agora fica travado nas posições da carta lidas no print.
+- Se a posição alvo escolhida não existir na carta, o app ignora e usa a posição principal da carta.
+- Motor Elite Local redistribui os pontos para gameplay real, sem copiar a ficha automática do jogo.
+- Habilidades adicionais continuam sem repetir as habilidades nativas da carta.
+- Histórico local salvo no navegador/celular.
 
-## Deploy
+## Como atualizar no GitHub/Vercel
 
 1. Extraia o ZIP.
-2. Abra a pasta `buildmaster_vision_pro_v5_secure`.
-3. Envie o conteúdo dela para a raiz do GitHub.
-4. Faça commit.
-5. Na Vercel, faça Redeploy.
-6. Limpe cache/dados do site no celular ou teste em aba anônima.
+2. Abra a pasta `buildmaster_vision_pro_v6_local_elite`.
+3. Suba o conteúdo dela por cima dos arquivos atuais do repositório.
+4. Faça commit: `BuildMaster Local Pro v6 OCR elite`.
+5. Faça Redeploy na Vercel.
+6. No celular, limpe os dados/cache do site ou teste em aba anônima.
 
-## Observação
+## Melhor print para leitura
 
-Para leitura automática mais forte, configure `OPENAI_API_KEY` na Vercel. Sem a chave, o app usa OCR local, que funciona offline no navegador, mas pode errar mais em prints muito pequenos ou cortados.
+Use print direto da tela, não foto da tela. O ideal é que apareça:
+
+- carta do jogador;
+- posição principal;
+- nível máximo;
+- ficha automática/treino distribuído;
+- atributos;
+- habilidades.
+

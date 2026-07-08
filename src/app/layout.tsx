@@ -4,12 +4,12 @@ import { RegisterServiceWorker } from '@/components/RegisterServiceWorker';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'BuildMaster AI Vision Pro v5',
-  description: 'App privado e premium para gerar fichas Elite de eFootball por imagem.',
+  title: 'BuildMaster Local Pro v6',
+  description: 'App privado com OCR local para gerar fichas Elite de eFootball por imagem.',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
-    title: 'BuildMaster AI',
+    title: 'BuildMaster Local',
     statusBarStyle: 'black-translucent'
   },
   icons: {

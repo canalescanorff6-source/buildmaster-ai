@@ -108,7 +108,9 @@ export type ParsedCard = {
   level?: number | null;
   trainingPointsTotal?: number | null;
   trainingPointsUsed?: number | null;
-  trainingPointSource?: 'OCR' | 'LEVEL_INFERRED' | 'FALLBACK';
+  trainingPointSource?: 'TRAINING_READ' | 'OCR' | 'LEVEL_INFERRED' | 'FALLBACK';
+  autoTrainingPlan?: TrainingPlan | null;
+  autoTrainingPoints?: number | null;
   condition: PlayerCondition;
   impetos: Impetus[];
   nativeSkills: string[];
@@ -434,16 +436,17 @@ function detectPrimaryPositionFromTop(text: string): PositionCode | null {
     }
   }
 
-  // Formato em uma linha só: "104 CA" ou "CA 104".
+  // Formato em uma linha só. Em grades como "CA 102 PE 100", a primeira posição da linha é a principal.
   for (const line of lines.slice(0, 25)) {
-    const numberThenPosition = line.match(new RegExp(`\\b(8\\d|9\\d|10\\d|11\\d)\\s*${positionAliases}\\b`, 'i'));
-    if (numberThenPosition) {
-      const code = codeFromPositionToken(numberThenPosition[2]);
+    const leadingPositionThenNumber = line.match(new RegExp(`^${positionAliases}\s*(8\d|9\d|10\d|11\d)\b`, 'i'));
+    if (leadingPositionThenNumber) {
+      const code = codeFromPositionToken(leadingPositionThenNumber[1]);
       if (code) return code;
     }
-    const positionThenNumber = line.match(new RegExp(`\\b${positionAliases}\\s*(8\\d|9\\d|10\\d|11\\d)\\b`, 'i'));
-    if (positionThenNumber) {
-      const code = codeFromPositionToken(positionThenNumber[1]);
+
+    const leadingNumberThenPosition = line.match(new RegExp(`^(8\d|9\d|10\d|11\d)\s*${positionAliases}\b`, 'i'));
+    if (leadingNumberThenPosition) {
+      const code = codeFromPositionToken(leadingNumberThenPosition[2]);
       if (code) return code;
     }
   }
@@ -677,7 +680,7 @@ function playstylePositionBonus(position: PositionCode, playstyle?: string | nul
   const style = normalize(playstyle ?? '').toLowerCase();
   if (!style) return 0;
 
-  // A IA não pode jogar um centroavante de área para PE só porque o OCR confundiu a grade.
+  // O motor local não pode jogar um centroavante de área para PE só porque o OCR confundiu a grade.
   if (/homem de area|atacante matador|pivo|target man|fox/.test(style)) {
     if (position === 'CF') return 26;
     if (position === 'SS') return 10;
@@ -861,6 +864,58 @@ function trainingPlanTotalCost(plan: TrainingPlan): number {
   return Object.values(trainingPlanCost(plan)).reduce((sum, value) => sum + value, 0);
 }
 
+
+const TRAINING_ALIASES: Record<TrainingKey, string[]> = {
+  shooting: ['tiroteio', 'chute', 'chutes', 'finalizacao treino', 'finalização treino', 'shooting'],
+  passing: ['passe', 'passes', 'passing'],
+  dribbling: ['drible treino', 'drible', 'dribbling'],
+  dexterity: ['destreza', 'dexterity'],
+  lowerBodyStrength: ['forca nas pernas', 'força nas pernas', 'forca de pernas', 'força de pernas', 'forca inferior', 'lower body strength'],
+  aerialStrength: ['forca em bola aerea', 'força em bola aérea', 'forca bola aerea', 'força bola aérea', 'bola aerea', 'bola aérea', 'jogo aereo', 'jogo aéreo', 'aerial strength'],
+  defending: ['defesa', 'defending'],
+  gk1: ['go 1', 'gol 1', 'goleiro 1', 'gk 1', 'gk1'],
+  gk2: ['go 2', 'gol 2', 'goleiro 2', 'gk 2', 'gk2'],
+  gk3: ['go 3', 'gol 3', 'goleiro 3', 'gk 3', 'gk3']
+};
+
+function aliasToRegex(alias: string): string {
+  return normalize(alias)
+    .toLowerCase()
+    .split(/\s+/)
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('\\s+');
+}
+
+function parseTrainingAllocation(text: string): { plan: TrainingPlan; points: number; keysRead: number } | null {
+  const normalized = normalize(text)
+    .replace(/\r/g, '\n')
+    .replace(/[=:+]/g, ' ')
+    .replace(/\s+/g, ' ');
+  const plan = emptyTraining();
+  const found = new Set<TrainingKey>();
+
+  for (const key of TRAINING_KEYS) {
+    for (const alias of TRAINING_ALIASES[key]) {
+      const pattern = new RegExp(`(?:^|[\\s,;|•])${aliasToRegex(alias)}\\s*(\\d{1,2})(?=\\b)`, 'gi');
+      for (const match of normalized.matchAll(pattern)) {
+        const value = Number(match[1]);
+        if (!Number.isFinite(value) || value < 0 || value > 16) continue;
+        plan[key] = Math.max(plan[key] ?? 0, value);
+        found.add(key);
+      }
+    }
+  }
+
+  const points = trainingPlanTotalCost(plan);
+  const nonZero = TRAINING_KEYS.filter((key) => (plan[key] ?? 0) > 0).length;
+
+  // Só confia quando parece mesmo a seção de treino da ficha automática.
+  // Isso impede que atributos como "Finalização 91" ou "Passe rasteiro 80" virem pontos.
+  if (found.size < 4 || nonZero < 2) return null;
+  if (points < MIN_AUTO_TRAINING_BUDGET || points > MAX_AUTO_TRAINING_BUDGET) return null;
+  return { plan, points, keysRead: found.size };
+}
+
 function addTrainingLevel(plan: TrainingPlan, key: TrainingKey, maxLevel = 16): boolean {
   if ((plan[key] ?? 0) >= maxLevel) return false;
   plan[key] = (plan[key] ?? 0) + 1;
@@ -874,6 +929,9 @@ function removeTrainingLevel(plan: TrainingPlan, key: TrainingKey): boolean {
 }
 
 function trainingBudgetFromCard(parsed: ParsedCard): number {
+  const fromTraining = Number(parsed.autoTrainingPoints ?? NaN);
+  if (Number.isFinite(fromTraining) && fromTraining >= MIN_AUTO_TRAINING_BUDGET && fromTraining <= MAX_AUTO_TRAINING_BUDGET) return normalizeTrainingBudget(fromTraining);
+
   const inferred = inferTrainingPointsFromLevel(parsed.level);
   if (inferred && inferred >= MIN_AUTO_TRAINING_BUDGET && inferred <= MAX_AUTO_TRAINING_BUDGET) return normalizeTrainingBudget(inferred);
 
@@ -1108,55 +1166,123 @@ function eliteBuildScore(position: PositionCode, objective: Objective, base: Req
   return score;
 }
 
-function optimizeEliteTraining(position: PositionCode, objective: Objective, base: Required<Attributes>, parsed: ParsedCard): TrainingPlan {
-  const budget = trainingBudgetFromCard(parsed);
-  const caps = trainingCaps(position, objective, base, parsed);
-  const plan = emptyTraining();
+function trainingKeyWeight(key: TrainingKey, position: PositionCode, objective: Objective, a: Required<Attributes>, parsed: ParsedCard): number {
+  const baseByPosition: Record<PositionCode, Partial<Record<TrainingKey, number>>> = {
+    CF: { shooting: 9.6, dexterity: 7.4, lowerBodyStrength: 7.8, aerialStrength: 5.6, dribbling: 3.4, passing: 2.4, defending: -2, gk1: -20, gk2: -20, gk3: -20 },
+    SS: { shooting: 7, passing: 5.5, dribbling: 7.6, dexterity: 8.2, lowerBodyStrength: 5.6, aerialStrength: 1.6, defending: .4, gk1: -20, gk2: -20, gk3: -20 },
+    LWF: { shooting: 5.8, passing: 4.2, dribbling: 8.8, dexterity: 9.2, lowerBodyStrength: 7.8, aerialStrength: .8, defending: .7, gk1: -20, gk2: -20, gk3: -20 },
+    RWF: { shooting: 5.8, passing: 4.2, dribbling: 8.8, dexterity: 9.2, lowerBodyStrength: 7.8, aerialStrength: .8, defending: .7, gk1: -20, gk2: -20, gk3: -20 },
+    LMF: { shooting: 1.8, passing: 7.5, dribbling: 5.4, dexterity: 6.7, lowerBodyStrength: 8.2, aerialStrength: 2, defending: 5.8, gk1: -20, gk2: -20, gk3: -20 },
+    RMF: { shooting: 1.8, passing: 7.5, dribbling: 5.4, dexterity: 6.7, lowerBodyStrength: 8.2, aerialStrength: 2, defending: 5.8, gk1: -20, gk2: -20, gk3: -20 },
+    AMF: { shooting: 4.7, passing: 9.3, dribbling: 8.2, dexterity: 6.4, lowerBodyStrength: 3.8, aerialStrength: .6, defending: .8, gk1: -20, gk2: -20, gk3: -20 },
+    CMF: { shooting: 2.3, passing: 8.2, dribbling: 4.8, dexterity: 5.3, lowerBodyStrength: 7.8, aerialStrength: 2.4, defending: 7.8, gk1: -20, gk2: -20, gk3: -20 },
+    DMF: { shooting: .7, passing: 7.3, dribbling: 3.5, dexterity: 4.9, lowerBodyStrength: 7.8, aerialStrength: 4.1, defending: 10.2, gk1: -20, gk2: -20, gk3: -20 },
+    CB: { shooting: -2, passing: 3.2, dribbling: .8, dexterity: 4.5, lowerBodyStrength: 6.5, aerialStrength: 8.8, defending: 10.8, gk1: -20, gk2: -20, gk3: -20 },
+    LB: { shooting: .8, passing: 6.5, dribbling: 4.8, dexterity: 7.2, lowerBodyStrength: 8.6, aerialStrength: 2.3, defending: 7.8, gk1: -20, gk2: -20, gk3: -20 },
+    RB: { shooting: .8, passing: 6.5, dribbling: 4.8, dexterity: 7.2, lowerBodyStrength: 8.6, aerialStrength: 2.3, defending: 7.8, gk1: -20, gk2: -20, gk3: -20 },
+    GK: { gk1: 9.6, gk2: 9.8, gk3: 9.4, aerialStrength: 4.8, lowerBodyStrength: 2.2, shooting: -20, passing: -20, dribbling: -20, dexterity: -20, defending: -20 }
+  };
 
-  let guard = 0;
-  while (trainingPlanTotalCost(plan) < budget && guard < 800) {
-    guard += 1;
-    const currentCost = trainingPlanTotalCost(plan);
-    const currentScore = eliteBuildScore(position, objective, base, plan, parsed);
-    let best: { key: TrainingKey; value: number } | null = null;
+  const objectiveBoost: Record<Objective, Partial<Record<TrainingKey, number>>> = {
+    COMPETITIVE: { dexterity: .7, lowerBodyStrength: .7, passing: .4, defending: .4 },
+    FINISHER: { shooting: 2.2, dexterity: .9, aerialStrength: .8 },
+    CREATOR: { passing: 2.2, dribbling: .9 },
+    DRIBBLER: { dribbling: 2.1, dexterity: 1.2 },
+    PRESSING: { defending: 1.5, lowerBodyStrength: 1.2, dexterity: .5 },
+    POSSESSION: { passing: 1.7, dribbling: 1.1, dexterity: .5 },
+    QUICK_COUNTER: { lowerBodyStrength: 2.1, dexterity: 1.3, shooting: .6 },
+    DEFENSIVE: { defending: 2.2, aerialStrength: .7, lowerBodyStrength: .9 },
+    AERIAL: { aerialStrength: 2.4, shooting: position === 'CF' ? .8 : 0, defending: position === 'CB' ? .8 : 0 }
+  };
 
-    for (const key of TRAINING_KEYS) {
-      const nextLevel = (plan[key] ?? 0) + 1;
-      const cap = caps[key] ?? 0;
-      if (nextLevel > cap || nextLevel > 16) continue;
-      const addCost = trainingLevelCost(nextLevel);
-      if (currentCost + addCost > budget) continue;
-      const candidate = { ...plan, [key]: nextLevel } as TrainingPlan;
-      const scoreGain = eliteBuildScore(position, objective, base, candidate, parsed) - currentScore;
-      const efficiency = scoreGain / Math.max(1, addCost);
-      if (!best || efficiency > best.value) best = { key, value: efficiency };
-    }
-
-    if (!best || best.value <= 0.02) break;
-    addTrainingLevel(plan, best.key);
+  let weight = (baseByPosition[position][key] ?? 0) + (objectiveBoost[objective][key] ?? 0);
+  const style = normalize(parsed.playstyle ?? '').toLowerCase();
+  if (position === 'CF' && /homem de area|pivo|target man|fox|artilheiro|goal poacher|atacante matador/.test(style)) {
+    if (key === 'shooting') weight += 1.5;
+    if (key === 'aerialStrength') weight += 1.4;
+    if (key === 'dexterity') weight += .7;
   }
+  if (/destruidor|destroyer|ancora|anchor/.test(style)) {
+    if (key === 'defending') weight += 1.8;
+    if (key === 'lowerBodyStrength') weight += .8;
+  }
+  if ((a.finishing < 84 && key === 'shooting') || (a.lowPass < 76 && key === 'passing') || (a.speed < 80 && key === 'lowerBodyStrength')) weight += .6;
+  return weight;
+}
 
-  // Se ainda sobrar ponto, preenche por prioridade de impacto da posição, respeitando caps.
-  const { priority } = trainingTemplate(position, objective, base, parsed);
-  let guardFill = 0;
-  while (trainingPlanTotalCost(plan) < budget && guardFill < 500) {
-    guardFill += 1;
-    const currentCost = trainingPlanTotalCost(plan);
-    let added = false;
-    for (const key of priority) {
-      const nextLevel = (plan[key] ?? 0) + 1;
-      if (nextLevel > (caps[key] ?? 0) || nextLevel > 16) continue;
-      const nextCost = trainingLevelCost(nextLevel);
-      if (currentCost + nextCost <= budget) {
-        addTrainingLevel(plan, key);
-        added = true;
-        break;
+function trainingLevelValue(key: TrainingKey, level: number, position: PositionCode, objective: Objective, a: Required<Attributes>, parsed: ParsedCard): number {
+  const weight = trainingKeyWeight(key, position, objective, a, parsed);
+  if (weight <= -10) return -999;
+  const phase = level <= 4 ? 1.05 : level <= 8 ? .94 : level <= 12 ? .72 : .48;
+  const cost = trainingLevelCost(level);
+  return (weight * phase) / Math.max(1, cost);
+}
+
+function solveTrainingDp(position: PositionCode, objective: Objective, base: Required<Attributes>, parsed: ParsedCard, budget: number, caps: TrainingPlan): TrainingPlan | null {
+  type State = { value: number; plan: TrainingPlan };
+  let states: Array<State | null> = Array.from({ length: budget + 1 }, () => null);
+  states[0] = { value: 0, plan: emptyTraining() };
+
+  for (const key of TRAINING_KEYS) {
+    const next: Array<State | null> = Array.from({ length: budget + 1 }, () => null);
+    const cap = Math.max(0, Math.min(16, caps[key] ?? 0));
+    const levelValues = Array.from({ length: cap + 1 }, (_, level) => {
+      let value = 0;
+      for (let current = 1; current <= level; current += 1) value += trainingLevelValue(key, current, position, objective, base, parsed);
+      return { level, cost: trainingTotalCost(level), value };
+    });
+
+    for (let currentBudget = 0; currentBudget <= budget; currentBudget += 1) {
+      const state = states[currentBudget];
+      if (!state) continue;
+      for (const option of levelValues) {
+        const totalCost = currentBudget + option.cost;
+        if (totalCost > budget) continue;
+        const candidateValue = state.value + option.value;
+        const previous = next[totalCost];
+        if (!previous || candidateValue > previous.value) {
+          next[totalCost] = { value: candidateValue, plan: { ...state.plan, [key]: option.level } as TrainingPlan };
+        }
       }
     }
-    if (!added) break;
+    states = next;
   }
 
-  return plan;
+  return states[budget]?.plan ?? null;
+}
+
+function loosenTrainingCaps(position: PositionCode, caps: TrainingPlan): TrainingPlan {
+  const loose = { ...caps };
+  if (position === 'GK') {
+    loose.gk1 = Math.max(loose.gk1, 12);
+    loose.gk2 = Math.max(loose.gk2, 12);
+    loose.gk3 = Math.max(loose.gk3, 12);
+    loose.aerialStrength = Math.max(loose.aerialStrength, 6);
+    loose.lowerBodyStrength = Math.max(loose.lowerBodyStrength, 4);
+    return loose;
+  }
+
+  for (const key of TRAINING_KEYS) {
+    if (key === 'gk1' || key === 'gk2' || key === 'gk3') {
+      loose[key] = 0;
+    } else {
+      loose[key] = Math.max(loose[key] ?? 0, 6);
+    }
+  }
+  return loose;
+}
+
+function optimizeEliteTraining(position: PositionCode, objective: Objective, base: Required<Attributes>, parsed: ParsedCard): TrainingPlan {
+  const budget = normalizeTrainingBudget(trainingBudgetFromCard(parsed));
+  const caps = trainingCaps(position, objective, base, parsed);
+  const exact = solveTrainingDp(position, objective, base, parsed, budget, caps);
+  if (exact) return exact;
+
+  const loose = solveTrainingDp(position, objective, base, parsed, budget, loosenTrainingCaps(position, caps));
+  if (loose) return loose;
+
+  const { target, priority } = trainingTemplate(position, objective, base, parsed);
+  return fitTrainingToBudget(target, priority, budget);
 }
 
 function trainingFor(position: PositionCode, objective: Objective, a: Required<Attributes>, parsed: ParsedCard): TrainingPlan {
@@ -1164,7 +1290,7 @@ function trainingFor(position: PositionCode, objective: Objective, a: Required<A
 }
 
 function trainingCostRuleText() {
-  return 'Motor Elite v4: usa custo real do eFootball e otimiza por desempenho em campo. Não copia a ficha automática do jogo; prioriza cortes úteis de gameplay, função, estilo e habilidades.';
+  return 'Motor Elite Local v6: usa o custo real do eFootball, soma a ficha automática visível no print quando ela aparece e redistribui para desempenho real em campo. Não copia a ficha automática do jogo.';
 }
 
 function skillPriority(position: PositionCode, objective: Objective) {
@@ -1223,7 +1349,7 @@ function recommendAdditionalSkills(parsed: ParsedCard, selectedPosition: Positio
     candidateScores.set(skill, Math.max(candidateScores.get(skill) ?? 0, score));
   };
 
-  // 1) Função principal escolhida pela IA.
+  // 1) Função principal escolhida pelo motor local.
   skillPriority(selectedPosition, objective).forEach((skill, index) => add(skill, 100 - index * 6));
 
   // 2) Posições reais da carta lidas no grid do eFHUB/eFootBase.
@@ -1375,9 +1501,6 @@ function usageTips(position: PositionCode, objective: Objective, a: Required<Att
 }
 
 function detectMainPosition(positions: PositionCode[], positionRatings: PositionRatings, attributes: Attributes, playstyle?: string | null): PositionCode {
-  const preferred = preferredPositionFromPlaystyle(playstyle, positionRatings, attributes);
-  if (preferred) return preferred;
-
   const validRatings = Object.entries(positionRatings)
     .filter((entry): entry is [PositionCode, number] => Number.isFinite(entry[1]) && Number(entry[1]) >= 40 && Number(entry[1]) <= 110)
     .map(([code, rating]) => [code, Number(rating) + playstylePositionBonus(code, playstyle)] as [PositionCode, number])
@@ -1385,7 +1508,11 @@ function detectMainPosition(positions: PositionCode[], positionRatings: Position
 
   const fromRatings = validRatings[0]?.[0];
   if (fromRatings) return fromRatings;
+
+  const preferred = preferredPositionFromPlaystyle(playstyle, positionRatings, attributes);
+  if (preferred && (!positions.length || positions.includes(preferred))) return preferred;
   if (positions[0]) return positions[0];
+  if (preferred) return preferred;
   if ((attributes.defensiveAwareness ?? 0) >= 76 && (attributes.lowPass ?? 0) >= 72) return 'DMF';
   if ((attributes.finishing ?? 0) >= 80) return 'CF';
   return 'SS';
@@ -1495,10 +1622,20 @@ function inferTrainingPointsFromLevel(level?: number | null): number | null {
 
 function resolveTrainingPointBudget(
   parsedPoints: { used: number | null; total: number | null; ignoredReason?: string },
-  inferredPoints: number | null
-): { used: number; total: number; source: 'OCR' | 'LEVEL_INFERRED' | 'FALLBACK'; warning?: string } {
-  // Regra nova v4: orçamento automático vem do NÍVEL MÁXIMO, não de números soltos do print.
-  // Isso elimina casos 2/2, 116/116 e qualquer número de atributo confundido como pontos.
+  inferredPoints: number | null,
+  trainingAllocationPoints: number | null
+): { used: number; total: number; source: 'TRAINING_READ' | 'OCR' | 'LEVEL_INFERRED' | 'FALLBACK'; warning?: string } {
+  // Regra v6 local: se o print trouxe a ficha automática já distribuída, o app soma o custo real dela.
+  // Esse é o orçamento mais confiável porque usa os próprios níveis de treino visíveis no print.
+  if (trainingAllocationPoints && trainingAllocationPoints >= MIN_AUTO_TRAINING_BUDGET && trainingAllocationPoints <= MAX_AUTO_TRAINING_BUDGET) {
+    return {
+      used: trainingAllocationPoints,
+      total: trainingAllocationPoints,
+      source: 'TRAINING_READ',
+      warning: parsedPoints.ignoredReason
+    };
+  }
+
   if (inferredPoints && inferredPoints >= MIN_AUTO_TRAINING_BUDGET && inferredPoints <= MAX_AUTO_TRAINING_BUDGET) {
     return {
       used: inferredPoints,
@@ -1508,7 +1645,7 @@ function resolveTrainingPointBudget(
     };
   }
 
-  // Só aceita OCR de pontos quando a linha é plausível e bem limitada. Mesmo assim, nunca aceita acima do teto seguro.
+  // OCR de pontos diretos fica como terceira opção. Nunca aceita 2/2, 116/116 ou número fora do teto.
   if (parsedPoints.total && parsedPoints.total >= MIN_AUTO_TRAINING_BUDGET && parsedPoints.total <= MAX_AUTO_TRAINING_BUDGET) {
     const safeTotal = normalizeTrainingBudget(parsedPoints.total);
     const safeUsed = parsedPoints.used !== null && Number.isFinite(parsedPoints.used) && parsedPoints.used >= MIN_AUTO_TRAINING_BUDGET && parsedPoints.used <= safeTotal
@@ -1521,7 +1658,7 @@ function resolveTrainingPointBudget(
     used: SAFE_DEFAULT_TRAINING_BUDGET,
     total: SAFE_DEFAULT_TRAINING_BUDGET,
     source: 'FALLBACK',
-    warning: parsedPoints.ignoredReason ?? 'Nível máximo não foi lido com segurança; usando orçamento competitivo padrão de 64 pontos.'
+    warning: parsedPoints.ignoredReason ?? 'Não encontrei ficha distribuída nem nível máximo com segurança; usando orçamento competitivo padrão de 64 pontos.'
   };
 }
 
@@ -1549,9 +1686,10 @@ export function parseCard(rawText: string, imageFileName?: string | null): Parse
   const weight = readNumber(text, [/peso\s*(\d{2,3})\s*kg/i, /weight\s*(\d{2,3})\s*kg/i]);
   const age = readNumber(text, [/idade\s*(\d{1,2})/i, /age\s*(\d{1,2})/i]);
   const level = parseLevel(text);
+  const autoTraining = parseTrainingAllocation(text);
   const inferredPoints = inferTrainingPointsFromLevel(level);
   const parsedPoints = parseTrainingPoints(text, inferredPoints);
-  const pointBudget = resolveTrainingPointBudget(parsedPoints, inferredPoints);
+  const pointBudget = resolveTrainingPointBudget(parsedPoints, inferredPoints, autoTraining?.points ?? null);
   const trainingPointsTotal = pointBudget.total;
   const trainingPointsUsed = pointBudget.used;
   const trainingPointSource: ParsedCard['trainingPointSource'] = pointBudget.source;
@@ -1575,9 +1713,10 @@ export function parseCard(rawText: string, imageFileName?: string | null): Parse
   confidence += Math.min(8, modelCount);
   confidence += Math.min(6, impetos.length * 2);
   const warnings: string[] = [];
-  if (attributeCount < 12) warnings.push('O OCR/IA leu poucos atributos. O app usou motor seguro por posição, mas quanto mais atributos lidos, melhor fica a ficha.');
+  if (attributeCount < 12) warnings.push('O OCR local leu poucos atributos. O app usou motor seguro por posição, mas quanto mais atributos lidos, melhor fica a ficha.');
   if (Object.keys(positionRatings).length < 4) warnings.push('A grade de posições não foi lida por completo. O app travou a análise na posição principal/estilo para evitar posição absurda.');
   if (!overall && !maxOverall) warnings.push('Overall não identificado. O app estimou a análise pela posição e atributos lidos.');
+  if (trainingPointSource === 'TRAINING_READ') warnings.push(`Orçamento de pontos somado pela ficha automática lida no print: ${trainingPointsTotal} pontos.`);
   if (trainingPointSource === 'LEVEL_INFERRED') warnings.push(`Orçamento de pontos calculado pelo nível máximo ${level}: ${trainingPointsTotal} pontos.`);
   if (trainingPointSource === 'FALLBACK') warnings.push(pointBudget.warning ?? 'Pontos e nível não foram lidos com segurança; usando orçamento competitivo padrão de 64 pontos.');
   if (pointBudget.warning && trainingPointSource !== 'FALLBACK') warnings.push(pointBudget.warning);
@@ -1616,6 +1755,8 @@ export function parseCard(rawText: string, imageFileName?: string | null): Parse
     trainingPointsTotal,
     trainingPointsUsed,
     trainingPointSource,
+    autoTrainingPlan: autoTraining?.plan ?? null,
+    autoTrainingPoints: autoTraining?.points ?? null,
     condition,
     impetos,
     nativeSkills,
@@ -1631,13 +1772,15 @@ export function parseCard(rawText: string, imageFileName?: string | null): Parse
 export function analyzeCard(rawText: string, objective: Objective = 'COMPETITIVE', targetPosition: PositionCode | 'AUTO' = 'AUTO', imageFileName?: string | null): AnalysisResult {
   const parsed = parseCard(rawText, imageFileName);
   const attributes = fillAttributes(parsed);
-  const positionScores = ALL_POSITIONS
+  const allowedPositions = parsed.positions.length ? parsed.positions : [parsed.mainPosition];
+  const positionScores = allowedPositions
     .map((code) => {
       const rawScore = positionScore(code, attributes, parsed.nativeSkills, parsed.positionRatings) + playstylePositionBonus(code, parsed.playstyle);
       return { code, label: POSITION_PT[code], score: clampDecimal(rawScore, 1, 100), role: roleName(code, attributes), cardRating: parsed.positionRatings[code] ?? null };
     })
     .sort((left, right) => right.score - left.score);
-  const selectedCode = targetPosition === 'AUTO' ? parsed.mainPosition : targetPosition;
+  const requestedCode = targetPosition === 'AUTO' ? parsed.mainPosition : targetPosition;
+  const selectedCode = allowedPositions.includes(requestedCode as PositionCode) ? requestedCode as PositionCode : parsed.mainPosition;
   const selected = positionScores.find((item) => item.code === selectedCode) ?? positionScores[0];
   const pri = calculatePri(selected.code, attributes, parsed.nativeSkills);
   const tacticalFit = calculateTacticalFit(selected.code, attributes, pri);
@@ -1654,6 +1797,6 @@ export function analyzeCard(rawText: string, objective: Objective = 'COMPETITIVE
     ? 'Alta confiança. A ficha foi gerada em modo automático com boa quantidade de dados lidos.'
     : parsed.confidence >= 60
       ? 'Confiança média. O motor automático compensou dados faltantes com regras seguras de posição e estilo.'
-      : 'Confiança baixa. O motor automático usou fallback seguro; para precisão extrema, use o modo IA Vision com chave configurada.';
+      : 'Confiança baixa. O motor local usou fallback seguro; envie print direto da tela com a ficha automática aberta para aumentar a precisão.';
   return { parsed, bestPosition: selected, positionScores: positionScores.slice(0, 10), pri, tacticalFit, training, trainingCost, trainingPointsUsed, trainingPointsTotal, trainingPointsRemaining, trainingCostRule: trainingCostRuleText(), recommendedSkills, buildName, strengths, weaknesses, usageTips: tips, note };
 }

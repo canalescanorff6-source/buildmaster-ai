@@ -37,9 +37,9 @@ export default function LoginPage() {
     <main className="login-page">
       <section className="login-shell">
         <div className="login-brand">
-          <span className="brand-pill"><Sparkles size={16} /> BuildMaster AI Vision Pro</span>
-          <h1>Área segura do seu app de fichas Elite.</h1>
-          <p>Entre para liberar a análise por imagem, motor de pontos real, habilidades adicionais e histórico local das cartas.</p>
+          <span className="brand-pill"><Sparkles size={16} /> BuildMaster Local Pro</span>
+          <h1>Área segura do seu app local de fichas Elite.</h1>
+          <p>Entre para liberar a OCR local, motor de pontos real, habilidades adicionais e histórico local das cartas.</p>
           <div className="login-features">
             <span><ShieldCheck size={15} /> sessão protegida</span>
             <span><LockKeyhole size={15} /> acesso privado</span>
