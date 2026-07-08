@@ -1,8 +1,8 @@
 {
-  "name": "buildmaster-local-pro-v6-2-login-noloop",
-  "version": "6.2.0",
+  "name": "buildmaster-local-pro-v7-premium-redesign",
+  "version": "7.0.0",
   "private": true,
-  "description": "BuildMaster Local Pro v6.2 - login local sem loop, sem middleware/cookie, OCR local e motor elite para eFootball.",
+  "description": "BuildMaster Local Pro v7 - redesign premium completo, login local, OCR local e ficha Elite.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

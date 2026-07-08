@@ -1,4 +1,4 @@
-const CACHE_NAME = 'buildmaster-local-v6-2-login-noloop-20260708b';
+const CACHE_NAME = 'buildmaster-local-pro-v7-premium-redesign-20260708a';
 const STATIC_ASSETS = ['/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
@@ -16,6 +16,5 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  // Network-first para não manter JavaScript antigo da Vercel no celular.
   event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
 });

@@ -3,26 +3,30 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { Eye, EyeOff, LockKeyhole, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
 
-const AUTH_KEY = 'buildmaster_local_auth_v6_1';
+const AUTH_KEY = 'buildmaster_local_auth_v7_premium';
 const LOGIN_USER = 'thiago0126';
 const LOGIN_PASSWORD = 'iu1fsaa67a';
+const SESSION_DURATION = 1000 * 60 * 60 * 24 * 14;
 
 function makeSessionToken() {
-  return `bm-local-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return `bm-local-pro-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
 function hasValidLocalSession() {
   if (typeof window === 'undefined') return false;
+
   try {
     const raw = localStorage.getItem(AUTH_KEY);
     if (!raw) return false;
+
     const session = JSON.parse(raw) as { token?: string; createdAt?: number };
     if (!session.token || !session.createdAt) return false;
-    const fourteenDays = 1000 * 60 * 60 * 24 * 14;
-    if (Date.now() - session.createdAt > fourteenDays) {
+
+    if (Date.now() - session.createdAt > SESSION_DURATION) {
       localStorage.removeItem(AUTH_KEY);
       return false;
     }
+
     return true;
   } catch {
     localStorage.removeItem(AUTH_KEY);
@@ -37,8 +41,9 @@ function saveLocalSession() {
 export function clearBuildMasterSession() {
   try {
     localStorage.removeItem(AUTH_KEY);
+    localStorage.removeItem('buildmaster_local_auth_v6_1');
   } catch {
-    // Ignora bloqueio de localStorage em modo privado.
+    // Alguns navegadores bloqueiam localStorage em modo privado.
   }
 }
 
@@ -51,13 +56,13 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLoading(true);
     setError('');
-
-    const cleanUser = username.trim();
-    const cleanPassword = password.trim();
+    setLoading(true);
 
     window.setTimeout(() => {
+      const cleanUser = username.trim();
+      const cleanPassword = password.trim();
+
       if (cleanUser !== LOGIN_USER || cleanPassword !== LOGIN_PASSWORD) {
         setError('Usuário ou senha incorretos. Confira e tente novamente.');
         setLoading(false);
@@ -68,74 +73,72 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
         saveLocalSession();
         onSuccess();
       } catch {
-        setError('O navegador bloqueou o salvamento da sessão. Desative modo privado ou limpe os dados do site.');
+        setError('O navegador bloqueou a sessão local. Limpe os dados do site ou desative o modo privado.');
         setLoading(false);
       }
-    }, 180);
+    }, 160);
   }
 
   return (
-    <main className="login-page">
-      <section className="login-shell">
-        <div className="login-brand">
-          <span className="brand-pill"><Sparkles size={16} /> BuildMaster Local Pro</span>
-          <h1>Acesso privado, rápido e sem travar no celular.</h1>
-          <p>Login local corrigido: não depende mais de cookie da Vercel, middleware ou API. Entrou, liberou o app no próprio navegador por 14 dias.</p>
-          <div className="login-features">
-            <span><ShieldCheck size={15} /> login local</span>
-            <span><LockKeyhole size={15} /> acesso privado</span>
-            <span><Sparkles size={15} /> versão hotfix</span>
+    <main className="auth-screen">
+      <section className="auth-orbit" aria-hidden="true" />
+      <section className="auth-card luxury-panel">
+        <div className="auth-logo-mark"><Sparkles size={34} /></div>
+        <p className="auth-app-name">BuildMaster</p>
+        <h1>Local Pro</h1>
+        <p className="auth-subtitle">Análise local, privada e mais estável.</p>
+
+        <div className="auth-security-note">
+          <LockKeyhole size={18} />
+          <div>
+            <strong>Acesso privado e seguro</strong>
+            <span>Seus dados ficam apenas no seu dispositivo.</span>
           </div>
         </div>
 
-        <form className="login-card glass-panel" onSubmit={handleSubmit}>
-          <div className="login-card-head">
-            <div>
-              <p className="eyebrow">Login</p>
-              <h2>Entrar no BuildMaster</h2>
-            </div>
-            <LockKeyhole size={26} />
-          </div>
+        <form className="auth-form" onSubmit={handleSubmit}>
+          <h2>Entrar no BuildMaster</h2>
 
-          <label className="login-field">
-            Usuário
-            <span>
+          <label className="auth-field">
+            <span>Usuário</span>
+            <div>
               <UserRound size={18} />
               <input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" />
-            </span>
+            </div>
           </label>
 
-          <label className="login-field">
-            Senha
-            <span>
+          <label className="auth-field">
+            <span>Senha</span>
+            <div>
               <LockKeyhole size={18} />
               <input
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
                 type={showPassword ? 'text' : 'password'}
+                placeholder="Digite sua senha"
                 autoComplete="current-password"
-                placeholder="Digite a senha"
               />
               <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}>
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
-            </span>
+            </div>
           </label>
 
-          {error && <p className="login-error">{error}</p>}
+          {error && <p className="auth-error">{error}</p>}
 
-          <button className="primary-button login-submit" type="submit" disabled={loading}>
+          <button className="elite-button auth-submit" type="submit" disabled={loading}>
+            <ShieldCheck size={18} />
             {loading ? 'Entrando...' : 'Entrar com segurança'}
           </button>
 
-          <p className="microcopy">Usuário: <strong>thiago0126</strong>. A sessão fica salva somente neste navegador.</p>
+          <p className="auth-footnote"><ShieldCheck size={14} /> Sessão salva apenas neste navegador</p>
         </form>
       </section>
     </main>
   );
 }
 
-export function AuthGate({ children }: { children?: ReactNode; loginPage?: boolean }) {
+export function AuthGate({ children }: { children?: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
 
@@ -146,11 +149,10 @@ export function AuthGate({ children }: { children?: ReactNode; loginPage?: boole
 
   if (!ready) {
     return (
-      <main className="login-page">
-        <section className="login-card glass-panel login-loading-card">
-          <p className="eyebrow">BuildMaster</p>
+      <main className="auth-screen">
+        <section className="auth-card luxury-panel loading-card">
+          <p className="kicker">BuildMaster</p>
           <h2>Verificando acesso...</h2>
-          <p className="microcopy">Se esta tela ficar parada, limpe o cache do site e confirme se o arquivo middleware.ts novo foi enviado ao GitHub.</p>
         </section>
       </main>
     );

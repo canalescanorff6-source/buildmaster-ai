@@ -1,20 +1,63 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, CheckCircle2, Copy, Download, History, ImagePlus, Loader2, LogOut, RotateCcw, ScanText, ShieldCheck, Sparkles, UploadCloud, Wand2, Zap } from 'lucide-react';
+import {
+  Camera,
+  CheckCircle2,
+  Copy,
+  History,
+  ImagePlus,
+  Loader2,
+  LogOut,
+  RotateCcw,
+  ScanText,
+  ShieldCheck,
+  Sparkles,
+  UploadCloud,
+  Wand2,
+  Zap
+} from 'lucide-react';
+import { clearBuildMasterSession } from '@/components/AuthGate';
 import { analyzeCard, type AnalysisResult, type Objective, type PositionCode, POSITION_LABELS } from '@/lib/analyzer';
 
-const objectives: Array<{ value: Objective; label: string; hint: string }> = [
-  { value: 'COMPETITIVE', label: 'Competitivo', hint: 'maior rendimento real em campo' },
-  { value: 'FINISHER', label: 'Finalizador', hint: 'gols, presença de área e chute' },
-  { value: 'CREATOR', label: 'Criador', hint: 'passe, assistência e controle' },
-  { value: 'DRIBBLER', label: 'Driblador', hint: 'giro curto e 1 contra 1' },
-  { value: 'QUICK_COUNTER', label: 'Contra-ataque rápido', hint: 'arranque e verticalidade' },
-  { value: 'POSSESSION', label: 'Posse de bola', hint: 'toque curto e criação paciente' },
-  { value: 'PRESSING', label: 'Pressão alta', hint: 'roubo, fôlego e agressividade' },
-  { value: 'DEFENSIVE', label: 'Defensivo', hint: 'marcação, bloqueio e cobertura' },
-  { value: 'AERIAL', label: 'Jogo aéreo', hint: 'cabeceio, salto e contato físico' }
+type ReadingMode = 'precision' | 'fast';
+type ResultTab = 'resumo' | 'ficha' | 'habilidades' | 'posicoes' | 'dados';
+
+type SavedAnalysis = {
+  id: string;
+  savedAt: string;
+  rawText: string;
+  playerImage: string | null;
+  fullPreview: string | null;
+  result: AnalysisResult;
+};
+
+const HISTORY_KEY = 'buildmaster_history_v7_premium';
+
+const objectives: Array<{ value: Objective; title: string; hint: string }> = [
+  { value: 'COMPETITIVE', title: 'Competitivo', hint: 'maior rendimento real em campo' },
+  { value: 'FINISHER', title: 'Finalizador', hint: 'gols, área e chute' },
+  { value: 'CREATOR', title: 'Criador', hint: 'passe, controle e assistência' },
+  { value: 'DRIBBLER', title: 'Driblador', hint: 'giro curto e 1 contra 1' },
+  { value: 'QUICK_COUNTER', title: 'Contra-ataque rápido', hint: 'arranque e verticalidade' },
+  { value: 'POSSESSION', title: 'Posse de bola', hint: 'toque curto e paciência' },
+  { value: 'PRESSING', title: 'Pressão alta', hint: 'roubo, fôlego e agressividade' },
+  { value: 'DEFENSIVE', title: 'Defensivo', hint: 'marcação, bloqueio e cobertura' },
+  { value: 'AERIAL', title: 'Jogo aéreo', hint: 'cabeceio, salto e físico' }
 ];
+
+const trainingLabels: Record<string, string> = {
+  shooting: 'Tiroteio',
+  passing: 'Passe',
+  dribbling: 'Drible',
+  dexterity: 'Destreza',
+  lowerBodyStrength: 'Força pernas',
+  aerialStrength: 'Bola aérea',
+  defending: 'Defesa',
+  gk1: 'GO 1',
+  gk2: 'GO 2',
+  gk3: 'GO 3'
+};
 
 const priLabels: Record<string, string> = {
   finishing: 'Finalização',
@@ -29,19 +72,6 @@ const priLabels: Record<string, string> = {
   overall: 'PRI geral'
 };
 
-const trainingLabels: Record<string, string> = {
-  shooting: 'Chute',
-  passing: 'Passe',
-  dribbling: 'Drible',
-  dexterity: 'Destreza',
-  lowerBodyStrength: 'Força nas pernas',
-  aerialStrength: 'Bola aérea',
-  defending: 'Defesa',
-  gk1: 'Goleiro 1',
-  gk2: 'Goleiro 2',
-  gk3: 'Goleiro 3'
-};
-
 const tacticalLabels: Record<string, string> = {
   possession: 'Posse de bola',
   quickCounter: 'Contra-ataque rápido',
@@ -50,21 +80,15 @@ const tacticalLabels: Record<string, string> = {
   longBall: 'Bola longa'
 };
 
-type ReadingMode = 'precision' | 'fast';
-type ResultTab = 'resumo' | 'ficha' | 'habilidades' | 'posicoes' | 'dados';
-
-type SavedAnalysis = {
-  id: string;
-  savedAt: string;
-  rawText: string;
-  playerImage: string | null;
-  result: AnalysisResult;
-};
+function normalizeLine(line: string) {
+  return line.replace(/\s+/g, ' ').trim();
+}
 
 function mergeOcrTexts(...texts: string[]) {
   const lines = new Map<string, string>();
+
   for (const text of texts) {
-    for (const line of text.split(/\r?\n/).map((item) => item.trim()).filter(Boolean)) {
+    for (const line of text.split(/\r?\n/).map(normalizeLine).filter(Boolean)) {
       const key = line
         .toLowerCase()
         .normalize('NFD')
@@ -73,20 +97,13 @@ function mergeOcrTexts(...texts: string[]) {
       if (key && !lines.has(key)) lines.set(key, line);
     }
   }
-  return Array.from(lines.values()).join('\n');
-}
 
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error ?? new Error('Falha ao ler imagem.'));
-    reader.readAsDataURL(file);
-  });
+  return Array.from(lines.values()).join('\n');
 }
 
 async function imageToCanvas(file: File | Blob) {
   if (typeof document === 'undefined' || typeof createImageBitmap === 'undefined') return null;
+
   const bitmap = await createImageBitmap(file);
   const canvas = document.createElement('canvas');
   canvas.width = bitmap.width;
@@ -97,12 +114,12 @@ async function imageToCanvas(file: File | Blob) {
   return { bitmap, canvas, ctx };
 }
 
-async function preprocessImage(file: File | Blob, mode: 'contrast' | 'sharp' = 'contrast'): Promise<Blob | File | Blob> {
+async function preprocessImage(file: File | Blob, mode: 'contrast' | 'sharp' = 'contrast'): Promise<Blob | File> {
   const setup = await imageToCanvas(file).catch(() => null);
-  if (!setup) return file;
+  if (!setup) return file as File;
 
   const { bitmap, canvas, ctx } = setup;
-  const scale = Math.max(2, Math.min(4, 2900 / Math.max(1, bitmap.width)));
+  const scale = Math.max(2, Math.min(4, 3000 / Math.max(1, bitmap.width)));
   canvas.width = Math.round(bitmap.width * scale);
   canvas.height = Math.round(bitmap.height * scale);
   ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
@@ -111,20 +128,20 @@ async function preprocessImage(file: File | Blob, mode: 'contrast' | 'sharp' = '
   const data = imageData.data;
   for (let index = 0; index < data.length; index += 4) {
     const gray = data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114;
-    const boost = mode === 'sharp' ? 2.12 : 1.72;
-    const contrasted = Math.max(0, Math.min(255, (gray - 110) * boost + 155));
+    const boost = mode === 'sharp' ? 2.18 : 1.76;
+    const contrasted = Math.max(0, Math.min(255, (gray - 108) * boost + 158));
     data[index] = contrasted;
     data[index + 1] = contrasted;
     data[index + 2] = contrasted;
   }
   ctx.putImageData(imageData, 0, 0);
 
-  return await new Promise<Blob | File | Blob>((resolve) => {
-    canvas.toBlob((blob) => resolve(blob ?? file), 'image/png', 0.96);
+  return await new Promise<Blob | File>((resolve) => {
+    canvas.toBlob((blob) => resolve(blob ?? (file as File)), 'image/png', 0.96);
   });
 }
 
-async function cropImage(file: File, region: { x: number; y: number; w: number; h: number }, widthTarget = 1700): Promise<Blob | File> {
+async function cropImage(file: File, region: { x: number; y: number; w: number; h: number }, widthTarget = 1900): Promise<Blob | File> {
   const setup = await imageToCanvas(file).catch(() => null);
   if (!setup) return file;
 
@@ -146,7 +163,7 @@ async function cropImage(file: File, region: { x: number; y: number; w: number; 
   const data = imageData.data;
   for (let index = 0; index < data.length; index += 4) {
     const gray = data[index] * 0.299 + data[index + 1] * 0.587 + data[index + 2] * 0.114;
-    const contrasted = Math.max(0, Math.min(255, (gray - 112) * 1.95 + 158));
+    const contrasted = Math.max(0, Math.min(255, (gray - 110) * 1.92 + 160));
     data[index] = contrasted;
     data[index + 1] = contrasted;
     data[index + 2] = contrasted;
@@ -168,9 +185,9 @@ async function createOcrVariants(file: File, readingMode: ReadingMode): Promise<
   }
 
   const sharp = await preprocessImage(file, 'sharp');
-  const topStats = await cropImage(file, { x: 0.0, y: 0.0, w: 1.0, h: 0.48 }, 2200);
-  const rightStats = await cropImage(file, { x: 0.34, y: 0.10, w: 0.66, h: 0.72 }, 2300);
-  const lowerSkills = await cropImage(file, { x: 0.0, y: 0.50, w: 1.0, h: 0.50 }, 2200);
+  const topStats = await cropImage(file, { x: 0, y: 0, w: 1, h: 0.48 }, 2300);
+  const rightStats = await cropImage(file, { x: 0.34, y: 0.08, w: 0.66, h: 0.74 }, 2350);
+  const lowerSkills = await cropImage(file, { x: 0, y: 0.48, w: 1, h: 0.52 }, 2300);
 
   return [
     { label: 'imagem original', image: file },
@@ -178,7 +195,7 @@ async function createOcrVariants(file: File, readingMode: ReadingMode): Promise<
     { label: 'imagem reforçada', image: sharp },
     { label: 'área superior/posições', image: topStats },
     { label: 'área de atributos', image: rightStats },
-    { label: 'área de habilidades/ímpetos', image: lowerSkills }
+    { label: 'área de habilidades', image: lowerSkills }
   ];
 }
 
@@ -192,12 +209,12 @@ async function createPlayerCardPreview(file: File): Promise<string | null> {
     const height = bitmap.height;
 
     const cropX = Math.round(width * 0.035);
-    const cropY = Math.round(height * 0.055);
-    const cropW = Math.round(width * 0.27);
-    const cropH = Math.round(height * 0.36);
+    const cropY = Math.round(height * 0.04);
+    const cropW = Math.round(width * 0.31);
+    const cropH = Math.round(height * 0.42);
 
-    canvas.width = 560;
-    canvas.height = 760;
+    canvas.width = 600;
+    canvas.height = 800;
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
@@ -211,47 +228,27 @@ async function createPlayerCardPreview(file: File): Promise<string | null> {
 function skillReason(skill: string) {
   const reasons: Record<string, string> = {
     'Toque duplo': 'melhora o 1 contra 1 e a saída curta',
-    'Controle com a sola': 'deixa o giro e o domínio mais limpos',
+    'Controle com a sola': 'giro e domínio mais limpos sob pressão',
     'Elástico': 'abre espaço em pontas e meias ofensivos',
-    'Cruzamento preciso': 'aumenta criação pelas laterais',
-    'Curva para fora': 'melhora passes e finalizações de trivela',
+    'Cruzamento preciso': 'qualifica criação pelos lados',
+    'Curva para fora': 'melhora passes e chutes com efeito',
     'Passe de primeira': 'acelera tabelas, pivôs e contra-ataques',
-    'Passe em profundidade': 'melhora bolas verticais e rupturas',
+    'Passe em profundidade': 'melhora rupturas e bolas verticais',
     'Passe na medida': 'qualifica lançamentos e inversões',
     'Interceptação': 'aumenta cortes automáticos de passe',
     'Bloqueador': 'melhora bloqueios de chute e passe',
     'Marcação individual': 'gruda melhor no alvo defensivo',
     'Volta para marcar': 'ajuda na pressão e recomposição',
-    'Espírito guerreiro': 'mantém precisão mesmo cansado ou pressionado',
+    'Espírito guerreiro': 'mantém desempenho cansado ou pressionado',
     'Chute de primeira': 'finaliza rápido sem dominar a bola',
     'Precisão à distância': 'melhora chute de fora da área',
-    'Finalização acrobática': 'aumenta gols em posição ruim',
-    'Cabeçada': 'melhora finalização aérea',
-    'Superioridade aérea': 'vence duelos pelo alto com mais frequência',
-    'Carrinho': 'aumenta precisão no desarme de emergência',
-    'Afastamento acrobático': 'limpa bolas difíceis na defesa',
-    'Super substituto': 'melhora impacto vindo do banco'
+    'Finalização acrobática': 'aumenta gols em posição difícil',
+    Cabeçada: 'melhora finalização aérea',
+    'Superioridade aérea': 'vence duelos pelo alto com frequência',
+    Carrinho: 'melhora desarme de emergência',
+    'Super substituto': 'aumenta impacto vindo do banco'
   };
   return reasons[skill] ?? 'completa a função real da carta sem repetir habilidade nativa';
-}
-
-function attributeNamePt(key: string) {
-  const labels: Record<string, string> = {
-    offensiveAwareness: 'Talento ofensivo', ballControl: 'Controle de bola', dribbling: 'Drible', tightPossession: 'Condução firme', lowPass: 'Passe rasteiro', loftedPass: 'Passe alto', finishing: 'Finalização', heading: 'Cabeçada', placeKicking: 'Cobrança de bola parada', curl: 'Curva', defensiveAwareness: 'Talento defensivo', defensiveEngagement: 'Dedicação defensiva', tackling: 'Desarme', aggression: 'Agressividade', goalkeeperAwareness: 'Talento de GO', goalkeeperCatching: 'Firmeza do GO', goalkeeperParrying: 'Defesa do GO', goalkeeperReflexes: 'Reflexos do GO', goalkeeperReach: 'Alcance do GO', speed: 'Velocidade', acceleration: 'Aceleração', kickingPower: 'Força do chute', jump: 'Salto', physicalContact: 'Contato físico', balance: 'Equilíbrio', stamina: 'Resistência'
-  };
-  return labels[key] ?? key;
-}
-
-function modelNamePt(key: string) {
-  const labels: Record<string, string> = {
-    armLength: 'Comprimento do braço', shoulderWidth: 'Largura dos ombros', neckLength: 'Comprimento do pescoço', chest: 'Peito', neckSize: 'Tamanho do pescoço', shoulderHeight: 'Altura do ombro', legLength: 'Comprimento da perna', thighSize: 'Tamanho da coxa', waistSize: 'Tamanho da cintura', armSize: 'Tamanho do braço', calfSize: 'Tamanho da panturrilha', legCoverageRadius: 'Raio cobertura pernas', armCoverageRadius: 'Raio cobertura braços', jumpHeight: 'Altura de salto', trunkCollision: 'Colisão do tronco', baseHeight: 'Altura com base'
-  };
-  return labels[key] ?? key;
-}
-
-function positionPt(code: string) {
-  const labels: Record<string, string> = { CF: 'CA', SS: 'SA', LWF: 'PE', RWF: 'PD', LMF: 'ME', RMF: 'MD', AMF: 'MAT', CMF: 'MC', DMF: 'VOL', CB: 'ZAG', LB: 'LE', RB: 'LD', GK: 'GOL' };
-  return labels[code] ?? code;
 }
 
 function copyBuildText(result: AnalysisResult) {
@@ -261,13 +258,13 @@ function copyBuildText(result: AnalysisResult) {
     .join('\n');
 
   const text = [
-    `BuildMaster Local — ${result.parsed.playerName}`,
+    `BuildMaster Local Pro — ${result.parsed.playerName}`,
     `Função: ${result.buildName}`,
     `Melhor posição: ${result.bestPosition.label}`,
     `PRI: ${result.pri.overall}`,
     `Pontos: ${result.trainingPointsUsed}/${result.trainingPointsTotal}`,
     '',
-    'Ficha:',
+    'Ficha Elite:',
     training,
     '',
     'Habilidades adicionais:',
@@ -280,259 +277,251 @@ function copyBuildText(result: AnalysisResult) {
   void navigator.clipboard?.writeText(text);
 }
 
+function positionPt(code: string) {
+  const labels: Record<string, string> = {
+    CF: 'CA', SS: 'SA', LWF: 'PE', RWF: 'PD', LMF: 'ME', RMF: 'MD', AMF: 'MAT', CMF: 'MC', DMF: 'VOL', CB: 'ZAG', LB: 'LE', RB: 'LD', GK: 'GOL'
+  };
+  return labels[code] ?? code;
+}
+
+function attributeNamePt(key: string) {
+  const labels: Record<string, string> = {
+    offensiveAwareness: 'Talento ofensivo', ballControl: 'Controle de bola', dribbling: 'Drible', tightPossession: 'Condução firme', lowPass: 'Passe rasteiro', loftedPass: 'Passe alto', finishing: 'Finalização', heading: 'Cabeçada', placeKicking: 'Bola parada', curl: 'Curva', defensiveAwareness: 'Talento defensivo', defensiveEngagement: 'Dedicação defensiva', tackling: 'Desarme', aggression: 'Agressividade', goalkeeperAwareness: 'Talento GO', goalkeeperCatching: 'Firmeza GO', goalkeeperParrying: 'Defesa GO', goalkeeperReflexes: 'Reflexos GO', goalkeeperReach: 'Alcance GO', speed: 'Velocidade', acceleration: 'Aceleração', kickingPower: 'Força do chute', jump: 'Salto', physicalContact: 'Contato físico', balance: 'Equilíbrio', stamina: 'Resistência'
+  };
+  return labels[key] ?? key;
+}
+
 function ResultCard({ result, playerImage }: { result: AnalysisResult; playerImage: string | null }) {
   const [tab, setTab] = useState<ResultTab>('resumo');
   const card = result.parsed;
-  const attributeItems = Object.entries(card.attributes).filter(([, value]) => Number.isFinite(value));
-  const physicalItems = Object.entries(card.physicalProfile).filter(([, value]) => Number.isFinite(value));
-  const positionRatingItems = Object.entries(card.positionRatings).filter(([, value]) => Number.isFinite(value));
+  const overall = card.maxOverall ?? card.overall ?? '--';
   const trainingItems = Object.entries(result.training).filter(([, value]) => Number(value) > 0);
   const pointPercent = Math.min(100, Math.round((result.trainingPointsUsed / Math.max(1, result.trainingPointsTotal)) * 100));
-
-  const pointsSourceLabel = card.trainingPointSource === 'TRAINING_READ'
-    ? 'somados pela ficha automática'
-    : card.trainingPointSource === 'OCR'
-      ? 'lidos no print'
-      : card.trainingPointSource === 'LEVEL_INFERRED'
-        ? 'calculados pelo nível'
-        : 'padrão do app';
-
-  const infoItems = [
-    ['Altura', card.height ? `${card.height} cm` : '—'],
-    ['Peso', card.weight ? `${card.weight} kg` : '—'],
-    ['Idade', card.age ?? '—'],
-    ['Nível máximo', card.level ?? '—'],
-    ['Pontos da ficha', card.trainingPointsTotal ? `${card.trainingPointsUsed ?? result.trainingPointsUsed}/${card.trainingPointsTotal} (${pointsSourceLabel})` : '—'],
-    ['Ficha automática lida', card.autoTrainingPoints ? `${card.autoTrainingPoints} pts` : '—'],
-    ['Pior pé frequência', card.condition.weakFootFrequency ?? '—'],
-    ['Pior pé precisão', card.condition.weakFootAccuracy ?? '—'],
-    ['Condição física', card.condition.form ?? '—'],
-    ['Resistência a lesão', card.condition.injuryResistance ?? '—']
-  ];
+  const positionItems = result.positionScores.slice(0, 8);
+  const nativeSkills = card.nativeSkills.slice(0, 8);
+  const recommendedSkills = result.recommendedSkills.slice(0, 8);
+  const positionRatings = Object.entries(card.positionRatings).filter(([, value]) => Number.isFinite(value));
+  const attributes = Object.entries(card.attributes).filter(([, value]) => Number.isFinite(value));
+  const sourceLabel = card.trainingPointSource === 'TRAINING_READ'
+    ? 'Ficha automática somada'
+    : card.trainingPointSource === 'LEVEL_INFERRED'
+      ? 'Calculado pelo nível'
+      : card.trainingPointSource === 'OCR'
+        ? 'Lido no print'
+        : 'Padrão seguro';
 
   return (
-    <div className="result-shell pro-result">
-      <section className="player-card-panel glass-panel premium-summary">
-        <div className={`virtual-card ${playerImage ? 'has-player-image' : ''}`}>
-          {playerImage && <img className="virtual-player-image" src={playerImage} alt={`Imagem de ${card.playerName}`} />}
-          <div className="card-gradient" />
-          <div className="card-lines" />
-          <div className="card-top-info">
-            <strong>{card.maxOverall ?? card.overall ?? '--'}</strong>
+    <section className="result-panel">
+      <div className="result-head luxury-panel">
+        <div className="premium-card-art">
+          {playerImage && <img src={playerImage} alt={`Imagem de ${card.playerName}`} />}
+          <div className="card-shine" />
+          <div className="card-number">
+            <strong>{overall}</strong>
             <span>{card.mainPositionPt}</span>
           </div>
-          <em>{card.playstyle ?? result.buildName}</em>
+          <em>{card.playstyle ?? 'BuildMaster'}</em>
         </div>
 
-        <div className="player-summary">
-          <p className="eyebrow">Veredito BuildMaster Local</p>
+        <div className="result-intro">
+          <p className="kicker">Resumo</p>
           <h2>{card.playerName}</h2>
-          <p className="role-line">Use como <strong>{result.buildName}</strong>. {card.playstyle ? `Estilo lido: ${card.playstyle}.` : ''}</p>
-          <div className="summary-grid summary-grid-5">
-            <div><span>Overall</span><strong>{card.maxOverall ?? card.overall ?? '—'}</strong></div>
-            <div><span>Melhor posição</span><strong>{result.bestPosition.label}</strong></div>
+          <div className="playstyle-pill">{card.playstyle ?? 'Estilo não lido'}</div>
+          <div className="metric-grid">
+            <div><span>GER</span><strong>{overall}</strong></div>
+            <div><span>Melhor pos.</span><strong>{result.bestPosition.label}</strong></div>
             <div><span>PRI</span><strong>{result.pri.overall}</strong></div>
-            <div><span>Pontos</span><strong>{result.trainingPointsUsed}/{result.trainingPointsTotal}</strong></div>
             <div><span>Confiança</span><strong>{card.confidence}%</strong></div>
-          </div>
-          <div className="point-meter"><i style={{ width: `${pointPercent}%` }} /><span>{pointPercent}% dos pontos usados</span></div>
-          <div className="position-strip">
-            <span>Posições da carta</span>
-            <strong>{card.positionsPt.join(' • ')}</strong>
-          </div>
-          <div className="result-actions">
-            <button type="button" className="soft-button mini-button" onClick={() => copyBuildText(result)}><Copy size={16} /> Copiar ficha</button>
+            <div className="wide-metric"><span>Pontos totais</span><strong>{result.trainingPointsUsed}/{result.trainingPointsTotal}</strong></div>
           </div>
         </div>
-      </section>
+      </div>
 
       {card.warnings.length > 0 && (
-        <section className="warning-panel">
-          {card.warnings.map((warning) => <p key={warning}>{warning}</p>)}
-        </section>
+        <div className="alert-strip">
+          {card.warnings.slice(0, 2).map((warning) => <span key={warning}>{warning}</span>)}
+        </div>
       )}
 
-      <nav className="result-tabs" aria-label="Resultado da análise">
+      <nav className="elite-tabs" aria-label="Seções do resultado">
         {[
           ['resumo', 'Resumo'],
           ['ficha', 'Ficha'],
           ['habilidades', 'Habilidades'],
           ['posicoes', 'Posições'],
-          ['dados', 'Dados lidos']
+          ['dados', 'Dados']
         ].map(([value, label]) => (
-          <button key={value} type="button" className={tab === value ? 'active' : ''} onClick={() => setTab(value as ResultTab)}>{label}</button>
+          <button key={value} className={tab === value ? 'active' : ''} type="button" onClick={() => setTab(value as ResultTab)}>
+            {label}
+          </button>
         ))}
       </nav>
 
       {tab === 'resumo' && (
-        <section className="grid-area compact-grid">
-          <div className="glass-panel stack">
-            <h3>Como usar em campo</h3>
-            <ul className="tip-list pro-tips">
-              {result.usageTips.map((tip) => <li key={tip}>{tip}</li>)}
-            </ul>
-          </div>
-          <div className="glass-panel stack">
-            <h3>PRI por setor</h3>
-            <div className="bar-list compact-bars">
-              {Object.entries(result.pri).map(([key, value]) => (
-                <div className="bar-row" key={key}>
-                  <div><span>{priLabels[key] ?? key}</span><strong>{value}</strong></div>
+        <div className="result-section-grid">
+          <article className="luxury-panel elite-build-card">
+            <p className="kicker">Build Elite recomendado</p>
+            <div className="section-title-row">
+              <h3>{result.buildName}</h3>
+              <span>Elite</span>
+            </div>
+            <div className="stat-bars five-cols">
+              {[
+                ['Finalização', result.pri.finishing],
+                ['Drible', result.pri.dribbling],
+                ['Passe', result.pri.creation],
+                ['Força', result.pri.physical],
+                ['Velocidade', result.pri.mobility]
+              ].map(([label, value]) => (
+                <div key={String(label)}>
+                  <span>{label}</span>
+                  <strong>{value}</strong>
                   <i><b style={{ width: `${Math.min(100, Number(value))}%` }} /></i>
                 </div>
               ))}
             </div>
-          </div>
-          <div className="glass-panel stack">
-            <h3>Pontos fortes</h3>
-            <div className="pill-list">{result.strengths.map((item) => <span key={item}>{item}</span>)}</div>
-          </div>
-          <div className="glass-panel stack">
-            <h3>Cuidados</h3>
-            <div className="pill-list warning-pills">{result.weaknesses.map((item) => <span key={item}>{item}</span>)}</div>
-          </div>
-        </section>
+          </article>
+
+          <article className="luxury-panel compact-card">
+            <p className="kicker">Habilidades adicionais</p>
+            <div className="chip-cloud purple">
+              {recommendedSkills.length ? recommendedSkills.slice(0, 4).map((skill) => <span key={skill}>{skill}</span>) : <span>Nenhuma recomendação segura</span>}
+            </div>
+            <p className="panel-note">Exclui habilidades já presentes na carta.</p>
+          </article>
+
+          <article className="luxury-panel compact-card">
+            <p className="kicker">Pontos detectados</p>
+            <strong className="big-number">{result.trainingPointsUsed}/{result.trainingPointsTotal}</strong>
+            <div className="mini-meter"><i style={{ width: `${pointPercent}%` }} /></div>
+            <p className="panel-note">{sourceLabel}</p>
+          </article>
+
+          <article className="luxury-panel wide-card">
+            <p className="kicker">Como jogar</p>
+            <ul className="clean-list">
+              {result.usageTips.slice(0, 4).map((tip) => <li key={tip}>{tip}</li>)}
+            </ul>
+          </article>
+        </div>
       )}
 
       {tab === 'ficha' && (
-        <section className="grid-area">
-          <div className="glass-panel stack featured-panel">
-            <div className="section-head">
+        <div className="result-section-grid">
+          <article className="luxury-panel wide-card">
+            <div className="section-title-row">
               <div>
-                <p className="eyebrow">Custo real do jogo</p>
-                <h3>Ficha recomendada</h3>
+                <p className="kicker">Distribuição de pontos</p>
+                <h3>Ficha Elite de gameplay</h3>
               </div>
-              <span className="premium-badge">{result.trainingPointsUsed}/{result.trainingPointsTotal} pts</span>
+              <span>{result.trainingPointsUsed}/{result.trainingPointsTotal}</span>
             </div>
-            <div className="point-meter big"><i style={{ width: `${pointPercent}%` }} /><span>{result.trainingPointsRemaining > 0 ? `${result.trainingPointsRemaining} pts restantes` : 'Ficha fechada no limite'}</span></div>
-            <div className="training-grid premium-training">
+            <div className="training-ribbon">
               {trainingItems.map(([key, value]) => (
                 <div key={key}>
                   <span>{trainingLabels[key] ?? key}</span>
-                  <strong>+{value}</strong>
-                  <small>{result.trainingCost[key as keyof typeof result.trainingCost] ?? 0} pts reais</small>
+                  <strong>{value}</strong>
+                  <i><b style={{ width: `${Math.min(100, Number(value) * 7)}%` }} /></i>
                 </div>
               ))}
             </div>
-            <p className="microcopy">{result.trainingCostRule}</p>
-          </div>
+            <p className="panel-note">Custo real: {result.trainingCostRule}. Restante: {result.trainingPointsRemaining} ponto(s).</p>
+          </article>
 
-          <div className="glass-panel stack">
-            <h3>Compatibilidade tática</h3>
-            <div className="tactical-grid">
+          <article className="luxury-panel wide-card">
+            <p className="kicker">Compatibilidade tática</p>
+            <div className="data-grid">
               {Object.entries(result.tacticalFit).map(([key, value]) => (
-                <div key={key}>
-                  <span>{tacticalLabels[key] ?? key}</span>
-                  <strong>{value}/10</strong>
-                </div>
+                <div key={key}><span>{tacticalLabels[key] ?? key}</span><strong>{value}/10</strong></div>
               ))}
             </div>
-          </div>
-        </section>
+          </article>
+        </div>
       )}
 
       {tab === 'habilidades' && (
-        <section className="grid-area">
-          <div className="glass-panel stack priority-panel">
-            <div className="section-head">
-              <div>
-                <p className="eyebrow">Somente faltantes</p>
-                <h3>Habilidades para adicionar</h3>
-              </div>
-              <span className="premium-badge">Top {result.recommendedSkills.length}</span>
-            </div>
-            <div className="skill-priority-list">
-              {result.recommendedSkills.length ? result.recommendedSkills.map((skill, index) => (
-                <div key={skill} className="skill-priority-card">
-                  <strong>{String(index + 1).padStart(2, '0')}</strong>
-                  <div>
-                    <span>{skill}</span>
-                    <small>{skillReason(skill)}</small>
-                  </div>
+        <div className="result-section-grid">
+          <article className="luxury-panel wide-card">
+            <p className="kicker">Sugeridas adicionais</p>
+            <div className="skill-grid">
+              {recommendedSkills.length ? recommendedSkills.map((skill, index) => (
+                <div key={skill}>
+                  <strong>{String(index + 1).padStart(2, '0')} • {skill}</strong>
+                  <span>{skillReason(skill)}</span>
                 </div>
-              )) : (
-                <div className="skill-priority-card">
-                  <strong>OK</strong>
-                  <div>
-                    <span>A carta já tem as principais habilidades da função</span>
-                    <small>revise o texto lido se alguma habilidade nativa não foi reconhecida</small>
-                  </div>
-                </div>
-              )}
+              )) : <p className="panel-note">Nenhuma habilidade adicional segura foi encontrada.</p>}
             </div>
-          </div>
-          <div className="glass-panel stack muted-panel">
-            <h3>Habilidades já lidas</h3>
-            <div className="chip-list small-chips">
-              {card.nativeSkills.length ? card.nativeSkills.map((skill) => <span key={skill}>{skill}</span>) : <span>Nenhuma habilidade nativa lida com segurança</span>}
+          </article>
+          <article className="luxury-panel wide-card">
+            <p className="kicker">Detectadas na carta</p>
+            <div className="chip-cloud">
+              {nativeSkills.length ? nativeSkills.map((skill) => <span key={skill}>{skill}</span>) : <span>Nenhuma habilidade lida</span>}
             </div>
-            <p className="microcopy">Essas habilidades são removidas da recomendação para evitar repetição.</p>
-          </div>
-        </section>
+          </article>
+        </div>
       )}
 
       {tab === 'posicoes' && (
-        <section className="grid-area">
-          <div className="glass-panel stack">
-            <h3>Melhores posições reais</h3>
+        <div className="result-section-grid">
+          <article className="luxury-panel wide-card">
+            <p className="kicker">Posições da carta</p>
             <div className="position-list">
-              {result.positionScores.slice(0, 10).map((item, index) => (
-                <div key={item.code} className={index === 0 ? 'best-position-row' : ''}>
-                  <strong>{String(index + 1).padStart(2, '0')} • {item.label}</strong>
-                  <span>{item.score}/100 • {item.role}{item.cardRating ? ` • rating da carta ${item.cardRating}` : ''}</span>
+              {positionItems.map((item, index) => (
+                <div key={item.code}>
+                  <strong>{item.label}</strong>
+                  <span>{index === 0 ? 'Primária' : item.score >= 90 ? 'Ótima' : item.score >= 82 ? 'Boa' : 'Alternativa'}</span>
+                  <em>{item.role}{item.cardRating ? ` • ${item.cardRating}` : ''}</em>
                 </div>
               ))}
             </div>
-          </div>
-          <div className="glass-panel stack">
-            <h3>Overalls por posição lidos</h3>
-            <div className="data-grid compact-data-grid">
-              {positionRatingItems.length ? positionRatingItems.map(([code, value]) => (
-                <div key={code}><span>{code} → {positionPt(code)}</span><strong>{value}</strong></div>
-              )) : <p className="microcopy">A tabela de posição não foi lida. Revise o OCR ou cole manualmente as linhas CA 90, SA 86, VOL 80 etc.</p>}
+          </article>
+          <article className="luxury-panel wide-card">
+            <p className="kicker">Overalls lidos</p>
+            <div className="data-grid">
+              {positionRatings.length ? positionRatings.map(([code, value]) => (
+                <div key={code}><span>{positionPt(code)}</span><strong>{value}</strong></div>
+              )) : <p className="panel-note">Nenhum overall por posição lido com segurança.</p>}
             </div>
-          </div>
-        </section>
+          </article>
+        </div>
       )}
 
       {tab === 'dados' && (
-        <section className="grid-area">
-          <div className="glass-panel stack">
-            <h3>Dados principais lidos</h3>
-            <div className="data-grid compact-data-grid">
-              {infoItems.map(([label, value]) => (
-                <div key={String(label)}><span>{label}</span><strong>{String(value)}</strong></div>
-              ))}
+        <div className="result-section-grid">
+          <article className="luxury-panel wide-card">
+            <p className="kicker">Dados lidos</p>
+            <div className="data-grid">
+              <div><span>Estilo de jogo</span><strong>{card.playstyle ?? '—'}</strong></div>
+              <div><span>Nível máximo</span><strong>{card.level ?? '—'}</strong></div>
+              <div><span>Total de pontos</span><strong>{result.trainingPointsUsed}/{result.trainingPointsTotal}</strong></div>
+              <div><span>Origem dos pontos</span><strong>{sourceLabel}</strong></div>
+              <div><span>Altura</span><strong>{card.height ? `${card.height} cm` : '—'}</strong></div>
+              <div><span>Peso</span><strong>{card.weight ? `${card.weight} kg` : '—'}</strong></div>
+              <div><span>Idade</span><strong>{card.age ?? '—'}</strong></div>
+              <div><span>OCR</span><strong>100% local</strong></div>
             </div>
-          </div>
-          <div className="glass-panel stack">
-            <h3>Ímpetos / boosters</h3>
-            <div className="chip-list">
+          </article>
+          <article className="luxury-panel wide-card">
+            <p className="kicker">Ímpetos / boosters</p>
+            <div className="chip-cloud purple">
               {card.impetos.length ? card.impetos.map((item) => (
                 <span key={`${item.name}-${item.value ?? ''}`}>{item.name}{item.value ? ` +${item.value}` : ''}{item.active === false ? ' — inativo' : ''}</span>
               )) : <span>Nenhum ímpeto lido</span>}
             </div>
-            {card.specialSkills.length > 0 && <p className="microcopy">Habilidades especiais lidas: {card.specialSkills.join(', ')}</p>}
-          </div>
-          <div className="glass-panel stack wide-panel">
-            <h3>Todos os atributos lidos</h3>
-            <div className="data-grid attributes-grid compact-data-grid">
-              {attributeItems.length ? attributeItems.map(([key, value]) => (
+          </article>
+          <article className="luxury-panel wide-card">
+            <p className="kicker">Atributos</p>
+            <div className="data-grid attributes-grid">
+              {attributes.length ? attributes.map(([key, value]) => (
                 <div key={key}><span>{attributeNamePt(key)}</span><strong>{value}</strong></div>
-              )) : <p className="microcopy">Nenhum atributo lido com segurança.</p>}
+              )) : <p className="panel-note">Nenhum atributo lido com segurança.</p>}
             </div>
-          </div>
-          <div className="glass-panel stack wide-panel">
-            <h3>Modelo de jogador lido</h3>
-            <div className="data-grid compact-data-grid">
-              {physicalItems.length ? physicalItems.map(([key, value]) => (
-                <div key={key}><span>{modelNamePt(key)}</span><strong>{String(value)}</strong></div>
-              )) : <p className="microcopy">Modelo corporal não lido com segurança.</p>}
-            </div>
-          </div>
-        </section>
+          </article>
+        </div>
       )}
-    </div>
+
+      <button className="copy-floating" type="button" onClick={() => copyBuildText(result)}><Copy size={16} /> Copiar ficha</button>
+    </section>
   );
 }
 
@@ -550,12 +539,12 @@ export function CardVisionApp() {
   const [history, setHistory] = useState<SavedAnalysis[]>([]);
   const lastSavedKey = useRef<string | null>(null);
 
-  const canAnalyze = useMemo(() => rawText.trim().length > 2, [rawText]);
+  const canAnalyze = useMemo(() => rawText.trim().length > 2 && !loading, [rawText, loading]);
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem('buildmaster_history_v5');
-      if (stored) setHistory(JSON.parse(stored).slice(0, 8));
+      const stored = localStorage.getItem(HISTORY_KEY);
+      if (stored) setHistory(JSON.parse(stored).slice(0, 6));
     } catch {
       setHistory([]);
     }
@@ -572,26 +561,23 @@ export function CardVisionApp() {
       savedAt: new Date().toLocaleString('pt-BR'),
       rawText,
       playerImage: playerCardImage,
+      fullPreview: preview,
       result
     };
 
     setHistory((current) => {
-      const next = [item, ...current.filter((entry) => entry.result.parsed.playerName !== result.parsed.playerName)].slice(0, 8);
+      const next = [item, ...current.filter((entry) => entry.result.parsed.playerName !== result.parsed.playerName)].slice(0, 6);
       try {
-        localStorage.setItem('buildmaster_history_v5', JSON.stringify(next));
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
       } catch {
-        // Alguns navegadores bloqueiam localStorage em modo privado. O app continua funcionando.
+        // Histórico é opcional.
       }
       return next;
     });
   }, [result, rawText, playerCardImage, preview]);
 
-  function handleLogout() {
-    try {
-      localStorage.removeItem('buildmaster_local_auth_v6_1');
-    } catch {
-      // Ignora bloqueio de localStorage.
-    }
+  function logout() {
+    clearBuildMasterSession();
     window.location.href = '/';
   }
 
@@ -608,7 +594,7 @@ export function CardVisionApp() {
     lastSavedKey.current = `${item.result.parsed.playerName}-${item.result.bestPosition.code}-${item.result.trainingPointsUsed}-${item.result.trainingPointsTotal}`;
     setRawText(item.rawText);
     setPlayerCardImage(item.playerImage);
-    setPreview(item.playerImage);
+    setPreview(item.fullPreview ?? item.playerImage);
     setResult(item.result);
     setStatus(`Análise restaurada: ${item.result.parsed.playerName}.`);
   }
@@ -627,7 +613,7 @@ export function CardVisionApp() {
       const croppedPreview = await createPlayerCardPreview(file);
       if (croppedPreview) setPlayerCardImage(croppedPreview);
 
-      const variants = await createOcrVariants(file, readingMode === 'fast' ? 'fast' : 'precision');
+      const variants = await createOcrVariants(file, readingMode);
       const texts: string[] = [];
 
       for (let index = 0; index < variants.length; index += 1) {
@@ -645,15 +631,16 @@ export function CardVisionApp() {
 
       const mergedText = mergeOcrTexts(...texts);
       setRawText(mergedText);
+
       if (mergedText.trim().length > 2) {
         const autoResult = analyzeCard(mergedText, objective, targetPosition, file.name);
         setResult(autoResult);
-        setStatus('OCR local concluído. Pontos somados pela ficha/nível e posição travada na carta.');
+        setStatus('Carta analisada. Ficha Elite gerada com OCR local.');
       } else {
-        setStatus('Não consegui ler texto suficiente. Tente print direto da tela, com zoom e ficha automática visível.');
+        setStatus('Não consegui ler texto suficiente. Tente print direto da tela com ficha automática visível.');
       }
     } catch {
-      setStatus('Não consegui ler automaticamente. Tente outro print direto da tela com a ficha automática visível.');
+      setStatus('Não consegui ler automaticamente. Tente outro print direto da tela com ficha automática visível.');
     } finally {
       setLoading(false);
     }
@@ -667,179 +654,144 @@ export function CardVisionApp() {
   }
 
   return (
-    <main className="app-frame">
-      <div className="top-command-bar">
-        <div>
-          <span className="secure-dot" />
-          <strong>Sessão protegida</strong>
-          <small>BuildMaster Local Pro v6.1.1</small>
+    <main className="premium-app">
+      <header className="app-topbar luxury-panel">
+        <div className="brand-lockup">
+          <div className="brand-icon"><Sparkles size={19} /></div>
+          <div>
+            <strong>BuildMaster</strong>
+            <span>Local Pro</span>
+          </div>
         </div>
-        <div className="top-actions">
-          <button type="button" className="soft-button mini-button" onClick={resetAnalysis}><RotateCcw size={15} /> Nova análise</button>
-          <button type="button" className="soft-button mini-button logout-button" onClick={handleLogout}><LogOut size={15} /> Sair</button>
+        <div className="session-badge"><ShieldCheck size={16} /> Sessão protegida</div>
+        <div className="topbar-actions">
+          <button type="button" onClick={resetAnalysis}><RotateCcw size={16} /> Nova</button>
+          <button type="button" onClick={logout}><LogOut size={16} /> Sair</button>
         </div>
-      </div>
+      </header>
 
-      <section className="hero compact-hero premium-hero v5-hero">
+      <section className="hero-redesign">
         <div>
-          <div className="brand-pill"><Sparkles size={16} /> BuildMaster Local Pro v6.1.1</div>
-          <h1>Ficha Elite local, privada e mais estável.</h1>
-          <p>Envie o print da carta com a ficha automática visível. O app faz OCR local, soma os pontos reais distribuídos, trava posições fora da carta e monta uma ficha Elite para gameplay real — melhor que a automática do jogo.</p>
+          <p className="kicker"><Sparkles size={16} /> BuildMaster Local Pro</p>
+          <h1>Analise sua carta. Descubra o build Elite.</h1>
+          <p>Envie o print, leia tudo localmente e gere uma ficha mais forte para gameplay real, sem API paga e sem copiar a ficha automática do jogo.</p>
         </div>
-        <div className="hero-badges">
-          <span><ShieldCheck size={16} /> Login privado</span>
-          <span><ScanText size={16} /> OCR local</span>
-          <span><ShieldCheck size={16} /> Auto Guard</span>
-        </div>
+        <div className="orb-ball" aria-hidden="true" />
       </section>
 
-      <section className="main-grid pro-main-grid">
-        <section className="glass-panel input-panel premium-input">
-          <div className="panel-title">
+      <section className="workspace-grid">
+        <aside className="control-panel luxury-panel">
+          <div className="panel-heading">
             <div>
-              <p className="eyebrow">Etapa 1</p>
+              <p className="kicker">Nova análise</p>
               <h2>Imagem da carta</h2>
             </div>
             <Camera size={24} />
           </div>
 
-          <div className="dropzone preview-zone compact-preview">
-            {preview ? <img src={preview} alt="Imagem enviada" /> : (
-              <span><ImagePlus size={34} /> Toque em Buscar print/galeria e selecione o print da carta</span>
+          <div className="upload-box">
+            {preview ? <img src={preview} alt="Print enviado" /> : (
+              <div>
+                <UploadCloud size={36} />
+                <strong>Envie a imagem da sua carta</strong>
+                <span>Use print direto da tela com ficha automática visível.</span>
+              </div>
             )}
           </div>
 
-          <div className="upload-choice-row">
-            <label className="soft-button upload-action primary-upload">
-              <input
-                className="visually-hidden"
-                type="file"
-                accept="image/*"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.currentTarget.value = '';
-                  if (file) void handleFile(file);
-                }}
-              />
-              <UploadCloud size={18} /> Buscar print/galeria
+          <div className="upload-buttons">
+            <label>
+              <input type="file" accept="image/*" onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.currentTarget.value = '';
+                if (file) void handleFile(file);
+              }} />
+              <ImagePlus size={18} /> Buscar print
             </label>
-
-            <label className="soft-button upload-action camera-upload">
-              <input
-                className="visually-hidden"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  event.currentTarget.value = '';
-                  if (file) void handleFile(file);
-                }}
-              />
+            <label>
+              <input type="file" accept="image/*" capture="environment" onChange={(event) => {
+                const file = event.target.files?.[0];
+                event.currentTarget.value = '';
+                if (file) void handleFile(file);
+              }} />
               <Camera size={18} /> Tirar foto
             </label>
           </div>
 
-          <div className="form-grid compact-form-grid">
+          <div className="select-stack">
             <label>
-              Modo de leitura
+              <span>Modo de leitura</span>
               <select value={readingMode} onChange={(event) => setReadingMode(event.target.value as ReadingMode)}>
-                <option value="precision">OCR local premium — sem API paga</option>
-                <option value="fast">Rápido — leitura leve</option>
+                <option value="precision">OCR local premium — mais preciso</option>
+                <option value="fast">OCR rápido — menos passadas</option>
               </select>
             </label>
+
             <label>
-              Objetivo da ficha
+              <span>Objetivo da ficha</span>
               <select value={objective} onChange={(event) => setObjective(event.target.value as Objective)}>
-                {objectives.map((item) => <option key={item.value} value={item.value}>{item.label} — {item.hint}</option>)}
+                {objectives.map((item) => <option key={item.value} value={item.value}>{item.title} — {item.hint}</option>)}
               </select>
             </label>
+
             <label>
-              Posição alvo
+              <span>Posição alvo</span>
               <select value={targetPosition} onChange={(event) => setTargetPosition(event.target.value as PositionCode | 'AUTO')}>
                 {POSITION_LABELS.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
               </select>
             </label>
           </div>
 
-          <div className="review-box">
-            <div className="section-head compact-section-head">
-              <div>
-                <p className="eyebrow">Etapa 2</p>
-                <h3>Dados detectados</h3>
-              </div>
-              <Zap size={18} />
-            </div>
-            <textarea
-              rows={12}
-              value={rawText}
-              onChange={(event) => setRawText(event.target.value)}
-                            placeholder={`O app preenche sozinho. Este campo fica só para conferir ou ajustar em último caso:
-El-Hadji Diouf
-Estilo: Artilheiro
-CA 102  PE 100  PD 100  SA 100
-Nível máximo 32
-Tiroteio 10  Passe 4  Drible 0  Destreza 12  Força nas pernas 8  Bola aérea 4  Defesa 0
-Finalização 91  Velocidade 92  Aceleração 95
-Habilidades: Chute de primeira, Cabeçada...`}
-            />
+          <button className="elite-button generate-button" type="button" onClick={runAnalysis} disabled={!canAnalyze}>
+            {loading ? <Loader2 className="spin" size={18} /> : <Zap size={18} />}
+            {loading ? 'Lendo imagem...' : 'Gerar ficha Elite'}
+          </button>
+
+          <div className="status-card">
+            <ScanText size={18} />
+            <p>{status}</p>
           </div>
 
-          <div className="actions sticky-actions">
-            <button type="button" className="primary-button" disabled={loading || !canAnalyze} onClick={runAnalysis}>
-              {loading ? <Loader2 className="spin" size={18} /> : <Wand2 size={18} />}
-              Gerar ficha Elite
-            </button>
-          </div>
-
-          <p className="status-line">{status}</p>
-          <p className="microcopy upload-help">Modo local: não usa API paga. Para maior precisão, envie print direto da tela com a ficha automática/treino visível; o app soma esses pontos e redistribui melhor.</p>
-
-          <div className="pro-feature-board">
-            <div><ShieldCheck size={16} /><span>Auto Guard</span><small>bloqueia pontos e posições absurdas</small></div>
-            <div><Zap size={16} /><span>Elite Build</span><small>treino pensado para gameplay real</small></div>
-            <div><History size={16} /><span>Histórico</span><small>salvo no próprio celular</small></div>
-          </div>
+          {rawText && (
+            <details className="raw-details">
+              <summary>Dados detectados pelo OCR</summary>
+              <textarea value={rawText} onChange={(event) => setRawText(event.target.value)} spellCheck={false} />
+            </details>
+          )}
 
           {history.length > 0 && (
-            <div className="history-panel">
-              <div className="section-head compact-section-head">
-                <div>
-                  <p className="eyebrow">Últimas análises</p>
-                  <h3>Histórico local</h3>
-                </div>
-                <History size={18} />
-              </div>
-              <div className="history-list">
-                {history.slice(0, 4).map((item) => (
-                  <button key={item.id} type="button" onClick={() => restoreHistory(item)}>
-                    <strong>{item.result.parsed.playerName}</strong>
-                    <span>{item.result.bestPosition.label} • PRI {item.result.pri.overall} • {item.result.trainingPointsUsed}/{item.result.trainingPointsTotal} pts</span>
-                    <small>{item.savedAt}</small>
-                  </button>
-                ))}
-              </div>
+            <div className="history-strip">
+              <p className="kicker"><History size={14} /> Histórico</p>
+              {history.slice(0, 3).map((item) => (
+                <button type="button" key={item.id} onClick={() => restoreHistory(item)}>
+                  <strong>{item.result.parsed.playerName}</strong>
+                  <span>{item.result.bestPosition.label} • {item.result.trainingPointsUsed}/{item.result.trainingPointsTotal}</span>
+                </button>
+              ))}
             </div>
           )}
-        </section>
+        </aside>
 
-        <section className="output-panel">
+        <section className="preview-panel">
           {result ? <ResultCard result={result} playerImage={playerCardImage ?? preview} /> : (
-            <div className="glass-panel empty-result premium-empty">
-              <Sparkles size={42} />
-              <h2>Resultado final</h2>
-              <p>Depois da leitura, o resultado fica separado em abas: resumo, ficha, habilidades, posições e dados lidos.</p>
-              <div className="preview-card-mini">
-                <strong>--</strong><span>CA</span><em>BuildMaster Local</em>
+            <div className="empty-state luxury-panel">
+              <div className="empty-icon"><Wand2 size={34} /></div>
+              <h2>Resultado da análise</h2>
+              <p>Depois da leitura, o resultado aparece como um painel premium com resumo, ficha, habilidades, posições e dados lidos.</p>
+              <div className="empty-card-preview">
+                <strong>--</strong>
+                <span>CA</span>
+                <em>BuildMaster Local</em>
+              </div>
+              <div className="feature-row">
+                <span><ShieldCheck size={15} /> 100% local</span>
+                <span><CheckCircle2 size={15} /> Sem API paga</span>
+                <span><Sparkles size={15} /> Ficha Elite</span>
               </div>
             </div>
           )}
         </section>
       </section>
-
-      <footer className="footer-note">
-        <Download size={16} /> Instale no celular pelo Chrome: menu ⋮ → Adicionar à tela inicial.
-      </footer>
     </main>
   );
 }
