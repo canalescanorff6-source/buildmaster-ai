@@ -195,7 +195,7 @@ const POSITION_ALIASES: Record<PositionCode, string[]> = {
   RMF: ['RMF', 'MD', 'MEIA DIREITA', 'RIGHT MIDFIELDER', 'RIGHT MIDFIELD'],
   AMF: ['AMF', 'MAT', 'MEIA ATACANTE', 'MEIA OFENSIVO', 'ATTACKING MIDFIELDER', 'ATTACKING MIDFIELD'],
   CMF: ['CMF', 'MLG', 'MC', 'MEIA DE LIGACAO', 'MEIA DE LIGAÇÃO', 'MEIA CENTRAL', 'CENTRAL MIDFIELDER', 'CENTRE MIDFIELDER', 'CENTER MIDFIELDER'],
-  DMF: ['DMF', 'VOL', 'VOLANTE', 'DEFENSIVE MIDFIELDER', 'DEFENSIVE MIDFIELD'],
+  DMF: ['DMF', 'DME', 'DM', 'VOL', 'VOLANTE', 'DEFENSIVE MIDFIELDER', 'DEFENSIVE MIDFIELD'],
   CB: ['CB', 'ZAG', 'ZAGUEIRO', 'CENTRE BACK', 'CENTER BACK', 'CENTRAL BACK'],
   LB: ['LB', 'LE', 'LATERAL ESQUERDO', 'LEFT BACK'],
   RB: ['RB', 'LD', 'LATERAL DIREITO', 'RIGHT BACK'],
@@ -600,14 +600,10 @@ function detectPrimaryPositionFromTop(text: string): PositionCode | null {
     }
   }
 
-  // Formato em uma linha só. Em grades como "CA 102 PE 100", a primeira posição da linha é a principal.
-  for (const line of lines.slice(0, 25)) {
-    const leadingPositionThenNumber = line.match(new RegExp(`^(${positionAliases})\s*(8\d|9\d|10\d|11\d)\b`, 'i'));
-    if (leadingPositionThenNumber) {
-      const code = codeFromPositionToken(leadingPositionThenNumber[1]);
-      if (code) return code;
-    }
-
+  // Formato em uma linha só da face da carta: "88 DMF".
+  // Importante: NÃO usamos "DMF 88" como posição principal aqui, porque isso aparece muito na grade de posições
+  // e foi a causa de cartas DMF/VOL virarem CMF/MLG no resultado.
+  for (const line of lines.slice(0, 35)) {
     const leadingNumberThenPosition = line.match(new RegExp(`^(8\d|9\d|10\d|11\d)\s*(${positionAliases})\b`, 'i'));
     if (leadingNumberThenPosition) {
       const code = codeFromPositionToken(leadingNumberThenPosition[2]);
@@ -1506,7 +1502,7 @@ function trainingFor(position: PositionCode, objective: Objective, a: Required<A
 }
 
 function trainingCostRuleText() {
-  return 'Motor Gameplay Real v12: usa o custo real do eFootball, soma a ficha automática visível no print quando ela aparece e redistribui para desempenho real em campo. Não copia a ficha automática do jogo.';
+  return 'Motor Gameplay Real v14: usa o custo real do eFootball, soma a ficha automática visível no print quando ela aparece e redistribui para desempenho real em campo. Não copia a ficha automática do jogo.';
 }
 
 function skillPriority(position: PositionCode, objective: Objective) {
@@ -1667,6 +1663,9 @@ function recommendAdditionalSkills(parsed: ParsedCard, selectedPosition: Positio
     const key = skillKey(skill);
     if (ownedSkillKeys.has(key)) return;
     if (bannedAdditional.has(key)) return;
+    const playstyleValue = normalize(parsed.playstyle ?? '').toLowerCase();
+    const centralDestroyer = /destruidor|destroyer|primeiro volante|ancora|anchor/.test(playstyleValue) && ['DMF', 'CMF', 'CB'].includes(selectedPosition);
+    if (centralDestroyer && ['Chute de primeira', 'Precisão à distância', 'Finalização acrobática', 'Cruzamento preciso', 'Elástico'].some((blocked) => skillKey(blocked) === key)) return;
     candidateScores.set(skill, Math.max(candidateScores.get(skill) ?? 0, score));
   };
 
@@ -1873,7 +1872,7 @@ function parseLevel(text: string): number | null {
 
   // Erro comum: OCR lê "Nível 32" como "Nível 2".
   // Nível 1–9 não deve virar orçamento 2/2, 4/4 etc.
-  const plausible = candidates.filter((value) => value >= 10 && value <= 99);
+  const plausible = candidates.filter((value) => value >= 10 && value <= 45);
   if (plausible.length) return plausible[0];
   return null;
 }

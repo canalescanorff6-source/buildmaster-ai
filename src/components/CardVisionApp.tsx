@@ -178,18 +178,22 @@ async function cropImage(file: File, region: { x: number; y: number; w: number; 
 async function createOcrVariants(file: File, readingMode: ReadingMode): Promise<Array<{ label: string; image: File | Blob }>> {
   const fullContrast = await preprocessImage(file, 'contrast');
   if (readingMode === 'fast') {
+    const cardFace = await cropImage(file, { x: 0.02, y: 0.035, w: 0.31, h: 0.44 }, 1700);
     return [
+      { label: 'face da carta', image: cardFace },
       { label: 'imagem original', image: file },
       { label: 'imagem otimizada', image: fullContrast }
     ];
   }
 
   const sharp = await preprocessImage(file, 'sharp');
+  const cardFace = await cropImage(file, { x: 0.02, y: 0.035, w: 0.31, h: 0.44 }, 1900);
   const topStats = await cropImage(file, { x: 0, y: 0, w: 1, h: 0.48 }, 2300);
   const rightStats = await cropImage(file, { x: 0.34, y: 0.08, w: 0.66, h: 0.74 }, 2350);
   const lowerSkills = await cropImage(file, { x: 0, y: 0.48, w: 1, h: 0.52 }, 2300);
 
   return [
+    { label: 'face da carta', image: cardFace },
     { label: 'imagem original', image: file },
     { label: 'imagem otimizada', image: fullContrast },
     { label: 'imagem reforçada', image: sharp },

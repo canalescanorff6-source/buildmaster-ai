@@ -1,8 +1,8 @@
 {
-  "name": "buildmaster-local-pro-v12-gameplay-impetos",
-  "version": "12.0.0",
+  "name": "buildmaster-local-pro-v14-video-fix",
+  "version": "14.0.0",
   "private": true,
-  "description": "BuildMaster Local Pro v12 - motor de gameplay real por posição, estilo de jogo e ímpetos recomendados, sem API paga.",
+  "description": "BuildMaster Local Pro v14 - correções após análise do vídeo: face da carta, posição principal, nível e habilidades defensivas.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

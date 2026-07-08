@@ -33,3 +33,9 @@ Esta versão adiciona regras baseadas nos prints reais enviados: Ronaldinho AMF 
 
 O app agora evita escolher posição apenas pelo maior overall da grade. Se a posição grande da carta não for lida com segurança, ele usa estilo de jogo + função real para manter o jogador na posição mais coerente em PT-BR.
 
+
+## v14 - correção após análise do vídeo
+
+Esta versão corrige o problema observado no vídeo em que um DMF/VOL destruidor podia virar MLG por leitura da grade de posições. Agora o OCR lê primeiro a face da carta e não usa linhas da grade como `CMF 88` para definir a posição principal.
+
+Também corrige o nível máximo absurdo (`88`) e melhora as habilidades adicionais para jogadores defensivos centrais.
