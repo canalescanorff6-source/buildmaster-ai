@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 const CACHE_NAME = 'buildmaster-local-pro-v10-gameplay-ptbr';
+=======
+const CACHE_NAME = 'buildmaster-local-pro-v9-v7-v8-premium';
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
 const STATIC_ASSETS = ['/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

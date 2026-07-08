@@ -1,8 +1,15 @@
 {
+<<<<<<< HEAD
   "name": "buildmaster-local-pro-v12-gameplay-impetos",
   "version": "12.0.0",
   "private": true,
   "description": "BuildMaster Local Pro v12 - motor de gameplay real por posição, estilo de jogo e ímpetos recomendados, sem API paga.",
+=======
+  "name": "buildmaster-local-pro-v9-v7-v8-premium",
+  "version": "9.0.0",
+  "private": true,
+  "description": "BuildMaster Local Pro v9 - base v7 funcionando com visual e melhorias premium da v8.",
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
   "scripts": {
     "dev": "next dev",
     "build": "next build",

@@ -270,9 +270,12 @@ function copyBuildText(result: AnalysisResult) {
     'Habilidades adicionais:',
     result.recommendedSkills.map((skill, index) => `${index + 1}. ${skill}`).join('\n'),
     '',
+<<<<<<< HEAD
     'Ímpetos recomendados:',
     result.recommendedImpetos.filter((item) => item.tier !== 'evitar').map((item, index) => `${index + 1}. ${item.name} — ${item.attributes.join(', ')}`).join('\n'),
     '',
+=======
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
     'Como usar:',
     result.usageTips.join('\n')
   ].join('\n');
@@ -282,7 +285,11 @@ function copyBuildText(result: AnalysisResult) {
 
 function positionPt(code: string) {
   const labels: Record<string, string> = {
+<<<<<<< HEAD
     CF: 'CA', SS: 'SA', LWF: 'PE', RWF: 'PD', LMF: 'ME', RMF: 'MD', AMF: 'MAT', CMF: 'MLG', DMF: 'VOL', CB: 'ZAG', LB: 'LE', RB: 'LD', GK: 'GOL'
+=======
+    CF: 'CA', SS: 'SA', LWF: 'PE', RWF: 'PD', LMF: 'ME', RMF: 'MD', AMF: 'MAT', CMF: 'MC', DMF: 'VOL', CB: 'ZAG', LB: 'LE', RB: 'LD', GK: 'GOL'
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
   };
   return labels[code] ?? code;
 }
@@ -303,7 +310,10 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
   const positionItems = result.positionScores.slice(0, 8);
   const nativeSkills = card.nativeSkills.slice(0, 8);
   const recommendedSkills = result.recommendedSkills.slice(0, 8);
+<<<<<<< HEAD
   const recommendedImpetos = result.recommendedImpetos.slice(0, 8);
+=======
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
   const positionRatings = Object.entries(card.positionRatings).filter(([, value]) => Number.isFinite(value));
   const attributes = Object.entries(card.attributes).filter(([, value]) => Number.isFinite(value));
   const sourceLabel = card.trainingPointSource === 'TRAINING_READ'
@@ -401,6 +411,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
             <p className="panel-note">{sourceLabel}</p>
           </article>
 
+<<<<<<< HEAD
           <article className="luxury-panel compact-card">
             <p className="kicker">Ímpeto ideal</p>
             <div className="chip-cloud purple">
@@ -409,6 +420,8 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
             <p className="panel-note">Escolhido por posição + estilo + função real.</p>
           </article>
 
+=======
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
           <article className="luxury-panel wide-card">
             <p className="kicker">Como jogar</p>
             <ul className="clean-list">
@@ -514,6 +527,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
             </div>
           </article>
           <article className="luxury-panel wide-card">
+<<<<<<< HEAD
             <p className="kicker">Ímpetos recomendados</p>
             <div className="skill-grid">
               {recommendedImpetos.length ? recommendedImpetos.map((item) => (
@@ -527,6 +541,9 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
 
           <article className="luxury-panel wide-card">
             <p className="kicker">Ímpetos / boosters lidos</p>
+=======
+            <p className="kicker">Ímpetos / boosters</p>
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
             <div className="chip-cloud purple">
               {card.impetos.length ? card.impetos.map((item) => (
                 <span key={`${item.name}-${item.value ?? ''}`}>{item.name}{item.value ? ` +${item.value}` : ''}{item.active === false ? ' — inativo' : ''}</span>

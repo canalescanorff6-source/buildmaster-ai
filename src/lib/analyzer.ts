@@ -413,6 +413,7 @@ function detectPositions(text: string): PositionCode[] {
 
 function codeFromPositionToken(token: string): PositionCode | null {
   const value = normalize(token).toUpperCase().replace(/[^A-ZÀ-Ÿ]/g, ' ').replace(/\s+/g, ' ').trim();
+<<<<<<< HEAD
   for (const [code, aliases] of POSITION_ALIAS_ENTRIES) {
     if (aliases.some((alias) => value === normalize(alias).toUpperCase())) return code;
   }
@@ -575,6 +576,30 @@ function detectExplicitMainPosition(text: string): PositionCode | null {
   const patterns = [
     new RegExp(`(?:posi[cç][aã]o\\s+principal|posição\\s+principal|main\\s*position|primary\\s*position|posicao)\\s*[:=\\-]?\\s*(${tokenGroup})\\b`, 'i'),
     new RegExp(`(?:overall|ovr)\\s*[:=\\-]?\\s*\\d{2,3}\\s*(${tokenGroup})\\b`, 'i')
+=======
+  if (/^(CF|CA|CENTROAVANTE)$/.test(value)) return 'CF';
+  if (/^(SS|SA|SEGUNDO ATACANTE)$/.test(value)) return 'SS';
+  if (/^(LWF|PE|PTE|PONTA ESQUERDA)$/.test(value)) return 'LWF';
+  if (/^(RWF|PD|PTD|PONTA DIREITA)$/.test(value)) return 'RWF';
+  if (/^(LMF|ME|MEIA ESQUERDA)$/.test(value)) return 'LMF';
+  if (/^(RMF|MD|MEIA DIREITA)$/.test(value)) return 'RMF';
+  if (/^(AMF|MAT|MEIA ATACANTE)$/.test(value)) return 'AMF';
+  if (/^(CMF|MC|MEIA CENTRAL)$/.test(value)) return 'CMF';
+  if (/^(DMF|VOL|VOLANTE)$/.test(value)) return 'DMF';
+  if (/^(CB|ZAG|ZAGUEIRO)$/.test(value)) return 'CB';
+  if (/^(LB|LE|LATERAL ESQUERDO)$/.test(value)) return 'LB';
+  if (/^(RB|LD|LATERAL DIREITO)$/.test(value)) return 'RB';
+  if (/^(GK|GOL|GOLEIRO)$/.test(value)) return 'GK';
+  return null;
+}
+
+
+function detectExplicitMainPosition(text: string): PositionCode | null {
+  const compact = normalize(text).replace(/\r?\n/g, ' ');
+  const patterns = [
+    /(?:posi[cç][aã]o\s+principal|posição\s+principal|main\s*position|primary\s*position|posicao)\s*[:=\-]?\s*(CF|CA|SS|SA|LWF|RWF|LMF|RMF|AMF|CMF|DMF|CB|LB|RB|GK|PE|PD|ME|MD|MAT|MC|VOL|ZAG|LE|LD|GOL)\b/i,
+    /(?:overall|ovr)\s*[:=\-]?\s*\d{2,3}\s*(CF|CA|SS|SA|LWF|RWF|LMF|RMF|AMF|CMF|DMF|CB|LB|RB|GK|PE|PD|ME|MD|MAT|MC|VOL|ZAG|LE|LD|GOL)\b/i
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
   ];
   for (const pattern of patterns) {
     const match = compact.match(pattern);
@@ -588,12 +613,20 @@ function detectExplicitMainPosition(text: string): PositionCode | null {
 
 function detectPrimaryPositionFromTop(text: string): PositionCode | null {
   const lines = normalize(text).toUpperCase().split(/\r?\n/).map(cleanLine).filter(Boolean).slice(0, 40);
+<<<<<<< HEAD
   const positionAliases = POSITION_ALIAS_ENTRIES.flatMap(([, aliases]) => aliases).map(escapeRegex).join('|');
+=======
+  const positionAliases = '(CF|CA|SS|SA|LWF|RWF|LMF|RMF|AMF|CMF|DMF|CB|LB|RB|GK|PE|PD|ME|MD|MAT|MC|VOL|ZAG|LE|LD|GOL)';
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
 
   // Formato comum da carta recortada: overall grande e posição logo abaixo. Ex.: "104" na linha anterior e "CA" na linha atual.
   for (let index = 1; index < lines.length; index += 1) {
     const previousNumber = lines[index - 1].match(/\b(8\d|9\d|10\d|11\d)\b/);
+<<<<<<< HEAD
     const currentPosition = lines[index].match(new RegExp(`^(${positionAliases})$`, 'i'));
+=======
+    const currentPosition = lines[index].match(new RegExp(`^${positionAliases}$`, 'i'));
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
     if (previousNumber && currentPosition) {
       const code = codeFromPositionToken(currentPosition[1]);
       if (code) return code;
@@ -602,13 +635,21 @@ function detectPrimaryPositionFromTop(text: string): PositionCode | null {
 
   // Formato em uma linha só. Em grades como "CA 102 PE 100", a primeira posição da linha é a principal.
   for (const line of lines.slice(0, 25)) {
+<<<<<<< HEAD
     const leadingPositionThenNumber = line.match(new RegExp(`^(${positionAliases})\s*(8\d|9\d|10\d|11\d)\b`, 'i'));
+=======
+    const leadingPositionThenNumber = line.match(new RegExp(`^${positionAliases}\s*(8\d|9\d|10\d|11\d)\b`, 'i'));
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
     if (leadingPositionThenNumber) {
       const code = codeFromPositionToken(leadingPositionThenNumber[1]);
       if (code) return code;
     }
 
+<<<<<<< HEAD
     const leadingNumberThenPosition = line.match(new RegExp(`^(8\d|9\d|10\d|11\d)\s*(${positionAliases})\b`, 'i'));
+=======
+    const leadingNumberThenPosition = line.match(new RegExp(`^(8\d|9\d|10\d|11\d)\s*${positionAliases}\b`, 'i'));
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
     if (leadingNumberThenPosition) {
       const code = codeFromPositionToken(leadingNumberThenPosition[2]);
       if (code) return code;
@@ -626,12 +667,34 @@ function detectPositionRatings(text: string): PositionRatings {
     if (value >= 40 && value <= 110 && ratings[code] === undefined) ratings[code] = value;
   };
 
+<<<<<<< HEAD
   const ptMap = POSITION_ALIAS_ENTRIES;
+=======
+  const ptMap: Array<[PositionCode, string[]]> = [
+    ['CF', ['CF', 'CA', 'CENTROAVANTE']],
+    ['SS', ['SS', 'SA', 'SEGUNDO ATACANTE']],
+    ['LWF', ['LWF', 'PE', 'PTE', 'PONTA ESQUERDA']],
+    ['RWF', ['RWF', 'PD', 'PTD', 'PONTA DIREITA']],
+    ['LMF', ['LMF', 'ME', 'MEIA ESQUERDA']],
+    ['RMF', ['RMF', 'MD', 'MEIA DIREITA']],
+    ['AMF', ['AMF', 'MAT', 'MEIA ATACANTE']],
+    ['CMF', ['CMF', 'MC', 'MEIA CENTRAL']],
+    ['DMF', ['DMF', 'VOL', 'VOLANTE']],
+    ['CB', ['CB', 'ZAG', 'ZAGUEIRO']],
+    ['LB', ['LB', 'LE', 'LATERAL ESQUERDO']],
+    ['RB', ['RB', 'LD', 'LATERAL DIREITO']],
+    ['GK', ['GK', 'GOL', 'GOLEIRO']]
+  ];
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
 
   // 1) Leitura clássica: CA 101, CF 101, VOL 97 etc.
   for (const [code, aliases] of ptMap) {
     for (const alias of aliases) {
+<<<<<<< HEAD
       const escaped = escapeRegex(alias);
+=======
+      const escaped = alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
       const match = normalized.match(new RegExp(`\\b${escaped}\\s*[:\\-]?\\s*(\\d{2,3})\\b`, 'i'));
       if (match?.[1]) setRating(code, Number(match[1]));
     }
@@ -643,7 +706,11 @@ function detectPositionRatings(text: string): PositionRatings {
     const line = lines[index];
     for (const [code, aliases] of ptMap) {
       if (ratings[code] !== undefined) continue;
+<<<<<<< HEAD
       const hasPosition = aliases.some((alias) => new RegExp(`\\b${escapeRegex(alias)}\\b`, 'i').test(line));
+=======
+      const hasPosition = aliases.some((alias) => new RegExp(`\\b${alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(line));
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
       if (!hasPosition) continue;
       const nearby = [line, lines[index + 1] ?? '', lines[index + 2] ?? ''].join(' ');
       const number = nearby.match(/\b(\d{2,3})\b/);
@@ -657,7 +724,11 @@ function detectPositionRatings(text: string): PositionRatings {
     const next = lines[index + 1];
     const positionTokens: PositionCode[] = [];
     for (const [code, aliases] of ptMap) {
+<<<<<<< HEAD
       if (aliases.some((alias) => new RegExp(`\\b${escapeRegex(alias)}\\b`, 'i').test(current))) {
+=======
+      if (aliases.some((alias) => new RegExp(`\\b${alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(current))) {
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
         positionTokens.push(code);
       }
     }
@@ -691,11 +762,24 @@ function detectSpecialTag(text: string) {
 function detectPlaystyle(text: string) {
   const normalizedText = normalize(text);
   const styleMap: Array<[RegExp, string]> = [
+<<<<<<< HEAD
     [/classico\s*n[oº]?\s*10|classic\s*no\.?\s*10/i, 'Clássico nº 10'],
     [/jogador\s+de\s+infiltra[cç][aã]o|jogador\s+sem\s+bola|hole\s+player/i, 'Jogador de infiltração'],
     [/meia\s+vers[aá]til|box\s*to\s*box|todo\s+campo/i, 'Meia versátil'],
     [/primeiro\s+volante|(?:^|\s)(ancora|âncora|anchor\s+man)(?:\s|$)/i, 'Primeiro volante'],
     [/destruidor|destroyer/i, 'O destruidor'],
+=======
+    [/homem\s+de\s+[aá]rea|fox\s+in\s+the\s+box/i, 'Homem de área'],
+    [/artilheiro|goal\s+poacher/i, 'Artilheiro'],
+    [/criador\s+de\s+jogadas|creative\s+playmaker/i, 'Criador de jogadas'],
+    [/jogador\s+sem\s+bola|hole\s+player/i, 'Jogador sem bola'],
+    [/atacante\s+matador/i, 'Atacante matador'],
+    [/piv[oô]|target\s+man/i, 'Pivô'],
+    [/ponta\s+prol[ií]fico|prolific\s+winger/i, 'Ponta prolífico'],
+    [/jogador\s+de\s+liga[cç][aã]o|deep\s+lying\s+forward/i, 'Jogador de ligação'],
+    [/flanco\s+m[oó]vel|roaming\s+flank/i, 'Flanco móvel'],
+    [/box\s*to\s*box|todo\s+campo/i, 'Box-to-box'],
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
     [/orquestrador|orchestrator/i, 'Orquestrador'],
     [/defensor\s+criativo|construtor|build\s+up/i, 'Defensor criativo'],
     [/atacante\s+surpresa|extra\s+frontman/i, 'Atacante surpresa'],
@@ -867,10 +951,17 @@ function playstylePositionBonus(position: PositionCode, playstyle?: string | nul
 
   if (/destruidor|destroyer/.test(style)) {
     if (position === 'DMF') return 22;
+<<<<<<< HEAD
     if (position === 'CMF') return 22;
     if (position === 'CB') return 12;
     if (position === 'LB' || position === 'RB') return -10;
     if (position === 'LWF' || position === 'RWF' || position === 'CF' || position === 'SS') return -20;
+=======
+    if (position === 'CMF') return 14;
+    if (position === 'CB') return 10;
+    if (position === 'LB' || position === 'RB') return 4;
+    if (position === 'LWF' || position === 'RWF' || position === 'CF') return -14;
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
   }
 
   if (/construtor|build up/.test(style)) {
@@ -889,6 +980,7 @@ function playstylePositionBonus(position: PositionCode, playstyle?: string | nul
 function preferredPositionFromPlaystyle(playstyle: string | null | undefined, ratings: PositionRatings, attributes: Attributes): PositionCode | null {
   const style = normalize(playstyle ?? '').toLowerCase();
   const hasGoodRating = (code: PositionCode) => Number(ratings[code] ?? 0) >= 75;
+<<<<<<< HEAD
   const rating = (code: PositionCode) => Number(ratings[code] ?? 0);
 
   // Esta função só é usada quando o OCR não conseguiu ler claramente a posição grande da carta.
@@ -957,6 +1049,15 @@ function preferredPositionFromPlaystyle(playstyle: string | null | undefined, ra
   if (/lateral ofensivo|lateral atacante|offensive full|full\s*back\s*finisher/.test(style)) return hasGoodRating('RB') && rating('RB') >= rating('LB') ? 'RB' : 'LB';
   if (/lateral defensivo|defensive full/.test(style)) return hasGoodRating('RB') && rating('RB') >= rating('LB') ? 'RB' : 'LB';
   if (/goleiro/.test(style)) return 'GK';
+=======
+  if (/homem de area|atacante matador|pivo|target man|fox|artilheiro|goal poacher/.test(style)) return 'CF';
+  if (/destruidor|destroyer/.test(style)) return hasGoodRating('DMF') || !hasGoodRating('LB') ? 'DMF' : 'DMF';
+  if (/orquestrador|ancora|anchor/.test(style)) return 'DMF';
+  if (/box-to-box|todo campo/.test(style)) return 'CMF';
+  if (/criador de jogadas|jogador sem bola|creative|hole player/.test(style)) return 'AMF';
+  if (/ponta prolifico|flanco movel|roaming flank|prolific winger/.test(style)) return hasGoodRating('RWF') ? 'RWF' : 'LWF';
+  if (/lateral ofensivo|lateral defensivo|full/.test(style)) return hasGoodRating('RB') && !hasGoodRating('LB') ? 'RB' : 'LB';
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
   if ((attributes.finishing ?? 0) >= 82 && (attributes.defensiveAwareness ?? 0) < 70) return 'CF';
   return null;
 }
@@ -1506,7 +1607,11 @@ function trainingFor(position: PositionCode, objective: Objective, a: Required<A
 }
 
 function trainingCostRuleText() {
+<<<<<<< HEAD
   return 'Motor Gameplay Real v12: usa o custo real do eFootball, soma a ficha automática visível no print quando ela aparece e redistribui para desempenho real em campo. Não copia a ficha automática do jogo.';
+=======
+  return 'Motor Elite Local v6: usa o custo real do eFootball, soma a ficha automática visível no print quando ela aparece e redistribui para desempenho real em campo. Não copia a ficha automática do jogo.';
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
 }
 
 function skillPriority(position: PositionCode, objective: Objective) {
@@ -1822,6 +1927,7 @@ function usageTips(position: PositionCode, objective: Objective, a: Required<Att
 }
 
 function detectMainPosition(positions: PositionCode[], positionRatings: PositionRatings, attributes: Attributes, playstyle?: string | null): PositionCode {
+<<<<<<< HEAD
   const preferred = preferredPositionFromPlaystyle(playstyle, positionRatings, attributes);
   const validRatings = Object.entries(positionRatings)
     .filter((entry): entry is [PositionCode, number] => Number.isFinite(entry[1]) && Number(entry[1]) >= 40 && Number(entry[1]) <= 110)
@@ -1843,9 +1949,18 @@ function detectMainPosition(positions: PositionCode[], positionRatings: Position
     const rating = Number(positionRatings[code] ?? 0);
     if (rating >= 70 && (!bestRating || rating >= bestRating - 14)) return code;
   }
+=======
+  const validRatings = Object.entries(positionRatings)
+    .filter((entry): entry is [PositionCode, number] => Number.isFinite(entry[1]) && Number(entry[1]) >= 40 && Number(entry[1]) <= 110)
+    .map(([code, rating]) => [code, Number(rating) + playstylePositionBonus(code, playstyle)] as [PositionCode, number])
+    .sort((a, b) => b[1] - a[1]);
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
 
   const fromRatings = validRatings[0]?.[0];
   if (fromRatings) return fromRatings;
+
+  const preferred = preferredPositionFromPlaystyle(playstyle, positionRatings, attributes);
+  if (preferred && (!positions.length || positions.includes(preferred))) return preferred;
   if (positions[0]) return positions[0];
   if (preferred) return preferred;
   if ((attributes.defensiveAwareness ?? 0) >= 76 && (attributes.lowPass ?? 0) >= 72) return 'DMF';
@@ -2014,8 +2129,12 @@ export function parseCard(rawText: string, imageFileName?: string | null): Parse
   const playstyle = detectPlaystyle(text);
   const explicitMainPosition = detectExplicitMainPosition(text);
   const primaryPositionFromCard = detectPrimaryPositionFromTop(text);
+<<<<<<< HEAD
   const mainCandidate = explicitMainPosition ?? primaryPositionFromCard ?? detectMainPosition(positions, positionRatings, attributes, playstyle);
   const mainPosition = lockMainPositionByGameplay(mainCandidate, positions, playstyle);
+=======
+  const mainPosition = explicitMainPosition ?? primaryPositionFromCard ?? detectMainPosition(positions, positionRatings, attributes, playstyle);
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
   const nativeSkills = detectSkills(text);
   const specialSkills = nativeSkills.filter((skill) => SPECIAL_SKILL_NAMES.includes(skill));
   const height = readNumber(text, [/altura\s*(\d{3})\s*cm/i, /height\s*(\d{3})\s*cm/i]);
@@ -2049,8 +2168,11 @@ export function parseCard(rawText: string, imageFileName?: string | null): Parse
   confidence += Math.min(8, modelCount);
   confidence += Math.min(6, impetos.length * 2);
   const warnings: string[] = [];
+<<<<<<< HEAD
   warnings.push('Posições convertidas automaticamente para PT-BR: CF→CA, DMF→VOL, CMF→MLG, CB→ZAG, LB→LE, RB→LD, AMF→MAT, LWF→PE, RWF→PD.');
   if (preferredPositionsByPlaystyle(playstyle).length) warnings.push('Motor Gameplay Real ativo: a posição principal foi travada pela função da carta/estilo, não pelo overall mais alto.');
+=======
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
   if (attributeCount < 12) warnings.push('O OCR local leu poucos atributos. O app usou motor seguro por posição, mas quanto mais atributos lidos, melhor fica a ficha.');
   if (Object.keys(positionRatings).length < 4) warnings.push('A grade de posições não foi lida por completo. O app travou a análise na posição principal/estilo para evitar posição absurda.');
   if (!overall && !maxOverall) warnings.push('Overall não identificado. O app estimou a análise pela posição e atributos lidos.');
@@ -2069,11 +2191,15 @@ export function parseCard(rawText: string, imageFileName?: string | null): Parse
           if (rating > 0) return rating >= 75 && (!bestRating || rating >= bestRating - 18);
           return false;
         })
+<<<<<<< HEAD
         .sort((left, right) => {
           const leftWeight = gameplayPositionWeight(left, mainPosition, playstyle) + Number(positionRatings[left] ?? 0) * 0.15;
           const rightWeight = gameplayPositionWeight(right, mainPosition, playstyle) + Number(positionRatings[right] ?? 0) * 0.15;
           return rightWeight - leftWeight;
         })
+=======
+        .sort((left, right) => Number(positionRatings[right] ?? 0) - Number(positionRatings[left] ?? 0))
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
     : [mainPosition];
 
   return {
@@ -2125,6 +2251,7 @@ export function analyzeCard(rawText: string, objective: Objective = 'COMPETITIVE
   const allowedPositions = parsed.positions.length ? parsed.positions : [parsed.mainPosition];
   const positionScores = allowedPositions
     .map((code) => {
+<<<<<<< HEAD
       const rawScore = positionScore(code, attributes, parsed.nativeSkills, parsed.positionRatings) + playstylePositionBonus(code, parsed.playstyle) + gameplayPositionWeight(code, parsed.mainPosition, parsed.playstyle) * 0.18;
       return { code, label: POSITION_PT[code], score: clampDecimal(rawScore, 1, 100), role: roleName(code, attributes), cardRating: parsed.positionRatings[code] ?? null };
     })
@@ -2136,6 +2263,14 @@ export function analyzeCard(rawText: string, objective: Objective = 'COMPETITIVE
   const autoSelectedCode = chooseGameplaySelectedPosition(parsed, positionScores);
   const requestedCode = targetPosition === 'AUTO' ? autoSelectedCode : targetPosition;
   const selectedCode = allowedPositions.includes(requestedCode as PositionCode) ? requestedCode as PositionCode : autoSelectedCode;
+=======
+      const rawScore = positionScore(code, attributes, parsed.nativeSkills, parsed.positionRatings) + playstylePositionBonus(code, parsed.playstyle);
+      return { code, label: POSITION_PT[code], score: clampDecimal(rawScore, 1, 100), role: roleName(code, attributes), cardRating: parsed.positionRatings[code] ?? null };
+    })
+    .sort((left, right) => right.score - left.score);
+  const requestedCode = targetPosition === 'AUTO' ? parsed.mainPosition : targetPosition;
+  const selectedCode = allowedPositions.includes(requestedCode as PositionCode) ? requestedCode as PositionCode : parsed.mainPosition;
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
   const selected = positionScores.find((item) => item.code === selectedCode) ?? positionScores[0];
   const pri = calculatePri(selected.code, attributes, parsed.nativeSkills);
   const tacticalFit = calculateTacticalFit(selected.code, attributes, pri);
@@ -2154,5 +2289,9 @@ export function analyzeCard(rawText: string, objective: Objective = 'COMPETITIVE
     : parsed.confidence >= 60
       ? 'Confiança média. O motor automático compensou dados faltantes com regras seguras de posição e estilo.'
       : 'Confiança baixa. O motor local usou fallback seguro; envie print direto da tela com a ficha automática aberta para aumentar a precisão.';
+<<<<<<< HEAD
   return { parsed, bestPosition: selected, positionScores: positionScores.slice(0, 10), pri, tacticalFit, training, trainingCost, trainingPointsUsed, trainingPointsTotal, trainingPointsRemaining, trainingCostRule: trainingCostRuleText(), recommendedSkills, recommendedImpetos, buildName, strengths, weaknesses, usageTips: tips, note };
+=======
+  return { parsed, bestPosition: selected, positionScores: positionScores.slice(0, 10), pri, tacticalFit, training, trainingCost, trainingPointsUsed, trainingPointsTotal, trainingPointsRemaining, trainingCostRule: trainingCostRuleText(), recommendedSkills, buildName, strengths, weaknesses, usageTips: tips, note };
+>>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
 }
