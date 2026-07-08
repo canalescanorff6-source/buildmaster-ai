@@ -1,41 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
-const PUBLIC_FILE = /\.(.*)$/;
-
-function sessionToken() {
-  return process.env.BUILDMASTER_SESSION_TOKEN ?? 'buildmaster-local-v6-thiago-secure-session';
-}
-
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  if (
-    pathname === '/login' ||
-    pathname.startsWith('/api/login') ||
-    pathname.startsWith('/api/logout') ||
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/icons') ||
-    pathname === '/manifest.webmanifest' ||
-    pathname === '/sw.js' ||
-    PUBLIC_FILE.test(pathname)
-  ) {
-    return NextResponse.next();
-  }
-
-  const session = request.cookies.get('bm_session')?.value;
-  const isLoggedIn = session === sessionToken();
-
-  if (!isLoggedIn) {
-    if (pathname.startsWith('/api/')) {
-      return NextResponse.json({ ok: false, error: 'Login necessário.' }, { status: 401 });
-    }
-
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = '/login';
-    loginUrl.searchParams.set('from', pathname);
-    return NextResponse.redirect(loginUrl);
-  }
-
+// BuildMaster Local Pro v6.2
+// Middleware neutralizado de propósito.
+// Versões antigas redirecionavam para /login usando cookie da Vercel.
+// O login atual é 100% local no navegador, então este arquivo apenas libera a navegação.
+export function middleware(_request: NextRequest) {
   return NextResponse.next();
 }
 

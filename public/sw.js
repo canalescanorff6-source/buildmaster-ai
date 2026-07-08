@@ -1,4 +1,4 @@
-const CACHE_NAME = 'buildmaster-local-v6-1-login-hotfix-20260708a';
+const CACHE_NAME = 'buildmaster-local-v6-2-login-noloop-20260708b';
 const STATIC_ASSETS = ['/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

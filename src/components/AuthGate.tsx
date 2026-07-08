@@ -135,19 +135,14 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-export function AuthGate({ children, loginPage = false }: { children?: ReactNode; loginPage?: boolean }) {
+export function AuthGate({ children }: { children?: ReactNode; loginPage?: boolean }) {
   const [ready, setReady] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    const isAuthenticated = hasValidLocalSession();
-    setAuthenticated(isAuthenticated);
+    setAuthenticated(hasValidLocalSession());
     setReady(true);
-
-    if (loginPage && isAuthenticated) {
-      window.location.replace('/');
-    }
-  }, [loginPage]);
+  }, []);
 
   if (!ready) {
     return (
@@ -155,27 +150,14 @@ export function AuthGate({ children, loginPage = false }: { children?: ReactNode
         <section className="login-card glass-panel login-loading-card">
           <p className="eyebrow">BuildMaster</p>
           <h2>Verificando acesso...</h2>
+          <p className="microcopy">Se esta tela ficar parada, limpe o cache do site e confirme se o arquivo middleware.ts novo foi enviado ao GitHub.</p>
         </section>
       </main>
     );
   }
 
   if (!authenticated) {
-    return <LoginScreen onSuccess={() => {
-      setAuthenticated(true);
-      if (loginPage) window.location.replace('/');
-    }} />;
-  }
-
-  if (loginPage) {
-    return (
-      <main className="login-page">
-        <section className="login-card glass-panel login-loading-card">
-          <p className="eyebrow">BuildMaster</p>
-          <h2>Entrando...</h2>
-        </section>
-      </main>
-    );
+    return <LoginScreen onSuccess={() => setAuthenticated(true)} />;
   }
 
   return <>{children}</>;

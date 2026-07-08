@@ -1,8 +1,8 @@
 {
-  "name": "buildmaster-local-pro-v6-1-login-hotfix",
-  "version": "6.1.0",
+  "name": "buildmaster-local-pro-v6-2-login-noloop",
+  "version": "6.2.0",
   "private": true,
-  "description": "BuildMaster Local Pro v6.1 - login local corrigido, sem middleware/cookie, OCR local e motor elite para eFootball.",
+  "description": "BuildMaster Local Pro v6.2 - login local sem loop, sem middleware/cookie, OCR local e motor elite para eFootball.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
