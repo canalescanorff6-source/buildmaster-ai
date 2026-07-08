@@ -13,11 +13,7 @@ export type LocalCardRule = {
 export const LOCAL_CARD_RULES: LocalCardRule[] = [
   { id: 'edgar-davids', match: ['edgar davids', 'davids', 'e. davids'], mainPosition: 'DMF', playstyle: 'O destruidor', bestPositions: ['DMF', 'CMF', 'CB'], avoidPositions: ['LB', 'RB', 'LWF', 'RWF', 'CF', 'SS', 'GK'], note: 'Regra local: Davids é destruidor central; mesmo com LE/LD alto no grid, o foco competitivo deve ser VOL/MLG.' },
   { id: 'gattuso', match: ['gattuso', 'g. gattuso', 'gennaro gattuso'], mainPosition: 'DMF', playstyle: 'O destruidor', bestPositions: ['DMF', 'CMF', 'CB'], avoidPositions: ['LB', 'RB', 'LWF', 'RWF', 'CF', 'SS'], note: 'Regra local: destruidor rende melhor centralizado como VOL/MLG, não como lateral ou atacante.' },
-<<<<<<< HEAD
   { id: 'maldini', match: ['maldini', 'paolo maldini'], mainPosition: 'CB', playstyle: 'Defensor criativo', bestPositions: ['CB', 'LB'], avoidPositions: ['CF', 'SS', 'AMF', 'LWF', 'RWF'], note: 'Regra local: priorizar defesa, cobertura e jogo aéreo antes de GER.' },
-=======
-  { id: 'maldini', match: ['maldini', 'paolo maldini'], mainPosition: 'CB', playstyle: 'Defensor criativo', bestPositions: ['CB', 'LB'], avoidPositions: ['CF', 'SS', 'AMF', 'LWF', 'RWF'], note: 'Regra local: priorizar defesa, cobertura e jogo aéreo antes de overall.' },
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   { id: 'vieira', match: ['vieira', 'patrick vieira'], mainPosition: 'DMF', playstyle: 'O destruidor', bestPositions: ['DMF', 'CMF'], avoidPositions: ['LB', 'RB', 'CF', 'SS', 'LWF', 'RWF'], note: 'Regra local: volante físico de pressão e interceptação.' },
   { id: 'tchouameni', match: ['tchouameni', 'tchouaméni', 'aurelien tchouameni'], mainPosition: 'DMF', playstyle: 'Primeiro volante', bestPositions: ['DMF', 'CMF', 'CB'], avoidPositions: ['CF', 'SS', 'LWF', 'RWF'], note: 'Regra local: foco em proteção da entrada da área e saída curta.' },
   { id: 'beckenbauer', match: ['beckenbauer', 'franz beckenbauer'], mainPosition: 'CB', playstyle: 'Defensor criativo', bestPositions: ['CB', 'DMF', 'CMF'], avoidPositions: ['CF', 'LWF', 'RWF'], note: 'Regra local: zagueiro construtor, pode render como VOL se atributos permitirem.' },
@@ -30,11 +26,7 @@ export const LOCAL_CARD_RULES: LocalCardRule[] = [
   { id: 'kante', match: ['kante', 'kanté', 'n. kante', 'n golo kante'], mainPosition: 'DMF', playstyle: 'O destruidor', bestPositions: ['DMF', 'CMF'], avoidPositions: ['CF', 'SS', 'LWF', 'RWF', 'GK'], note: 'Regra local: motor de pressão central, não lateral ou atacante.' },
   { id: 'ronaldinho', match: ['ronaldinho', 'ronaldinho gaucho'], mainPosition: 'AMF', playstyle: 'Armador criativo', bestPositions: ['AMF', 'LWF', 'SS'], avoidPositions: ['CB', 'DMF', 'LB', 'RB', 'GK'], note: 'Regra local: criatividade, drible e último passe.' },
   { id: 'cristiano-ronaldo', match: ['cristiano ronaldo', 'c. ronaldo', 'ronaldo'], mainPosition: 'CF', playstyle: 'Atacante matador', bestPositions: ['CF', 'LWF'], avoidPositions: ['CB', 'DMF', 'LB', 'RB', 'GK'], note: 'Regra local: finalização, ataque ao espaço e jogo aéreo.' },
-<<<<<<< HEAD
   { id: 'haaland', match: ['haaland', 'erling haaland', 'e. haaland'], mainPosition: 'CF', playstyle: 'Atacante matador', bestPositions: ['CF'], avoidPositions: ['AMF', 'CMF', 'DMF', 'CB', 'LB', 'RB', 'GK'], note: 'Regra local: centroavante de área; não converter por GER lateral/meia.' },
-=======
-  { id: 'haaland', match: ['haaland', 'erling haaland', 'e. haaland'], mainPosition: 'CF', playstyle: 'Atacante matador', bestPositions: ['CF'], avoidPositions: ['AMF', 'CMF', 'DMF', 'CB', 'LB', 'RB', 'GK'], note: 'Regra local: centroavante de área; não converter por overall lateral/meia.' },
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   { id: 'rodri', match: ['rodri', 'rodrigo hernandez', 'rodri hernandez'], mainPosition: 'DMF', playstyle: 'Orquestrador', bestPositions: ['DMF', 'CMF'], avoidPositions: ['CF', 'SS', 'LWF', 'RWF', 'GK'], note: 'Regra local: VOL de passe e posicionamento.' },
   { id: 'van-dijk', match: ['van dijk', 'virgil van dijk'], mainPosition: 'CB', playstyle: 'Defensor criativo', bestPositions: ['CB'], avoidPositions: ['CF', 'SS', 'AMF', 'LWF', 'RWF', 'GK'], note: 'Regra local: zagueiro físico/aéreo; priorizar ZAG.' },
   { id: 'cafu', match: ['cafu', 'marcos cafu'], mainPosition: 'RB', playstyle: 'Lateral ofensivo', bestPositions: ['RB', 'RMF'], avoidPositions: ['CF', 'CB', 'GK'], note: 'Regra local: lateral de corredor com velocidade e cruzamento.' },

@@ -85,13 +85,8 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
       <section className="auth-card luxury-panel">
         <div className="auth-logo-mark"><Sparkles size={34} /></div>
         <p className="auth-app-name">BuildMaster</p>
-<<<<<<< HEAD
         <h1>Elite Tático</h1>
         <p className="auth-subtitle">Central premium local, privada e focada em desempenho real.</p>
-=======
-        <h1>Local Pro</h1>
-        <p className="auth-subtitle">Análise local, privada e mais estável.</p>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
 
         <div className="auth-security-note">
           <LockKeyhole size={18} />

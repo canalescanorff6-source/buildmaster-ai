@@ -41,21 +41,12 @@ type SavedAnalysis = {
   result: AnalysisResult;
 };
 
-<<<<<<< HEAD
 const HISTORY_KEY = 'buildmaster_history_v24_tatico_premium';
 const CALIBRATION_KEY = 'buildmaster_ocr_zones_v24_tatico_premium';
 const LEARNING_KEY = 'buildmaster_local_learning_v24';
 
 const objectives: Array<{ value: Objective; title: string; hint: string }> = [
   { value: 'COMPETITIVE', title: 'Desempenho máximo', hint: 'rendimento real em campo, não GER alto' },
-=======
-const HISTORY_KEY = 'buildmaster_history_v22_elite_hybrid';
-const CALIBRATION_KEY = 'buildmaster_ocr_zones_v22_elite_hybrid';
-const LEARNING_KEY = 'buildmaster_local_learning_v22';
-
-const objectives: Array<{ value: Objective; title: string; hint: string }> = [
-  { value: 'COMPETITIVE', title: 'Desempenho máximo', hint: 'rendimento real em campo, não overall' },
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   { value: 'FINISHER', title: 'Finalizador', hint: 'gols, área e chute' },
   { value: 'CREATOR', title: 'Criador', hint: 'passe, controle e assistência' },
   { value: 'DRIBBLER', title: 'Driblador', hint: 'giro curto e 1 contra 1' },
@@ -105,7 +96,6 @@ type LearnedCardMemory = {
 };
 
 const formations: Array<{ value: TacticalFormation; label: string }> = [
-<<<<<<< HEAD
   { value: 'AUTO', label: 'Automático inteligente' },
   { value: '4-2-2-2', label: '4-2-2-2 — 2 meias + 2 atacantes' },
   { value: '4-3-3', label: '4-3-3 — pontas abertos' },
@@ -250,24 +240,6 @@ const formationGuides: Record<Exclude<TacticalFormation, 'AUTO'>, FormationGuide
   }
 };
 
-=======
-  { value: 'AUTO', label: 'Automático' },
-  { value: '4-2-2-2', label: '4-2-2-2 — dois meias/dupla central' },
-  { value: '4-3-3', label: '4-3-3 — pontas e amplitude' },
-  { value: '4-1-2-3', label: '4-1-2-3 — um VOL + dois meias' },
-  { value: '3-2-4-1', label: '3-2-4-1 — cobertura e alas/meias' }
-];
-
-const tacticalStyles: Array<{ value: TacticalStyle; label: string }> = [
-  { value: 'AUTO', label: 'Automático' },
-  { value: 'PASSE_CURTO', label: 'Passe curto' },
-  { value: 'CONTRA_ATAQUE_RAPIDO', label: 'Contra-ataque rápido' },
-  { value: 'POSSE_DE_BOLA', label: 'Posse de bola' },
-  { value: 'BOLA_LONGA', label: 'Bola longa' },
-  { value: 'PRESSAO_ALTA', label: 'Pressão alta' }
-];
-
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
 function zoneKeyLabel(key: string) {
   return DEFAULT_OCR_ZONES.find((zone) => zone.key === key)?.label ?? key;
 }
@@ -501,11 +473,7 @@ function copyBuildText(result: AnalysisResult) {
     .join('\n');
 
   const text = [
-<<<<<<< HEAD
     `BuildMaster Elite Tático v24 — ${result.parsed.playerName}`,
-=======
-    `BuildMaster Elite Studio v22 — ${result.parsed.playerName}`,
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
     `Função: ${result.buildName}`,
     `Melhor posição: ${result.bestPosition.label}`,
     `PRI: ${result.pri.GER}`,
@@ -514,7 +482,7 @@ function copyBuildText(result: AnalysisResult) {
     'Plano Elite:',
     training,
     '',
-    'Skills adicionais:',
+    'Habilidades adicionais:',
     result.recommendedSkills.map((skill, index) => `${index + 1}. ${skill}`).join('\n'),
     '',
     'Ímpetos recomendados:',
@@ -549,11 +517,7 @@ function trainingSummary(plan: Record<string, number>) {
 function ResultCard({ result, playerImage }: { result: AnalysisResult; playerImage: string | null }) {
   const [tab, setTab] = useState<ResultTab>('resumo');
   const card = result.parsed;
-<<<<<<< HEAD
   const GER = card.maxOverall ?? card.overall ?? '--';
-=======
-  const overall = card.maxOverall ?? card.overall ?? '--';
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   const trainingItems = Object.entries(result.training).filter(([, value]) => Number(value) > 0);
   const pointPercent = Math.min(100, Math.round((result.trainingPointsUsed / Math.max(1, result.trainingPointsTotal)) * 100));
   const positionItems = result.positionScores.slice(0, 8);
@@ -578,11 +542,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
           {playerImage && <img src={playerImage} alt={`Imagem de ${card.playerName}`} />}
           <div className="card-shine" />
           <div className="card-number">
-<<<<<<< HEAD
             <strong>{GER}</strong>
-=======
-            <strong>{overall}</strong>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
             <span>{card.mainPositionPt}</span>
           </div>
           <em>{card.playstyle ?? 'BuildMaster'}</em>
@@ -592,21 +552,12 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
           <p className="kicker">Painel</p>
           <h2>{card.playerName}</h2>
           <div className="playstyle-pill">{card.playstyle ?? 'Estilo não lido'}</div>
-<<<<<<< HEAD
           <p className="identity-note">Identidade preservada: {card.mainPositionPt}{card.playstyle ? ` • ${card.playstyle}` : ''}. O programa não altera a posição/estilo da carta; só recomenda abaixo onde ela rende mais.</p>
           <div className="metric-grid">
             <div><span>GER lido</span><strong>{GER}</strong></div>
             <div><span>Pos. carta</span><strong>{card.mainPositionPt}</strong></div>
             <div><span>Melhor pos.</span><strong>{result.bestPosition.label}</strong></div>
             <div><span>PRI em campo</span><strong>{result.pri.GER}</strong></div>
-=======
-          <p className="identity-note">Identidade preservada: {card.mainPositionPt}{card.playstyle ? ` • ${card.playstyle}` : ''}. O app não altera a posição/estilo do card; só recomenda abaixo onde rende mais.</p>
-          <div className="metric-grid">
-            <div><span>GER lido</span><strong>{overall}</strong></div>
-            <div><span>Pos. carta</span><strong>{card.mainPositionPt}</strong></div>
-            <div><span>Melhor pos.</span><strong>{result.bestPosition.label}</strong></div>
-            <div><span>PRI gameplay</span><strong>{result.pri.overall}</strong></div>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
             <div><span>Confiança</span><strong>{card.confidence}%</strong></div>
             <div className="wide-metric"><span>Pontos totais</span><strong>{result.trainingPointsUsed}/{result.trainingPointsTotal}</strong></div>
           </div>
@@ -623,11 +574,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
         {[
           ['resumo', 'Painel'],
           ['ficha', 'Plano'],
-<<<<<<< HEAD
           ['habilidades', 'Habilidades'],
-=======
-          ['habilidades', 'Skills'],
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
           ['posicoes', 'Funções'],
           ['dados', 'Base técnica']
         ].map(([value, label]) => (
@@ -663,11 +610,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
           </article>
 
           <article className="luxury-panel compact-card">
-<<<<<<< HEAD
             <p className="kicker">Habilidades adicionais</p>
-=======
-            <p className="kicker">Skills adicionais</p>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
             <div className="chip-cloud purple">
               {recommendedSkills.length ? recommendedSkills.slice(0, 4).map((skill) => <span key={skill}>{skill}</span>) : <span>Nenhuma recomendação segura</span>}
             </div>
@@ -711,11 +654,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
             <div className="section-title-row">
               <div>
                 <p className="kicker">Distribuição de pontos</p>
-<<<<<<< HEAD
                 <h3>Plano Elite de desempenho</h3>
-=======
-                <h3>Plano Elite de gameplay</h3>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
               </div>
               <span>{result.trainingPointsUsed}/{result.trainingPointsTotal}</span>
             </div>
@@ -742,11 +681,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
                   <span>{item.recommended}</span>
                   <strong>{item.difference > 0 ? `+${item.difference}` : item.difference}</strong>
                 </div>
-<<<<<<< HEAD
               )) : <p className="panel-note">O plano automático não foi lido; comparação indisponível.</p>}
-=======
-              )) : <p className="panel-note">Plano automática não foi lida; comparação indisponível.</p>}
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
             </div>
           </article>
 
@@ -805,13 +740,8 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
               {cardPositions.map((code, index) => (
                 <div key={code}>
                   <strong>{positionPt(code)}</strong>
-<<<<<<< HEAD
                   <span>{index === 0 ? 'Posição da carta' : 'Compatível'}</span>
                   <em>{code === card.mainPosition ? `Preservada na carta • ${card.playstyle ?? 'estilo não lido'}` : `Registrada no painel${card.positionRatings[code] ? ` • ${card.positionRatings[code]}` : ''}`}</em>
-=======
-                  <span>{index === 0 ? 'Posição do card' : 'Compatível'}</span>
-                  <em>{code === card.mainPosition ? `Preservada no card • ${card.playstyle ?? 'estilo não lido'}` : `Registrada no painel${card.positionRatings[code] ? ` • ${card.positionRatings[code]}` : ''}`}</em>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
                 </div>
               ))}
             </div>
@@ -819,11 +749,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
           </article>
 
           <article className="luxury-panel wide-card">
-<<<<<<< HEAD
             <p className="kicker">Ranking de rendimento real</p>
-=======
-            <p className="kicker">Ranking de gameplay real</p>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
             <div className="position-list">
               {positionItems.map((item, index) => (
                 <div key={item.code}>
@@ -833,7 +759,6 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
                 </div>
               ))}
             </div>
-<<<<<<< HEAD
             <p className="panel-note">Aqui sim o app pode recomendar outra posição, mas sem alterar a identidade original da carta.</p>
           </article>
 
@@ -843,17 +768,6 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
               {positionRatings.length ? positionRatings.map(([code, value]) => (
                 <div key={code}><span>{positionPt(code)}</span><strong>{value}</strong></div>
               )) : <p className="panel-note">Nenhum GER por posição lido com segurança.</p>}
-=======
-            <p className="panel-note">Aqui sim o app pode recomendar outra posição, mas sem alterar a identidade da carta no card principal.</p>
-          </article>
-
-          <article className="luxury-panel wide-card">
-            <p className="kicker">Overalls lidos</p>
-            <div className="data-grid">
-              {positionRatings.length ? positionRatings.map(([code, value]) => (
-                <div key={code}><span>{positionPt(code)}</span><strong>{value}</strong></div>
-              )) : <p className="panel-note">Nenhum overall por posição lido com segurança.</p>}
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
             </div>
           </article>
         </div>
@@ -862,11 +776,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
       {tab === 'dados' && (
         <div className="result-section-grid">
           <article className="luxury-panel wide-card">
-<<<<<<< HEAD
             <p className="kicker">Dados técnicos lidos</p>
-=======
-            <p className="kicker">Base técnica lidos</p>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
             <div className="data-grid">
               <div><span>Posição da carta</span><strong>{card.mainPositionPt}</strong></div>
               <div><span>Estilo de jogo</span><strong>{card.playstyle ?? '—'}</strong></div>
@@ -877,11 +787,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
               <div><span>Altura</span><strong>{card.height ? `${card.height} cm` : '—'}</strong></div>
               <div><span>Peso</span><strong>{card.weight ? `${card.weight} kg` : '—'}</strong></div>
               <div><span>Idade</span><strong>{card.age ?? '—'}</strong></div>
-<<<<<<< HEAD
               <div><span>Entrada</span><strong>Manual de precisão</strong></div>
-=======
-              <div><span>Entrada</span><strong>Manual premium</strong></div>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
             </div>
           </article>
           <article className="luxury-panel wide-card">
@@ -897,11 +803,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
           </article>
 
           <article className="luxury-panel wide-card">
-<<<<<<< HEAD
             <p className="kicker">Ímpetos lidos</p>
-=======
-            <p className="kicker">Ímpetos / boosters lidos</p>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
             <div className="chip-cloud purple">
               {card.impetos.length ? card.impetos.map((item) => (
                 <span key={`${item.name}-${item.value ?? ''}`}>{item.name}{item.value ? ` +${item.value}` : ''}{item.active === false ? ' — inativo' : ''}</span>
@@ -978,11 +880,7 @@ function ReviewPanel({
         <div className="result-intro">
           <p className="kicker"><ShieldCheck size={16} /> Auditoria Elite</p>
           <h2>Revise antes do plano final</h2>
-<<<<<<< HEAD
           <p className="review-copy">Fluxo de precisão: você confirma posição, estilo, pontos e atributos antes de finalizar. Assim o programa não depende de leitura automática e reduz erros de ficha.</p>
-=======
-          <p className="review-copy">Fluxo manual premium: você confirma posição, estilo, pontos e atributos antes de finalizar. Assim o programa não depende de leitura automática e reduz erros de ficha.</p>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
           <div className="metric-grid">
             <div><span>Confiança</span><strong>{card.confidence}%</strong></div>
             <div><span>Posição lida</span><strong>{card.mainPositionPt}</strong></div>
@@ -1054,11 +952,7 @@ function ReviewPanel({
               </label>
             ))}
           </div>
-<<<<<<< HEAD
           <p className="panel-note">Preencha os valores que você deseja usar na ficha. Os demais dados seguem o motor local, banco de cartas e regras premium de desempenho em campo.</p>
-=======
-          <p className="panel-note">Preencha os valores que você deseja usar na ficha. O restante segue o motor local, banco de cartas e regras premium de gameplay.</p>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
         </article>
 
         <article className="luxury-panel wide-card">
@@ -1068,11 +962,7 @@ function ReviewPanel({
               <div key={item.code}>
                 <strong>{item.label}</strong>
                 <span>{item.reason}</span>
-<<<<<<< HEAD
                 <em>{item.rating ? `Nota lida ${item.rating}` : 'Sem depender de GER'}</em>
-=======
-                <em>{item.rating ? `Nota lida ${item.rating}` : 'Sem depender de overall'}</em>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
               </div>
             ))}
           </div>
@@ -1118,11 +1008,7 @@ export function CardVisionApp() {
   const [qualityReport, setQualityReport] = useState<PrintQualityReport | null>(null);
   const [formation, setFormation] = useState<TacticalFormation>('AUTO');
   const [teamStyle, setTeamStyle] = useState<TacticalStyle>('AUTO');
-<<<<<<< HEAD
   const [status, setStatus] = useState('Escolha o Leitor Elite de Carta ou a Central de Precisão Manual. Tudo roda localmente, sem IA paga.');
-=======
-  const [status, setStatus] = useState('Escolha Scanner Elite por Print ou Console Pro Manual. Tudo roda localmente, sem IA paga.');
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [draftResult, setDraftResult] = useState<AnalysisResult | null>(null);
@@ -1133,10 +1019,7 @@ export function CardVisionApp() {
 
   const canProceed = useMemo(() => !loading && rawText.trim().length > 2, [rawText, loading]);
   const tacticalProfile = useMemo<TacticalProfile>(() => ({ formation, style: teamStyle }), [formation, teamStyle]);
-<<<<<<< HEAD
   const selectedFormationGuide = formation === 'AUTO' ? null : formationGuides[formation];
-=======
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
 
   useEffect(() => {
     try {
@@ -1210,11 +1093,7 @@ export function CardVisionApp() {
     setCardPositionOverride('AUTO');
     setPlaystyleOverride('AUTO');
     setQualityReport(null);
-<<<<<<< HEAD
     setStatus('Central reiniciada. Escolha o Leitor Elite de Carta ou a Central de Precisão Manual para começar.');
-=======
-    setStatus('Console reiniciado. Escolha Scanner Elite por Print ou Console Pro Manual para começar.');
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   }
 
   function restoreHistory(item: SavedAnalysis) {
@@ -1242,11 +1121,7 @@ export function CardVisionApp() {
     setRawText('');
     setOcrDone(false);
     setLoading(false);
-<<<<<<< HEAD
     setStatus('Imagem selecionada. Confira posição, estilo e tática antes de executar a leitura premium.');
-=======
-    setStatus('Imagem selecionada. Confira as travas opcionais se o OCR costuma errar posição/estilo e toque em Prosseguir.');
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
 
     const croppedPreview = await createPlayerCardPreview(file).catch(() => null);
     if (croppedPreview) setPlayerCardImage(croppedPreview);
@@ -1309,36 +1184,22 @@ export function CardVisionApp() {
       'NÍVEL MÁXIMO: ',
       'PONTOS TOTAIS: ',
       '',
-<<<<<<< HEAD
       'Preencha os dados no painel de auditoria. Este modo não usa leitura automática nem depende do print.'
-=======
-      'Preencha os dados no painel de auditoria. Este modo não usa OCR nem leitura automática.'
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
     ].join('\n');
     setManualMode(true);
     setSelectedFile(null);
     setPreview(null);
     setPlayerCardImage(null);
-<<<<<<< HEAD
     setFileName('entrada-manual-precisao');
-=======
-    setFileName('entrada-manual-premium');
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
     setRawText(template);
     setOcrDone(true);
     setResult(null);
     setCardPositionOverride('CF');
     setPlaystyleOverride('AUTO');
     setManualFields({ playerName: '', level: '', trainingPointsTotal: '', attributes: {} });
-<<<<<<< HEAD
     const nextResult = analyzeCard(template, objective, targetPosition, 'entrada-manual-precisao', tacticalProfile);
     setDraftResult(nextResult);
     setStatus('Central de Precisão Manual aberta. Preencha os dados, revise e finalize o plano premium.');
-=======
-    const nextResult = analyzeCard(template, objective, targetPosition, 'entrada-manual-premium', tacticalProfile);
-    setDraftResult(nextResult);
-    setStatus('Console Elite Manual aberto. Preencha os dados, revise e finalize o plano premium.');
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   }
 
   async function analyzeSelectedImage() {
@@ -1354,11 +1215,7 @@ export function CardVisionApp() {
     setManualMode(false);
     setRawText('');
     setOcrDone(false);
-<<<<<<< HEAD
     setStatus('Preparando imagem para leitura local premium...');
-=======
-    setStatus('Preparando imagem para OCR local premium...');
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
 
     try {
       const Tesseract = await import('tesseract.js');
@@ -1464,11 +1321,7 @@ export function CardVisionApp() {
           <div className="brand-icon"><Sparkles size={19} /></div>
           <div>
             <strong>BuildMaster</strong>
-<<<<<<< HEAD
             <span>Elite Tático</span>
-=======
-            <span>Elite Studio</span>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
           </div>
         </div>
         <div className="session-badge"><ShieldCheck size={16} /> Sessão protegida</div>
@@ -1480,15 +1333,9 @@ export function CardVisionApp() {
 
       <section className="hero-redesign">
         <div>
-<<<<<<< HEAD
           <p className="kicker"><Sparkles size={16} /> BuildMaster Elite Tático</p>
           <h1>Monte uma ficha premium por print ou manual, com auditoria antes do plano final.</h1>
           <p>Use o Leitor Elite de Carta para leitura local ou o Central de Precisão Manual para máxima precisão. GER é apenas referência; o motor prioriza função, atributos úteis, estilo e melhor posicionamento.</p>
-=======
-          <p className="kicker"><Sparkles size={16} /> BuildMaster Elite Studio</p>
-          <h1>Monte uma ficha premium por print ou manual, com auditoria antes do plano final.</h1>
-          <p>Use o Scanner Elite por Print para leitura local ou o Console Pro Manual para máxima precisão. Overall é apenas referência; o motor prioriza função, atributos úteis, estilo e melhor posicionamento.</p>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
         </div>
         <div className="orb-ball" aria-hidden="true" />
       </section>
@@ -1498,11 +1345,7 @@ export function CardVisionApp() {
           <div className="panel-heading">
             <div>
               <p className="kicker">Painel premium</p>
-<<<<<<< HEAD
               <h2>Central Elite</h2>
-=======
-              <h2>Console Elite</h2>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
             </div>
             <ShieldCheck size={24} />
           </div>
@@ -1510,22 +1353,13 @@ export function CardVisionApp() {
           <div className="premium-entry-grid">
             <article className="manual-premium-card vision-entry-card">
               <div className="manual-premium-icon"><ScanText size={28} /></div>
-<<<<<<< HEAD
               <strong>Leitor Elite de Carta</strong>
               <span>Envie o print completo da carta. O programa faz leitura local, aplica calibração por zonas e abre a Auditoria Elite antes de finalizar a ficha.</span>
-=======
-              <strong>Scanner Elite por Print</strong>
-              <span>Envie o print completo da carta. O app faz leitura local, aplica calibração por zonas e abre a Auditoria Elite antes de finalizar a ficha.</span>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
             </article>
 
             <article className="manual-premium-card manual-entry-card">
               <div className="manual-premium-icon"><ShieldCheck size={28} /></div>
-<<<<<<< HEAD
               <strong>Central de Precisão Manual</strong>
-=======
-              <strong>Console Pro Manual</strong>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
               <span>Modo de precisão máxima: você informa posição, estilo, pontos e atributos. Ideal quando quer zero risco de leitura errada.</span>
             </article>
           </div>
@@ -1556,11 +1390,7 @@ export function CardVisionApp() {
           <div className="vision-toolbar">
             <button className="manual-mode-button scanner-action" type="button" onClick={analyzeSelectedImage} disabled={!selectedFile || loading}>
               {loading ? <Loader2 className="spin" size={17} /> : <ScanText size={17} />}
-<<<<<<< HEAD
               {loading ? 'Lendo carta...' : 'Executar Leitor Elite'}
-=======
-              {loading ? 'Lendo print...' : 'Executar Scanner Elite'}
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
             </button>
             <button className="manual-mode-button calibrator-action" type="button" onClick={() => setCalibratorOpen((current) => !current)} disabled={!preview}>
               <Wand2 size={17} /> Ajustar zonas
@@ -1568,11 +1398,7 @@ export function CardVisionApp() {
           </div>
 
           <button className="manual-mode-button primary-manual" type="button" onClick={startManualPreciseMode}>
-<<<<<<< HEAD
             <ShieldCheck size={16} /> Abrir Central de Precisão Manual
-=======
-            <ShieldCheck size={16} /> Abrir Console Pro Manual
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
           </button>
 
           {qualityReport && (
@@ -1590,11 +1416,7 @@ export function CardVisionApp() {
           {calibratorOpen && preview && (
             <details className="calibrator-panel" open>
               <summary>Calibrador Elite de áreas</summary>
-<<<<<<< HEAD
               <p className="panel-note">Ajuste somente quando o print vier de resolução, zoom ou corte diferente. A posição original deve sair da área da carta, não da grade de GERs.</p>
-=======
-              <p className="panel-note">Ajuste somente quando o print vier de resolução, zoom ou corte diferente. A posição original deve sair da área da carta, não da grade de overalls.</p>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
               <div className="calibration-preview">
                 <img src={preview} alt="Prévia para calibrar leitura" />
                 {ocrZones.filter((zone) => zone.enabled).map((zone) => (
@@ -1670,7 +1492,6 @@ export function CardVisionApp() {
             </label>
           </div>
 
-<<<<<<< HEAD
           <article className="tactical-guide-card">
             <div className="tactical-guide-head">
               <div>
@@ -1735,42 +1556,6 @@ export function CardVisionApp() {
                 </button>
               ))}
             </div>
-=======
-          <button className="elite-button generate-button" type="button" onClick={() => runAnalysis(false)} disabled={!canProceed}>
-            {loading ? <Loader2 className="spin" size={18} /> : <Zap size={18} />}
-            {loading ? 'Processando ficha...' : result ? 'Reabrir auditoria Elite' : 'Gerar prévia Elite'}
-          </button>
-
-          <div className="flow-steps">
-            <span className={selectedFile || manualMode ? 'done' : ''}>1. Print ou manual</span>
-            <span className={draftResult || result ? 'done' : (manualMode || selectedFile) ? 'active' : ''}>2. Auditoria Elite</span>
-            <span className={draftResult ? 'active' : result ? 'done' : ''}>3. Conferência</span>
-            <span className={result ? 'done' : ''}>4. Plano final</span>
-          </div>
-
-          <div className="status-card">
-            <ShieldCheck size={18} />
-            <p>{status}</p>
-          </div>
-
-          {rawText && (
-            <details className="raw-details">
-              <summary>Registro técnico da leitura</summary>
-              <textarea value={rawText} onChange={(event) => setRawText(event.target.value)} spellCheck={false} />
-            </details>
-          )}
-
-          {history.length > 0 && (
-            <div className="history-strip">
-              <p className="kicker"><History size={14} /> Histórico</p>
-              {history.slice(0, 3).map((item) => (
-                <button type="button" key={item.id} onClick={() => restoreHistory(item)}>
-                  <strong>{item.result.parsed.playerName}</strong>
-                  <span>{item.result.bestPosition.label} • {item.result.trainingPointsUsed}/{item.result.trainingPointsTotal}</span>
-                </button>
-              ))}
-            </div>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
           )}
         </aside>
 
@@ -1794,7 +1579,6 @@ export function CardVisionApp() {
             <div className="empty-state luxury-panel">
               <div className="empty-icon"><Wand2 size={34} /></div>
               <h2>Painel Elite</h2>
-<<<<<<< HEAD
               <p>Depois de preencher os dados, o resultado aparece como um painel premium com plano, habilidades, posições e justificativa de desempenho em campo.</p>
               <div className="empty-card-preview">
                 <strong>--</strong>
@@ -1804,17 +1588,6 @@ export function CardVisionApp() {
               <div className="feature-row">
                 <span><ScanText size={15} /> Leitura por print</span>
                 <span><ShieldCheck size={15} /> Manual de precisão</span>
-=======
-              <p>Depois de preencher os dados, o resultado aparece como um painel premium com plano, habilidades, posições e justificativa de gameplay.</p>
-              <div className="empty-card-preview">
-                <strong>--</strong>
-                <span>CA</span>
-                <em>Elite Studio</em>
-              </div>
-              <div className="feature-row">
-                <span><ScanText size={15} /> Scanner por print</span>
-                <span><ShieldCheck size={15} /> Manual premium</span>
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
                 <span><CheckCircle2 size={15} /> Sem IA paga</span>
               </div>
             </div>

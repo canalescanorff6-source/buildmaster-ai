@@ -1,13 +1,7 @@
 {
-<<<<<<< HEAD
   "name": "BuildMaster Elite Tático v24",
   "short_name": "BuildMaster",
   "description": "App premium privado com Leitor Elite de Carta, Central de Precisão Manual, guia tático e ficha de desempenho real em campo, sem IA paga.",
-=======
-  "name": "BuildMaster Elite Studio v22",
-  "short_name": "BuildMaster",
-  "description": "App premium privado com Scanner Elite por Print, Console Pro Manual, banco local e ficha de desempenho real em campo, sem IA paga.",
->>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020712",
