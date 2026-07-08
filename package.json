@@ -1,14 +1,17 @@
 {
-  "name": "buildmaster-ai-vision-only",
-  "version": "2.0.0",
+  "name": "buildmaster-elite-tatico-v24-revisado",
+  "version": "24.0.0",
   "private": true,
-  "description": "BuildMaster AI Vision Only - app premium mobile/PWA para analisar cartas do eFootball por imagem, gerar ficha, PRI, posição e habilidades adicionais.",
+  "description": "BuildMaster Elite Tático v24 - Leitor Elite de Carta, Central de Precisão Manual, guia tático com formações, estilos de técnico e ficha de desempenho real sem IA paga.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "vercel-build": "next build"
+    "vercel-build": "next build",
+    "test:cards": "tsx tests/card-regression.ts",
+    "test:prints": "tsx tests/print-regression.ts",
+    "test:all": "npm run test:cards && npm run test:prints"
   },
   "dependencies": {
     "lucide-react": "^1.23.0",
@@ -21,6 +24,7 @@
     "@types/node": "^24.10.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "tsx": "^4.23.0",
     "typescript": "^5.9.3"
   }
 }

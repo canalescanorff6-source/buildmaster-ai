@@ -1,4 +1,4 @@
-const CACHE_NAME = 'buildmaster-vision-v3-points-final-20260707';
+const CACHE_NAME = 'buildmaster-elite-tatico-v24-revisado';
 const STATIC_ASSETS = ['/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {
@@ -16,6 +16,5 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
-  // Network-first para não manter JavaScript antigo da Vercel no celular.
   event.respondWith(fetch(event.request).catch(() => caches.match(event.request)));
 });

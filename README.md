@@ -1,50 +1,29 @@
-# BuildMaster AI Vision Pro — Premium Focus
+# BuildMaster Elite Tático v24
 
-Versão focada somente na análise por imagem da carta.
+Versão premium local, sem IA paga, com foco em ficha de desempenho real dentro do jogo.
 
-## O que esta versão faz
+## Modos principais
 
-- Upload de print/galeria e opção separada para câmera no celular.
-- OCR em modo rápido ou precisão máxima.
-- Leitura por áreas da imagem: topo/posições, atributos e habilidades/ímpetos.
-- Revisão manual do OCR antes de gerar a ficha.
-- Melhor posição real em PT-BR: CA, SA, PE, PD, MAT, MC, VOL, ZAG, LE, LD, GOL.
-- Ficha recomendada com custo real de pontos do eFootball.
-- Habilidades adicionais recomendadas sem repetir as habilidades que a carta já possui.
-- Ímpetos/boosters, atributos, overalls por posição e gameplay ideal.
-- Layout premium compacto em abas.
-- PWA para instalar no celular.
+- **Leitor Elite de Carta**: envio de print completo, leitura local, calibração por zonas e Auditoria Elite antes do plano final.
+- **Central de Precisão Manual**: preenchimento manual para máxima confiança quando o print não estiver ideal.
+- **Guia Tático Premium**: variações de formação, estilo de técnico recomendado, orientação de como jogar e função de cada setor.
 
-## Como rodar localmente
+## Novidades v24
+
+1. Textos revisados para português e nomes mais premium.
+2. Adicionadas variações de formações: 4-2-2-2, 4-3-3, 4-1-2-3, 4-2-1-3, 4-2-3-1, 4-3-1-2, 4-1-3-2, 4-4-2, 4-1-4-1, 3-2-4-1, 3-4-3, 3-5-2, 5-3-2 e 5-2-3.
+3. Estilos de técnico ajustados para: Posse de bola, Contra-ataque, Contra-ataque rápido, Por fora e Passe longo.
+4. Cada formação mostra o melhor estilo sugerido, como jogar e o papel dos jogadores.
+5. Motor tático atualizado para considerar formação e estilo na recomendação da melhor função em campo.
+6. Layout reforçado para evitar texto cortado, escondido ou dependente de passar o mouse.
+7. Cache/PWA atualizado para v24.
+
+## Validação
 
 ```bash
-npm install
-npm run dev
+npm run typecheck
+npm run test:all
+npm run build
 ```
 
-Abra:
-
-```text
-http://localhost:3000
-```
-
-## Como publicar na Vercel
-
-Suba os arquivos no GitHub e faça o deploy na Vercel. Esta versão não usa banco, Neon, Prisma, login ou dashboard antigo.
-
-## Observação sobre precisão
-
-OCR não garante 100% quando o print vem cortado, escuro ou com texto pequeno. Para máxima precisão, use print direto da tela e revise o texto no campo de revisão antes de gerar a ficha.
-
-
-## Correção v3.1 — Pontos por nível
-
-Esta versão corrige o caso em que o OCR lia falsamente `Pontos 2/2` em prints do eFHUB/eFootBase. Quando isso acontece, o app ignora o valor impossível e calcula os pontos pelo nível máximo da carta. Exemplo: nível 32 = 62 pontos; nível 33 = 64 pontos.
-
-## Correção de pontos 2/2
-
-Esta versão inclui uma proteção definitiva contra o erro de OCR que transformava a ficha em `2/2` pontos. O app descarta orçamentos abaixo de 20, calcula pelo nível máximo quando possível e usa 64 pontos como fallback seguro.
-
-
-## Correção final pontos
-Esta versão bloqueia leituras inválidas como 2/2 e força atualização do cache/PWA.
+Tudo continua local, privado e sem chamada para IA paga.
