@@ -1,9 +1,26 @@
 {
-  "name": "buildmaster-local-pro-v8-premium",
-  "version": "8.0.0",
+  "name": "buildmaster-local-pro-v9-v7-v8-premium",
+  "version": "9.0.0",
   "private": true,
+  "description": "BuildMaster Local Pro v9 - base v7 funcionando com visual e melhorias premium da v8.",
   "scripts": {
-    "start": "python3 -m http.server 4173",
-    "build": "echo \"Static app: no build step needed\""
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "vercel-build": "next build"
+  },
+  "dependencies": {
+    "lucide-react": "^1.23.0",
+    "next": "^16.2.10",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "tesseract.js": "^5.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.2",
+    "@types/react": "^19.2.7",
+    "@types/react-dom": "^19.2.3",
+    "typescript": "^5.9.3"
   }
 }
