@@ -3,7 +3,7 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { Eye, EyeOff, LockKeyhole, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
 
-const AUTH_KEY = 'buildmaster_local_auth_v7_premium';
+const AUTH_KEY = 'buildmaster_local_auth_v15_premium';
 const LOGIN_USER = 'thiago0126';
 const LOGIN_PASSWORD = 'iu1fsaa67a';
 const SESSION_DURATION = 1000 * 60 * 60 * 24 * 14;

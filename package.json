@@ -1,8 +1,8 @@
 {
-  "name": "buildmaster-local-pro-v14-video-fix",
-  "version": "14.0.0",
+  "name": "buildmaster-local-pro-v15-performance-identity",
+  "version": "15.0.0",
   "private": true,
-  "description": "BuildMaster Local Pro v14 - correções após análise do vídeo: face da carta, posição principal, nível e habilidades defensivas.",
+  "description": "BuildMaster Local Pro v15 - identidade preservada, fluxo por botão, OCR local por áreas e ficha Elite focada em gameplay real, sem buscar overall alto.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

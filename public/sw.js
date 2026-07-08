@@ -1,4 +1,4 @@
-const CACHE_NAME = 'buildmaster-v14-video-fix';
+const CACHE_NAME = 'buildmaster-local-pro-v15-performance-identity';
 const STATIC_ASSETS = ['/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

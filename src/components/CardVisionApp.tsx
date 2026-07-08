@@ -32,7 +32,7 @@ type SavedAnalysis = {
   result: AnalysisResult;
 };
 
-const HISTORY_KEY = 'buildmaster_history_v7_premium';
+const HISTORY_KEY = 'buildmaster_history_v15_premium';
 
 const objectives: Array<{ value: Objective; title: string; hint: string }> = [
   { value: 'COMPETITIVE', title: 'Competitivo', hint: 'maior rendimento real em campo' },
@@ -177,23 +177,24 @@ async function cropImage(file: File, region: { x: number; y: number; w: number; 
 
 async function createOcrVariants(file: File, readingMode: ReadingMode): Promise<Array<{ label: string; image: File | Blob }>> {
   const fullContrast = await preprocessImage(file, 'contrast');
+  const cardIdentity = await cropImage(file, { x: 0, y: 0, w: 0.38, h: 0.44 }, 2100);
   if (readingMode === 'fast') {
-    const cardFace = await cropImage(file, { x: 0.02, y: 0.035, w: 0.31, h: 0.44 }, 1700);
     return [
-      { label: 'face da carta', image: cardFace },
+      { label: 'IDENTIDADE DA CARTA', image: cardIdentity },
       { label: 'imagem original', image: file },
       { label: 'imagem otimizada', image: fullContrast }
     ];
   }
 
   const sharp = await preprocessImage(file, 'sharp');
-  const cardFace = await cropImage(file, { x: 0.02, y: 0.035, w: 0.31, h: 0.44 }, 1900);
+  const cardTopWide = await cropImage(file, { x: 0, y: 0, w: 0.62, h: 0.36 }, 2300);
   const topStats = await cropImage(file, { x: 0, y: 0, w: 1, h: 0.48 }, 2300);
   const rightStats = await cropImage(file, { x: 0.34, y: 0.08, w: 0.66, h: 0.74 }, 2350);
   const lowerSkills = await cropImage(file, { x: 0, y: 0.48, w: 1, h: 0.52 }, 2300);
 
   return [
-    { label: 'face da carta', image: cardFace },
+    { label: 'IDENTIDADE DA CARTA', image: cardIdentity },
+    { label: 'TOPO DA CARTA', image: cardTopWide },
     { label: 'imagem original', image: file },
     { label: 'imagem otimizada', image: fullContrast },
     { label: 'imagem reforçada', image: sharp },
@@ -305,6 +306,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
   const trainingItems = Object.entries(result.training).filter(([, value]) => Number(value) > 0);
   const pointPercent = Math.min(100, Math.round((result.trainingPointsUsed / Math.max(1, result.trainingPointsTotal)) * 100));
   const positionItems = result.positionScores.slice(0, 8);
+  const cardPositions = Array.from(new Set([card.mainPosition, ...card.positions])).slice(0, 10);
   const nativeSkills = card.nativeSkills.slice(0, 8);
   const recommendedSkills = result.recommendedSkills.slice(0, 8);
   const recommendedImpetos = result.recommendedImpetos.slice(0, 8);
@@ -335,10 +337,12 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
           <p className="kicker">Resumo</p>
           <h2>{card.playerName}</h2>
           <div className="playstyle-pill">{card.playstyle ?? 'Estilo não lido'}</div>
+          <p className="identity-note">Identidade preservada: {card.mainPositionPt}{card.playstyle ? ` • ${card.playstyle}` : ''}. O app não altera a posição/estilo do card; só recomenda abaixo onde rende mais.</p>
           <div className="metric-grid">
-            <div><span>GER</span><strong>{overall}</strong></div>
+            <div><span>GER lido</span><strong>{overall}</strong></div>
+            <div><span>Pos. carta</span><strong>{card.mainPositionPt}</strong></div>
             <div><span>Melhor pos.</span><strong>{result.bestPosition.label}</strong></div>
-            <div><span>PRI</span><strong>{result.pri.overall}</strong></div>
+            <div><span>PRI gameplay</span><strong>{result.pri.overall}</strong></div>
             <div><span>Confiança</span><strong>{card.confidence}%</strong></div>
             <div className="wide-metric"><span>Pontos totais</span><strong>{result.trainingPointsUsed}/{result.trainingPointsTotal}</strong></div>
           </div>
@@ -480,17 +484,33 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
       {tab === 'posicoes' && (
         <div className="result-section-grid">
           <article className="luxury-panel wide-card">
-            <p className="kicker">Posições da carta</p>
+            <p className="kicker">Identidade da carta</p>
+            <div className="position-list">
+              {cardPositions.map((code, index) => (
+                <div key={code}>
+                  <strong>{positionPt(code)}</strong>
+                  <span>{index === 0 ? 'Posição do card' : 'Compatível'}</span>
+                  <em>{code === card.mainPosition ? `Preservada no card • ${card.playstyle ?? 'estilo não lido'}` : `Lida no print${card.positionRatings[code] ? ` • ${card.positionRatings[code]}` : ''}`}</em>
+                </div>
+              ))}
+            </div>
+            <p className="panel-note">Esta seção não é ranking: ela mostra a posição/estilo originais da carta e as posições compatíveis lidas.</p>
+          </article>
+
+          <article className="luxury-panel wide-card">
+            <p className="kicker">Ranking de gameplay real</p>
             <div className="position-list">
               {positionItems.map((item, index) => (
                 <div key={item.code}>
                   <strong>{item.label}</strong>
-                  <span>{index === 0 ? 'Primária' : item.score >= 90 ? 'Ótima' : item.score >= 82 ? 'Boa' : 'Alternativa'}</span>
+                  <span>{index === 0 ? 'Melhor uso' : item.score >= 90 ? 'Ótima' : item.score >= 82 ? 'Boa' : 'Alternativa'}</span>
                   <em>{item.role}{item.cardRating ? ` • ${item.cardRating}` : ''}</em>
                 </div>
               ))}
             </div>
+            <p className="panel-note">Aqui sim o app pode recomendar outra posição, mas sem alterar a identidade da carta no card principal.</p>
           </article>
+
           <article className="luxury-panel wide-card">
             <p className="kicker">Overalls lidos</p>
             <div className="data-grid">
@@ -507,7 +527,9 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
           <article className="luxury-panel wide-card">
             <p className="kicker">Dados lidos</p>
             <div className="data-grid">
+              <div><span>Posição da carta</span><strong>{card.mainPositionPt}</strong></div>
               <div><span>Estilo de jogo</span><strong>{card.playstyle ?? '—'}</strong></div>
+              <div><span>Melhor posição</span><strong>{result.bestPosition.label}</strong></div>
               <div><span>Nível máximo</span><strong>{card.level ?? '—'}</strong></div>
               <div><span>Total de pontos</span><strong>{result.trainingPointsUsed}/{result.trainingPointsTotal}</strong></div>
               <div><span>Origem dos pontos</span><strong>{sourceLabel}</strong></div>
@@ -557,6 +579,8 @@ export function CardVisionApp() {
   const [preview, setPreview] = useState<string | null>(null);
   const [playerCardImage, setPlayerCardImage] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [ocrDone, setOcrDone] = useState(false);
   const [rawText, setRawText] = useState('');
   const [objective, setObjective] = useState<Objective>('COMPETITIVE');
   const [targetPosition, setTargetPosition] = useState<PositionCode | 'AUTO'>('AUTO');
@@ -567,7 +591,7 @@ export function CardVisionApp() {
   const [history, setHistory] = useState<SavedAnalysis[]>([]);
   const lastSavedKey = useRef<string | null>(null);
 
-  const canAnalyze = useMemo(() => rawText.trim().length > 2 && !loading, [rawText, loading]);
+  const canProceed = useMemo(() => !loading && (!!selectedFile || rawText.trim().length > 2), [selectedFile, rawText, loading]);
 
   useEffect(() => {
     try {
@@ -613,6 +637,8 @@ export function CardVisionApp() {
     setPreview(null);
     setPlayerCardImage(null);
     setFileName(null);
+    setSelectedFile(null);
+    setOcrDone(false);
     setRawText('');
     setResult(null);
     setStatus('Envie outro print da carta para começar.');
@@ -620,6 +646,8 @@ export function CardVisionApp() {
 
   function restoreHistory(item: SavedAnalysis) {
     lastSavedKey.current = `${item.result.parsed.playerName}-${item.result.bestPosition.code}-${item.result.trainingPointsUsed}-${item.result.trainingPointsTotal}`;
+    setSelectedFile(null);
+    setOcrDone(true);
     setRawText(item.rawText);
     setPlayerCardImage(item.playerImage);
     setPreview(item.fullPreview ?? item.playerImage);
@@ -629,19 +657,37 @@ export function CardVisionApp() {
 
   async function handleFile(file: File) {
     setFileName(file.name);
+    setSelectedFile(file);
     setPreview(URL.createObjectURL(file));
     setPlayerCardImage(null);
     setResult(null);
-    setLoading(true);
     setRawText('');
+    setOcrDone(false);
+    setLoading(false);
+    setStatus('Imagem selecionada. Toque em Prosseguir para ler a carta e gerar a ficha Elite.');
+
+    const croppedPreview = await createPlayerCardPreview(file).catch(() => null);
+    if (croppedPreview) setPlayerCardImage(croppedPreview);
+  }
+
+  async function analyzeSelectedImage() {
+    if (!selectedFile) {
+      if (rawText.trim().length > 2) runAnalysis();
+      return;
+    }
+
+    setLoading(true);
+    setResult(null);
+    setRawText('');
+    setOcrDone(false);
     setStatus('Preparando imagem para OCR local premium...');
 
     try {
       const Tesseract = await import('tesseract.js');
-      const croppedPreview = await createPlayerCardPreview(file);
+      const croppedPreview = await createPlayerCardPreview(selectedFile);
       if (croppedPreview) setPlayerCardImage(croppedPreview);
 
-      const variants = await createOcrVariants(file, readingMode);
+      const variants = await createOcrVariants(selectedFile, readingMode);
       const texts: string[] = [];
 
       for (let index = 0; index < variants.length; index += 1) {
@@ -654,21 +700,23 @@ export function CardVisionApp() {
             }
           }
         });
-        if (pass.data.text.trim()) texts.push(pass.data.text.trim());
+        const variantText = pass.data.text.trim();
+        if (variantText) texts.push(`### ${variant.label}\n${variantText}`);
       }
 
       const mergedText = mergeOcrTexts(...texts);
       setRawText(mergedText);
+      setOcrDone(true);
 
       if (mergedText.trim().length > 2) {
-        const autoResult = analyzeCard(mergedText, objective, targetPosition, file.name);
+        const autoResult = analyzeCard(mergedText, objective, targetPosition, fileName);
         setResult(autoResult);
-        setStatus('Carta analisada. Ficha Elite gerada com OCR local.');
+        setStatus('Carta lida. Identidade preservada e ficha Elite gerada para gameplay real.');
       } else {
-        setStatus('Não consegui ler texto suficiente. Tente print direto da tela com ficha automática visível.');
+        setStatus('Não consegui ler texto suficiente. Tente print direto da tela com nome, posição, estilo e ficha automática visíveis.');
       }
     } catch {
-      setStatus('Não consegui ler automaticamente. Tente outro print direto da tela com ficha automática visível.');
+      setStatus('Não consegui ler automaticamente. Tente outro print direto da tela com nome, posição, estilo e ficha automática visíveis.');
     } finally {
       setLoading(false);
     }
@@ -702,7 +750,7 @@ export function CardVisionApp() {
         <div>
           <p className="kicker"><Sparkles size={16} /> BuildMaster Local Pro</p>
           <h1>Analise sua carta. Descubra o build Elite.</h1>
-          <p>Envie o print, leia tudo localmente e gere uma ficha mais forte para gameplay real, sem API paga e sem copiar a ficha automática do jogo.</p>
+          <p>Envie o print, toque em prosseguir e gere uma ficha mais forte para gameplay real. O app preserva posição e estilo da carta; recomendações ficam abaixo.</p>
         </div>
         <div className="orb-ball" aria-hidden="true" />
       </section>
@@ -722,7 +770,7 @@ export function CardVisionApp() {
               <div>
                 <UploadCloud size={36} />
                 <strong>Envie a imagem da sua carta</strong>
-                <span>Use print direto da tela com ficha automática visível.</span>
+                <span>Use print direto da tela com nome, posição, estilo e ficha automática visíveis.</span>
               </div>
             )}
           </div>
@@ -770,10 +818,16 @@ export function CardVisionApp() {
             </label>
           </div>
 
-          <button className="elite-button generate-button" type="button" onClick={runAnalysis} disabled={!canAnalyze}>
+          <button className="elite-button generate-button" type="button" onClick={selectedFile && !ocrDone ? analyzeSelectedImage : runAnalysis} disabled={!canProceed}>
             {loading ? <Loader2 className="spin" size={18} /> : <Zap size={18} />}
-            {loading ? 'Lendo imagem...' : 'Gerar ficha Elite'}
+            {loading ? 'Lendo imagem...' : selectedFile && !ocrDone ? 'Prosseguir: ler carta e gerar ficha Elite' : 'Gerar ficha Elite novamente'}
           </button>
+
+          <div className="flow-steps">
+            <span className={selectedFile ? 'done' : ''}>1. Escolher carta</span>
+            <span className={ocrDone ? 'done' : selectedFile ? 'active' : ''}>2. Ler identidade</span>
+            <span className={result ? 'done' : ocrDone ? 'active' : ''}>3. Ficha gameplay</span>
+          </div>
 
           <div className="status-card">
             <ScanText size={18} />

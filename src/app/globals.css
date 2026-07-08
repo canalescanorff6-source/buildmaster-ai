@@ -797,3 +797,58 @@ a { color: inherit; }
   .attributes-grid { grid-template-columns: 1fr; }
   .wide-metric { grid-column: auto; }
 }
+.identity-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* Fluxo v15: escolher carta -> ler identidade -> gerar ficha */
+.flow-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 14px 0 12px;
+}
+.flow-steps span {
+  min-height: 38px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 7px 8px;
+  border-radius: 14px;
+  border: 1px solid rgba(129, 161, 198, .17);
+  background: rgba(3, 12, 25, .72);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: -.02em;
+}
+.flow-steps span.active {
+  color: var(--cyan);
+  border-color: rgba(55,216,255,.45);
+  box-shadow: 0 0 22px rgba(55,216,255,.10);
+}
+.flow-steps span.done {
+  color: #06131c;
+  border-color: rgba(57,255,149,.55);
+  background: linear-gradient(110deg, rgba(57,255,149,.95), rgba(55,216,255,.82));
+  box-shadow: 0 0 24px rgba(57,255,149,.16);
+}
+.result-intro .identity-note {
+  border: 1px solid rgba(57, 255, 149, .20);
+  background: rgba(57,255,149,.055);
+  border-radius: 16px;
+  padding: 12px 14px;
+  color: var(--soft);
+  line-height: 1.45;
+}
+.generate-button {
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+@media (max-width: 640px) {
+  .flow-steps { grid-template-columns: 1fr; }
+  .flow-steps span { min-height: 34px; }
+}
