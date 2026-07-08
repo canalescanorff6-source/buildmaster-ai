@@ -1,30 +1,22 @@
-# BuildMaster Local Pro v8 Premium
+# BuildMaster Local Pro — versão limpa auditada
 
-Versão completa com visual premium inspirado na referência enviada.
+Esta pasta contém somente os arquivos usados pela versão estática/premium do app.
 
 ## Login
 
-```text
-Usuário: thiago0126
-Senha: iu1fsaa67a
-```
+- Usuário: `thiago0126`
+- Senha: `iu1fsaa67a`
 
-## O que vem nesta versão
+## Arquivos principais
 
-- Tela de login redesenhada no estilo premium.
-- Tela inicial parecida com a imagem de referência.
-- Resultado com resumo, ficha elite, habilidades, posições, dados lidos e distribuição de pontos.
-- Análise local no navegador, sem API paga.
-- OCR local via Tesseract.js quando disponível.
-- Travas contra pontos absurdos como `2/2` ou `116/116`.
-- Posição alvo respeitando as posições lidas da carta.
-- PWA com cache atualizado.
+- `index.html` — estrutura da interface.
+- `styles.css` — visual premium.
+- `app.js` — login local, upload, OCR local e motor da ficha.
+- `manifest.webmanifest` e `sw.js` — PWA/cache.
+- `assets/logo.svg` — logo.
+- `package.json` e `vercel.json` — publicação na Vercel.
 
-## Como publicar na Vercel
+## Publicação
 
-1. Suba todos os arquivos desta pasta na raiz do repositório do GitHub.
-2. Faça commit.
-3. Faça redeploy na Vercel.
-4. No celular, limpe os dados/cache do site antes de testar.
-
-Esta versão não precisa de `OPENAI_API_KEY`.
+Suba o conteúdo desta pasta na raiz do repositório e faça redeploy na Vercel.
+Depois limpe o cache/dados do site no celular.

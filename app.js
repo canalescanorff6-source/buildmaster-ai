@@ -437,7 +437,7 @@ function optimizeBuild(position, totalPoints, goal) {
 
   while (remaining > 0 && guard < 400) {
     guard += 1;
-    const candidates = Object.keys(build)
+    let candidates = Object.keys(build)
       .filter((field) => (weights[field] || 0) > 0)
       .map((field) => {
         const nextCost = costForNextPoint(build[field]);
@@ -451,6 +451,32 @@ function optimizeBuild(position, totalPoints, goal) {
       })
       .filter((candidate) => candidate.canUse)
       .sort((a, b) => b.score - a.score || build[a.field] - build[b.field]);
+
+    // Se a ficha principal já está otimizada, mas sobram 1, 2 ou 3 pontos,
+    // usa campos auxiliares de baixo custo para fechar 100% dos pontos.
+    // Isso evita resultados como 61/64 ou 62/64 quando ainda existe ponto disponível.
+    if (!candidates.length) {
+      const fallbackOrder = [
+        "passing",
+        "dribbling",
+        "dexterity",
+        "lowerBody",
+        "aerial",
+        "shooting",
+        "defending"
+      ];
+      candidates = fallbackOrder
+        .map((field) => {
+          const nextCost = costForNextPoint(build[field]);
+          return {
+            field,
+            nextCost,
+            score: 0.1 / nextCost,
+            canUse: build[field] < 14 && nextCost <= remaining
+          };
+        })
+        .filter((candidate) => candidate.canUse);
+    }
 
     if (!candidates.length) break;
     const chosen = candidates[0];
