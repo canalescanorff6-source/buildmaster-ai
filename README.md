@@ -1,19 +1,12 @@
-<<<<<<< HEAD
 # BuildMaster Local Pro v12
 
 App Next.js/PWA com login local para analisar prints de cartas do eFootball/eFHUB/eFootBase e gerar ficha Elite focada em gameplay real.
-=======
-# BuildMaster Local Pro v9
-
-Versão baseada na **v7 que estava funcionando**, com as modificações visuais e de experiência da **v8 premium** aplicadas em cima do projeto Next.js.
->>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
 
 ## Login
 
 - Usuário: `thiago0126`
 - Senha: `iu1fsaa67a`
 
-<<<<<<< HEAD
 ## Principais recursos
 
 - OCR local, sem API paga.
@@ -40,32 +33,3 @@ Esta versão adiciona regras baseadas nos prints reais enviados: Ronaldinho AMF 
 
 O app agora evita escolher posição apenas pelo maior overall da grade. Se a posição grande da carta não for lida com segurança, ele usa estilo de jogo + função real para manter o jogador na posição mais coerente em PT-BR.
 
-=======
-## O que esta versão mantém da v7
-
-- Next.js/Vercel.
-- Login local sem middleware travando.
-- OCR local com Tesseract.js.
-- Motor de ficha Elite local.
-- Histórico local.
-- Cálculo de pontos e travas contra valores absurdos.
-- Posições travadas pela carta/estilo.
-
-## O que entrou da v8 premium
-
-- Tela de login mais parecida com a referência visual.
-- Tela inicial premium com hero, upload, cards de vidro e botões em gradiente.
-- Resultado com card maior, métricas compactas, abas, chips de habilidades e distribuição de pontos.
-- Paleta dark premium com verde, ciano e roxo.
-- Layout mais elegante e menos básico.
-
-## Vercel
-
-Use as configurações:
-
-- Framework Preset: `Next.js`
-- Install Command: `npm install`
-- Build Command: `npm run vercel-build`
-
-Depois de publicar, limpe o cache/dados do site no celular para não carregar versão antiga.
->>>>>>> ed5acd963172e3290ecb0b2e7777a13d8f1b4a55
