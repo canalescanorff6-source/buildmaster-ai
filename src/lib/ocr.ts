@@ -15,7 +15,11 @@ export type OcrZone = {
 export const DEFAULT_OCR_ZONES: OcrZone[] = [
   { key: 'name', label: 'Nome do jogador', x: 0.01, y: 0.00, w: 0.33, h: 0.07, enabled: true },
   { key: 'playstyle', label: 'Estilo de jogo', x: 0.01, y: 0.04, w: 0.32, h: 0.06, enabled: true },
+<<<<<<< HEAD
   { key: 'overall', label: 'GER da carta', x: 0.06, y: 0.07, w: 0.13, h: 0.12, enabled: true },
+=======
+  { key: 'overall', label: 'Overall da carta', x: 0.06, y: 0.07, w: 0.13, h: 0.12, enabled: true },
+>>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   { key: 'mainPosition', label: 'Posição da carta', x: 0.06, y: 0.08, w: 0.19, h: 0.22, enabled: true },
   { key: 'positionGrid', label: 'Posições jogáveis', x: 0.67, y: 0.05, w: 0.31, h: 0.24, enabled: true },
   { key: 'attributes', label: 'Atributos principais', x: 0.01, y: 0.34, w: 0.98, h: 0.32, enabled: true },

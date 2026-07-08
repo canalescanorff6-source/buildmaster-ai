@@ -54,7 +54,11 @@ Sombra veloz
 
 const result = analyzeCard(edgarDavidsPrintText, 'COMPETITIVE', 'AUTO', 'edgar-davids-print.txt', {
   formation: '4-2-2-2',
+<<<<<<< HEAD
   style: 'POSSE_DE_BOLA'
+=======
+  style: 'PASSE_CURTO'
+>>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
 });
 
 if (result.bestPosition.code === 'LB' || result.bestPosition.code === 'RB') {

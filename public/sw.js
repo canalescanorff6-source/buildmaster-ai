@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 const CACHE_NAME = 'buildmaster-elite-tatico-v24-revisado';
+=======
+const CACHE_NAME = 'buildmaster-elite-studio-v22-scanner-manual';
+>>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
 const STATIC_ASSETS = ['/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

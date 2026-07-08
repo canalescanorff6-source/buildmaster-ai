@@ -13,8 +13,13 @@ export type Objective =
   | 'DEFENSIVE'
   | 'AERIAL';
 
+<<<<<<< HEAD
 export type TacticalFormation = '4-2-2-2' | '4-3-3' | '4-1-2-3' | '4-2-1-3' | '4-2-3-1' | '4-3-1-2' | '4-1-3-2' | '4-4-2' | '4-1-4-1' | '3-2-4-1' | '3-4-3' | '3-5-2' | '5-3-2' | '5-2-3' | 'AUTO';
 export type TacticalStyle = 'POSSE_DE_BOLA' | 'CONTRA_ATAQUE' | 'CONTRA_ATAQUE_RAPIDO' | 'POR_FORA' | 'PASSE_LONGO' | 'AUTO';
+=======
+export type TacticalFormation = '4-2-2-2' | '4-3-3' | '4-1-2-3' | '3-2-4-1' | 'AUTO';
+export type TacticalStyle = 'PASSE_CURTO' | 'CONTRA_ATAQUE_RAPIDO' | 'POSSE_DE_BOLA' | 'BOLA_LONGA' | 'PRESSAO_ALTA' | 'AUTO';
+>>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
 export type TacticalProfile = { formation: TacticalFormation; style: TacticalStyle };
 
 export type PositionCode = 'CF' | 'SS' | 'LWF' | 'RWF' | 'LMF' | 'RMF' | 'AMF' | 'CMF' | 'DMF' | 'CB' | 'LB' | 'RB' | 'GK';
@@ -1114,7 +1119,11 @@ function fillAttributes(parsed: Pick<ParsedCard, 'mainPosition' | 'maxOverall' |
   const base = BASE_BY_POSITION[parsed.mainPosition];
   const readCount = Object.keys(parsed.attributes ?? {}).length;
 
+<<<<<<< HEAD
   // GER não pode mandar na ficha. Ele só corrige levemente a base quando o OCR
+=======
+  // Overall não pode mandar na ficha. Ele só corrige levemente a base quando o OCR
+>>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   // leu poucos atributos; atributos reais lidos sempre têm prioridade total.
   const overallDeltaLimit = readCount >= 10 ? 2 : 5;
   const delta = Math.max(-3, Math.min(overallDeltaLimit, (target - 90) * 0.45));
@@ -1282,7 +1291,11 @@ function positionScore(position: PositionCode, a: Required<Attributes>, skills: 
     GK: avg(a.goalkeeperAwareness, a.goalkeeperCatching, a.goalkeeperParrying, a.goalkeeperReflexes, a.goalkeeperReach, a.jump) + skillBonus(['Liderança', 'Espírito guerreiro'])
   };
   const cardRating = positionRatings[position];
+<<<<<<< HEAD
   // GER por posição é apenas desempate leve. O ranking principal vem de atributos + função.
+=======
+  // Overall por posição é apenas desempate leve. O ranking principal vem de atributos + função.
+>>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   const ratingBlend = cardRating ? (scores[position] * 0.88 + cardRating * 0.12) : scores[position];
   return clampDecimal(ratingBlend, 1, 100);
 }
@@ -1816,7 +1829,11 @@ function trainingFor(position: PositionCode, objective: Objective, a: Required<A
 }
 
 function trainingCostRuleText() {
+<<<<<<< HEAD
   return 'Motor Elite Tático v24: conferência obrigatória, banco local, guia tático, regras anti-erro e ficha focada em desempenho real. GER serve apenas como referência leve.';
+=======
+  return 'Motor Calibração e Banco v20: conferência obrigatória, banco local, regras anti-erro e ficha focada em desempenho real. Overall serve apenas como referência leve.';
+>>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
 }
 
 function skillPriority(position: PositionCode, objective: Objective) {
@@ -2303,7 +2320,11 @@ function resolveTrainingPointBudget(
     used: SAFE_DEFAULT_TRAINING_BUDGET,
     total: SAFE_DEFAULT_TRAINING_BUDGET,
     source: 'FALLBACK',
+<<<<<<< HEAD
     warning: parsedPoints.ignoredReason ?? 'Não encontrei plano distribuído nem nível máximo com segurança; usando orçamento competitivo padrão de 64 pontos.'
+=======
+    warning: parsedPoints.ignoredReason ?? 'Não encontrei ficha distribuída nem nível máximo com segurança; usando orçamento competitivo padrão de 64 pontos.'
+>>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   };
 }
 
@@ -2376,15 +2397,26 @@ export function parseCard(rawText: string, imageFileName?: string | null): Parse
   confidence += Math.min(6, impetos.length * 2);
   const warnings: string[] = [];
   warnings.push('Posições convertidas automaticamente para PT-BR: CF→CA, DMF→VOL, CMF→MLG, CB→ZAG, LB→LE, RB→LD, AMF→MAT, LWF→PE, RWF→PD.');
+<<<<<<< HEAD
   warnings.push(`Identidade preservada: a arte da carta usa ${POSITION_PT[mainPosition]}${playstyle ? ` + ${playstyle}` : ''} lidos do print. Recomendações de desempenho em campo aparecem separadas abaixo.`);
+=======
+  warnings.push(`Identidade preservada: a arte da carta usa ${POSITION_PT[mainPosition]}${playstyle ? ` + ${playstyle}` : ''} lidos do print. Recomendações de gameplay aparecem separadas abaixo.`);
+>>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   if (localRule && !manualPositionLocked) warnings.push(`${localRule.note} Banco local aplicado: melhores posições ${listLabels(localRule.bestPositions)}; evitar ${listLabels(localRule.avoidPositions)}.`);
   if (manualConfirmed) warnings.push('Conferência manual marcada como SIM: o app gerou a ficha final com os dados revisados pelo usuário.');
   if (attributeCount < 12) warnings.push('O OCR local leu poucos atributos. O app usou motor seguro por posição, mas quanto mais atributos lidos, melhor fica a ficha.');
   if (!explicitMainPosition && !primaryPositionFromCard) warnings.push('A posição original não foi lida com alta confiança no badge da carta. O app usou fallback seguro; confirme no campo Dados lidos antes de copiar a ficha.');
+<<<<<<< HEAD
   if (!playstyle && rawPlaystyle) warnings.push(`Estilo OCR "${rawPlaystyle}" descartado porque não combina com a posição original ${POSITION_PT[mainPosition]}. A carta não foi alterada com estilo suspeito.`);
   if (!playstyle) warnings.push('O estilo de jogo não foi lido com alta confiança no topo da carta. A recomendação foi gerada sem alterar a identidade visual.');
   if (Object.keys(positionRatings).length < 4) warnings.push('A grade de posições não foi lida por completo. O app preservou a identidade lida no topo da carta e usou a função real só para recomendar a melhor posição abaixo.');
   if (!overall && !maxOverall) warnings.push('GER não identificado. O programa estimou a análise pela posição e atributos lidos.');
+=======
+  if (!playstyle && rawPlaystyle) warnings.push(`Estilo OCR "${rawPlaystyle}" descartado porque não combina com a posição original ${POSITION_PT[mainPosition]}. O card não foi alterado com estilo suspeito.`);
+  if (!playstyle) warnings.push('O estilo de jogo não foi lido com alta confiança no topo da carta. A recomendação foi gerada sem alterar a identidade visual.');
+  if (Object.keys(positionRatings).length < 4) warnings.push('A grade de posições não foi lida por completo. O app preservou a identidade lida no topo da carta e usou a função real só para recomendar a melhor posição abaixo.');
+  if (!overall && !maxOverall) warnings.push('Overall não identificado. O app estimou a análise pela posição e atributos lidos.');
+>>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   if (trainingPointSource === 'TRAINING_READ') warnings.push(`Orçamento de pontos identificado pela ficha automática visível no print: ${trainingPointsTotal} pontos.`);
   if (trainingPointSource === 'LEVEL_INFERRED') warnings.push(`Orçamento de pontos calculado pelo nível máximo ${level}: ${trainingPointsTotal} pontos.`);
   if (trainingPointSource === 'FALLBACK') warnings.push(pointBudget.warning ?? 'Pontos e nível não foram lidos com segurança; usando orçamento competitivo padrão de 64 pontos.');
@@ -2494,10 +2526,17 @@ function buildPermittedPositions(parsed: ParsedCard, scored: Array<{ code: Posit
     label: item.label,
     rating: item.cardRating ?? null,
     reason: index === 0
+<<<<<<< HEAD
       ? 'Melhor posição de rendimento real calculada por função, atributos e estilo.'
       : item.cardRating
         ? `Compatível no print, com nota lida ${item.cardRating}.`
         : 'Compatível por função/estilo, sem depender de GER.'
+=======
+      ? 'Melhor posição de gameplay calculada por função, atributos e estilo.'
+      : item.cardRating
+        ? `Compatível no print, com nota lida ${item.cardRating}.`
+        : 'Compatível por função/estilo, sem depender de overall.'
+>>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   }));
 }
 
@@ -2517,7 +2556,11 @@ function validateAnalysis(
   if (parsed.evidence.attributeCount < 8) push('block', 'ATTRIBUTES_REVIEW', 'Poucos atributos foram lidos: revise/corrija atributos importantes antes de confirmar.');
   else if (parsed.evidence.attributeCount < 12) push('review', 'ATTRIBUTES_PARTIAL', 'Atributos parcialmente lidos: a ficha fica melhor se você revisar os valores principais.');
   if (parsed.trainingPointSource === 'FALLBACK') push('block', 'POINTS_REVIEW', 'Pontos/nível máximo não foram confirmados; revise o orçamento de pontos antes da ficha final.');
+<<<<<<< HEAD
   if (parsed.evidence.positionRatingsCount < 2) push('review', 'POSITION_GRID_PARTIAL', 'Grade de posições pouco lida; o ranking usa regras de rendimento real e deve ser conferido.');
+=======
+  if (parsed.evidence.positionRatingsCount < 2) push('review', 'POSITION_GRID_PARTIAL', 'Grade de posições pouco lida; o ranking usa regras de gameplay e deve ser conferido.');
+>>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
 
   const avoid = avoidPositions.find((item) => item.code === selected.code);
   if (avoid) push('block', 'IMPOSSIBLE_POSITION', `A posição escolhida (${POSITION_PT[selected.code]}) é suspeita: ${avoid.reason}`);
@@ -2559,7 +2602,10 @@ function tacticalScoreBonus(position: PositionCode, profile: TacticalProfile, a:
   }
   if (profile.formation === '4-3-3') {
     if (position === 'LWF' || position === 'RWF') bonus += 5;
+<<<<<<< HEAD
     if (position === 'CF') bonus += 3;
+=======
+>>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
     if (position === 'CMF' || position === 'DMF') bonus += 3;
   }
   if (profile.formation === '4-1-2-3') {
@@ -2567,6 +2613,7 @@ function tacticalScoreBonus(position: PositionCode, profile: TacticalProfile, a:
     if (position === 'AMF' || position === 'CMF') bonus += 4;
     if (position === 'LWF' || position === 'RWF') bonus += 3;
   }
+<<<<<<< HEAD
   if (profile.formation === '4-2-1-3') {
     if (position === 'DMF' || position === 'CMF') bonus += 5;
     if (position === 'AMF') bonus += 4;
@@ -2628,11 +2675,23 @@ function tacticalScoreBonus(position: PositionCode, profile: TacticalProfile, a:
   if (profile.style === 'CONTRA_ATAQUE_RAPIDO') bonus += Math.max(0, Math.max(a.speed, a.acceleration) - 76) * 0.07 + Math.max(0, a.lowPass - 74) * 0.03;
   if (profile.style === 'POR_FORA') bonus += Math.max(0, Math.max(a.loftedPass, a.speed) - 74) * 0.06 + Math.max(0, a.stamina - 74) * 0.03;
   if (profile.style === 'PASSE_LONGO') bonus += Math.max(0, a.loftedPass - 74) * 0.07 + Math.max(0, Math.max(a.heading, a.physicalContact) - 74) * 0.04;
+=======
+  if (profile.formation === '3-2-4-1') {
+    if (position === 'CB' || position === 'DMF') bonus += 5;
+    if (position === 'LMF' || position === 'RMF') bonus += 4;
+  }
+
+  if (profile.style === 'PASSE_CURTO' || profile.style === 'POSSE_DE_BOLA') bonus += Math.max(0, a.lowPass - 75) * 0.05;
+  if (profile.style === 'CONTRA_ATAQUE_RAPIDO') bonus += Math.max(0, Math.max(a.speed, a.acceleration) - 76) * 0.06;
+  if (profile.style === 'PRESSAO_ALTA') bonus += Math.max(0, Math.min(a.stamina, a.aggression) - 74) * 0.07;
+  if (profile.style === 'BOLA_LONGA') bonus += Math.max(0, a.loftedPass - 74) * 0.06;
+>>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   return bonus;
 }
 
 function tacticalProfileTips(profile: TacticalProfile, selected: PositionCode) {
   const tips: string[] = [];
+<<<<<<< HEAD
   if (profile.formation === '4-2-2-2') tips.push('Formação 4-2-2-2: dois meias por dentro e dupla de ataque; valoriza VOL/MLG fortes para roubar, tocar rápido e proteger a defesa.');
   if (profile.formation === '4-3-3') tips.push('Formação 4-3-3: usa pontas abertos, centroavante de referência e meio com boa cobertura para acelerar pelos lados.');
   if (profile.formation === '4-1-2-3') tips.push('Formação 4-1-2-3: exige um VOL confiável e dois meias com passe/giro para ligar defesa e ataque.');
@@ -2652,6 +2711,17 @@ function tacticalProfileTips(profile: TacticalProfile, selected: PositionCode) {
   if (profile.style === 'CONTRA_ATAQUE_RAPIDO') tips.push('Estilo do técnico — Contra-ataque rápido: aceleração, velocidade e passe vertical pesam mais na recomendação; ataque o espaço logo após recuperar.');
   if (profile.style === 'POR_FORA') tips.push('Estilo do técnico — Por fora: use laterais/alas e pontas para abrir campo, cruzar e inverter jogadas.');
   if (profile.style === 'PASSE_LONGO') tips.push('Estilo do técnico — Passe longo: valoriza passe alto, físico e jogo aéreo; use pivô, segunda bola e atacantes fortes.');
+=======
+  if (profile.formation === '4-2-2-2') tips.push('Perfil 4-2-2-2: valoriza VOL/MLG fortes para recuperar, tocar rápido e proteger contra contra-ataques.');
+  if (profile.formation === '4-3-3') tips.push('Perfil 4-3-3: valoriza amplitude, pontas e meias que aceleram a saída pelos lados.');
+  if (profile.formation === '4-1-2-3') tips.push('Perfil 4-1-2-3: exige um VOL confiável e dois meias com passe/giro para ligar ataque.');
+  if (profile.formation === '3-2-4-1') tips.push('Perfil 3-2-4-1: pede cobertura forte por dentro e alas/meias que voltem para marcar.');
+  if (profile.style === 'PASSE_CURTO') tips.push('Estilo passe curto: a ficha dá mais valor a passe rasteiro, equilíbrio e domínio sob pressão.');
+  if (profile.style === 'CONTRA_ATAQUE_RAPIDO') tips.push('Estilo contra-ataque rápido: aceleração, velocidade e passe vertical pesam mais na recomendação.');
+  if (profile.style === 'POSSE_DE_BOLA') tips.push('Estilo posse: controle, condução firme e passe de primeira viram prioridade.');
+  if (profile.style === 'BOLA_LONGA') tips.push('Estilo bola longa: passe alto, força física e jogo aéreo ganham peso.');
+  if (profile.style === 'PRESSAO_ALTA') tips.push('Estilo pressão alta: resistência, agressividade e dedicação defensiva são priorizados.');
+>>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   if (!tips.length) tips.push(`Perfil tático automático: a ficha foi feita para o melhor rendimento da posição ${POSITION_PT[selected]}.`);
   return tips;
 }
@@ -2720,13 +2790,21 @@ function buildTrainingVariants(selected: PositionCode, selectedLabel: string, tr
 function recommendationExplanation(parsed: ParsedCard, selected: PositionCode, attributes: Required<Attributes>, pri: Record<string, number>, avoidPositions: Array<{ code: PositionCode; label: string; reason: string }>, profile: TacticalProfile) {
   const lines: string[] = [];
   const style = parsed.playstyle ? `estilo ${parsed.playstyle}` : 'estilo não confirmado';
+<<<<<<< HEAD
   lines.push(`Recomendei ${POSITION_PT[selected]} porque a carta é ${POSITION_PT[parsed.mainPosition]}, tem ${style} e o motor priorizou função real, não o maior GER da grade.`);
+=======
+  lines.push(`Recomendei ${POSITION_PT[selected]} porque a carta é ${POSITION_PT[parsed.mainPosition]}, tem ${style} e o motor priorizou função real, não maior overall do grid.`);
+>>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   if (selected === 'DMF') lines.push(`Como VOL, pesaram defesa ${attributes.defensiveAwareness}, desarme ${attributes.tackling}, agressividade ${attributes.aggression}, passe rasteiro ${attributes.lowPass} e contato físico ${attributes.physicalContact}.`);
   if (selected === 'CMF') lines.push(`Como MLG, pesaram passe ${attributes.lowPass}, condução ${attributes.tightPossession}, fôlego ${attributes.stamina} e capacidade de recomposição.`);
   if (selected === 'CB') lines.push(`Como ZAG, pesaram defesa ${attributes.defensiveAwareness}, desarme ${attributes.tackling}, contato físico ${attributes.physicalContact}, salto ${attributes.jump} e leitura de cobertura.`);
   if (selected === 'CF') lines.push(`Como CA, pesaram finalização ${attributes.finishing}, talento ofensivo ${attributes.offensiveAwareness}, força do chute ${attributes.kickingPower} e contato físico ${attributes.physicalContact}.`);
   if (selected === 'LWF' || selected === 'RWF') lines.push(`Como ponta, pesaram drible ${attributes.dribbling}, aceleração ${attributes.acceleration}, equilíbrio ${attributes.balance} e finalização ${attributes.finishing}.`);
+<<<<<<< HEAD
   if (pri.defense >= 78) lines.push('A defesa teve peso alto no PRI, por isso posições ofensivas são tratadas com cuidado mesmo quando aparecem com GER alto.');
+=======
+  if (pri.defense >= 78) lines.push('A defesa teve peso alto no PRI, por isso posições ofensivas são tratadas com cuidado mesmo quando aparecem com overall alto.');
+>>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
   if (avoidPositions.length) lines.push(`Evitei ${avoidPositions.slice(0, 3).map((item) => item.label).join(', ')} por regra anti-posição impossível ou baixa aderência ao estilo.`);
   if (profile.formation !== 'AUTO' || profile.style !== 'AUTO') lines.push('A formação/tática escolhida também ajustou o peso de passe, pressão, velocidade ou cobertura conforme seu modo de jogo.');
   return lines;
@@ -2774,9 +2852,15 @@ export function analyzeCard(rawText: string, objective: Objective = 'COMPETITIVE
   const note = validation.level === 'blocked'
     ? 'Conferência obrigatória: revise posição, estilo, atributos e pontos antes de gerar a ficha final.'
     : parsed.confidence >= 85
+<<<<<<< HEAD
       ? 'Alta confiança. A identidade da carta foi preservada e a ficha foi gerada para desempenho real em campo, sem buscar GER máximo.'
       : parsed.confidence >= 60
         ? 'Confiança média. O motor local preservou a identidade provável da carta e compensou dados faltantes com regras de rendimento real.'
+=======
+      ? 'Alta confiança. A identidade da carta foi preservada e a ficha foi gerada para desempenho real em campo, sem buscar overall máximo.'
+      : parsed.confidence >= 60
+        ? 'Confiança média. O motor local preservou a identidade provável da carta e compensou dados faltantes com regras de gameplay real.'
+>>>>>>> 9b74f5472a5f6cb32ce449c01f27fc9f11e1b6f6
         : 'Confiança baixa. O motor local usou fallback seguro; revise os dados lidos para aumentar a precisão.';
   return { parsed, bestPosition: selected, positionScores: visiblePositionScores, pri, tacticalFit, training, trainingCost, trainingPointsUsed, trainingPointsTotal, trainingPointsRemaining, trainingCostRule: trainingCostRuleText(), trainingComparison, buildVariants, recommendationExplanation: explanation, tacticalProfile, profileTips, validation, permittedPositions, avoidPositions, recommendedSkills, recommendedImpetos, buildName, strengths, weaknesses, usageTips: [...tips, ...profileTips], note };
 }
