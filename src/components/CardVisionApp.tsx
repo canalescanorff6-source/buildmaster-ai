@@ -41,9 +41,9 @@ type SavedAnalysis = {
   result: AnalysisResult;
 };
 
-const HISTORY_KEY = 'buildmaster_history_v20_calibration_bank';
-const CALIBRATION_KEY = 'buildmaster_ocr_zones_v20';
-const LEARNING_KEY = 'buildmaster_local_learning_v20';
+const HISTORY_KEY = 'buildmaster_history_v21_elite_manual';
+const CALIBRATION_KEY = 'buildmaster_ocr_zones_v21_disabled';
+const LEARNING_KEY = 'buildmaster_local_learning_v21';
 
 const objectives: Array<{ value: Objective; title: string; hint: string }> = [
   { value: 'COMPETITIVE', title: 'Desempenho máximo', hint: 'rendimento real em campo, não overall' },
@@ -345,16 +345,16 @@ function copyBuildText(result: AnalysisResult) {
     .join('\n');
 
   const text = [
-    `BuildMaster Local Pro v20 — ${result.parsed.playerName}`,
+    `BuildMaster Elite Studio v21 — ${result.parsed.playerName}`,
     `Função: ${result.buildName}`,
     `Melhor posição: ${result.bestPosition.label}`,
     `PRI: ${result.pri.overall}`,
     `Pontos: ${result.trainingPointsUsed}/${result.trainingPointsTotal}`,
     '',
-    'Ficha Elite:',
+    'Plano Elite:',
     training,
     '',
-    'Habilidades adicionais:',
+    'Skills adicionais:',
     result.recommendedSkills.map((skill, index) => `${index + 1}. ${skill}`).join('\n'),
     '',
     'Ímpetos recomendados:',
@@ -400,11 +400,11 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
   const positionRatings = Object.entries(card.positionRatings).filter(([, value]) => Number.isFinite(value));
   const attributes = Object.entries(card.attributes).filter(([, value]) => Number.isFinite(value));
   const sourceLabel = card.trainingPointSource === 'TRAINING_READ'
-    ? 'Ficha automática somada'
+    ? 'Plano automática somada'
     : card.trainingPointSource === 'LEVEL_INFERRED'
       ? 'Calculado pelo nível'
       : card.trainingPointSource === 'OCR'
-        ? 'Lido no print'
+        ? 'Informado no registro técnico'
         : 'Padrão seguro';
 
   return (
@@ -421,7 +421,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
         </div>
 
         <div className="result-intro">
-          <p className="kicker">Resumo</p>
+          <p className="kicker">Painel</p>
           <h2>{card.playerName}</h2>
           <div className="playstyle-pill">{card.playstyle ?? 'Estilo não lido'}</div>
           <p className="identity-note">Identidade preservada: {card.mainPositionPt}{card.playstyle ? ` • ${card.playstyle}` : ''}. O app não altera a posição/estilo do card; só recomenda abaixo onde rende mais.</p>
@@ -444,11 +444,11 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
 
       <nav className="elite-tabs" aria-label="Seções do resultado">
         {[
-          ['resumo', 'Resumo'],
-          ['ficha', 'Ficha'],
-          ['habilidades', 'Habilidades'],
-          ['posicoes', 'Posições'],
-          ['dados', 'Dados']
+          ['resumo', 'Painel'],
+          ['ficha', 'Plano'],
+          ['habilidades', 'Skills'],
+          ['posicoes', 'Funções'],
+          ['dados', 'Base técnica']
         ].map(([value, label]) => (
           <button key={value} className={tab === value ? 'active' : ''} type="button" onClick={() => setTab(value as ResultTab)}>
             {label}
@@ -459,7 +459,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
       {tab === 'resumo' && (
         <div className="result-section-grid">
           <article className="luxury-panel elite-build-card">
-            <p className="kicker">Build Elite recomendado</p>
+            <p className="kicker">Plano Elite recomendado</p>
             <div className="section-title-row">
               <h3>{result.buildName}</h3>
               <span>Elite</span>
@@ -482,7 +482,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
           </article>
 
           <article className="luxury-panel compact-card">
-            <p className="kicker">Habilidades adicionais</p>
+            <p className="kicker">Skills adicionais</p>
             <div className="chip-cloud purple">
               {recommendedSkills.length ? recommendedSkills.slice(0, 4).map((skill) => <span key={skill}>{skill}</span>) : <span>Nenhuma recomendação segura</span>}
             </div>
@@ -526,7 +526,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
             <div className="section-title-row">
               <div>
                 <p className="kicker">Distribuição de pontos</p>
-                <h3>Ficha Elite de gameplay</h3>
+                <h3>Plano Elite de gameplay</h3>
               </div>
               <span>{result.trainingPointsUsed}/{result.trainingPointsTotal}</span>
             </div>
@@ -543,7 +543,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
           </article>
 
           <article className="luxury-panel wide-card">
-            <p className="kicker">Comparação com a ficha automática</p>
+            <p className="kicker">Comparação com plano-base</p>
             <div className="comparison-table">
               <div><strong>Treino</strong><strong>Jogo</strong><strong>App</strong><strong>Dif.</strong></div>
               {result.trainingComparison.length ? result.trainingComparison.map((item) => (
@@ -553,12 +553,12 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
                   <span>{item.recommended}</span>
                   <strong>{item.difference > 0 ? `+${item.difference}` : item.difference}</strong>
                 </div>
-              )) : <p className="panel-note">Ficha automática não foi lida; comparação indisponível.</p>}
+              )) : <p className="panel-note">Plano automática não foi lida; comparação indisponível.</p>}
             </div>
           </article>
 
           <article className="luxury-panel wide-card">
-            <p className="kicker">Ficha segura / competitiva / alternativa</p>
+            <p className="kicker">Perfil seguro / competitivo / alternativo</p>
             <div className="variant-grid">
               {result.buildVariants.map((variant) => (
                 <div key={variant.kind}>
@@ -613,7 +613,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
                 <div key={code}>
                   <strong>{positionPt(code)}</strong>
                   <span>{index === 0 ? 'Posição do card' : 'Compatível'}</span>
-                  <em>{code === card.mainPosition ? `Preservada no card • ${card.playstyle ?? 'estilo não lido'}` : `Lida no print${card.positionRatings[code] ? ` • ${card.positionRatings[code]}` : ''}`}</em>
+                  <em>{code === card.mainPosition ? `Preservada no card • ${card.playstyle ?? 'estilo não lido'}` : `Registrada no painel${card.positionRatings[code] ? ` • ${card.positionRatings[code]}` : ''}`}</em>
                 </div>
               ))}
             </div>
@@ -648,7 +648,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
       {tab === 'dados' && (
         <div className="result-section-grid">
           <article className="luxury-panel wide-card">
-            <p className="kicker">Dados lidos</p>
+            <p className="kicker">Base técnica lidos</p>
             <div className="data-grid">
               <div><span>Posição da carta</span><strong>{card.mainPositionPt}</strong></div>
               <div><span>Estilo de jogo</span><strong>{card.playstyle ?? '—'}</strong></div>
@@ -659,7 +659,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
               <div><span>Altura</span><strong>{card.height ? `${card.height} cm` : '—'}</strong></div>
               <div><span>Peso</span><strong>{card.weight ? `${card.weight} kg` : '—'}</strong></div>
               <div><span>Idade</span><strong>{card.age ?? '—'}</strong></div>
-              <div><span>OCR</span><strong>100% local</strong></div>
+              <div><span>Entrada</span><strong>Manual premium</strong></div>
             </div>
           </article>
           <article className="luxury-panel wide-card">
@@ -693,7 +693,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
         </div>
       )}
 
-      <button className="copy-floating" type="button" onClick={() => copyBuildText(result)}><Copy size={16} /> Copiar ficha</button>
+      <button className="copy-floating" type="button" onClick={() => copyBuildText(result)}><Copy size={16} /> Copiar plano</button>
     </section>
   );
 }
@@ -750,9 +750,9 @@ function ReviewPanel({
           <em>{card.playerName}</em>
         </div>
         <div className="result-intro">
-          <p className="kicker"><ShieldCheck size={16} /> Conferência obrigatória</p>
-          <h2>Revise antes da ficha final</h2>
-          <p className="review-copy">O OCR é local e gratuito. Para evitar erro de posição, estilo ou pontos, esta etapa segura bloqueia a ficha até você confirmar os dados principais.</p>
+          <p className="kicker"><ShieldCheck size={16} /> Auditoria Elite</p>
+          <h2>Revise antes do plano final</h2>
+          <p className="review-copy">Fluxo manual premium: você confirma posição, estilo, pontos e atributos antes de finalizar. Assim o programa não depende de leitura automática e reduz erros de ficha.</p>
           <div className="metric-grid">
             <div><span>Confiança</span><strong>{card.confidence}%</strong></div>
             <div><span>Posição lida</span><strong>{card.mainPositionPt}</strong></div>
@@ -773,7 +773,7 @@ function ReviewPanel({
 
       <div className="review-grid">
         <article className="luxury-panel wide-card">
-          <p className="kicker">Dados principais</p>
+          <p className="kicker">Identidade da carta</p>
           <div className="review-form-grid">
             <label>
               <span>Nome do jogador</span>
@@ -793,7 +793,7 @@ function ReviewPanel({
               </select>
             </label>
             <label>
-              <span>Melhor posição desejada</span>
+              <span>Função alvo premium</span>
               <select value={targetPosition} onChange={(event) => setTargetPosition(event.target.value as PositionCode | 'AUTO')}>
                 {POSITION_LABELS.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
               </select>
@@ -803,7 +803,7 @@ function ReviewPanel({
               <input inputMode="numeric" value={manualFields.level} onChange={(event) => setManualFields((current) => ({ ...current, level: event.target.value.replace(/[^0-9]/g, '').slice(0, 2) }))} placeholder={card.level ? String(card.level) : 'Ex.: 32'} />
             </label>
             <label>
-              <span>Pontos totais da ficha</span>
+              <span>Pontos totais disponíveis</span>
               <input inputMode="numeric" value={manualFields.trainingPointsTotal} onChange={(event) => setManualFields((current) => ({ ...current, trainingPointsTotal: event.target.value.replace(/[^0-9]/g, '').slice(0, 3) }))} placeholder={String(draft.trainingPointsTotal)} />
             </label>
           </div>
@@ -824,11 +824,11 @@ function ReviewPanel({
               </label>
             ))}
           </div>
-          <p className="panel-note">Preencha só os valores que você quer corrigir. O restante continua vindo do OCR e das regras locais.</p>
+          <p className="panel-note">Preencha os valores que você deseja usar na ficha. O restante segue o motor local, banco de cartas e regras premium de gameplay.</p>
         </article>
 
         <article className="luxury-panel wide-card">
-          <p className="kicker">Posições separadas</p>
+          <p className="kicker">Funções separadas</p>
           <div className="position-list">
             {draft.permittedPositions.map((item) => (
               <div key={item.code}>
@@ -855,8 +855,8 @@ function ReviewPanel({
       </div>
 
       <div className="review-actions">
-        <button type="button" className="secondary-action" onClick={onRefresh}>Atualizar prévia com correções</button>
-        <button type="button" className="elite-button" onClick={onConfirm}><CheckCircle2 size={18} /> Confirmar dados e gerar ficha final</button>
+        <button type="button" className="secondary-action" onClick={onRefresh}>Atualizar prévia premium</button>
+        <button type="button" className="elite-button" onClick={onConfirm}><CheckCircle2 size={18} /> Finalizar plano Elite</button>
       </div>
     </section>
   );
@@ -880,7 +880,7 @@ export function CardVisionApp() {
   const [qualityReport, setQualityReport] = useState<PrintQualityReport | null>(null);
   const [formation, setFormation] = useState<TacticalFormation>('AUTO');
   const [teamStyle, setTeamStyle] = useState<TacticalStyle>('AUTO');
-  const [status, setStatus] = useState('Envie o print da carta para começar.');
+  const [status, setStatus] = useState('Abra o Console Elite e preencha os dados da carta manualmente.');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [draftResult, setDraftResult] = useState<AnalysisResult | null>(null);
@@ -889,7 +889,7 @@ export function CardVisionApp() {
   const [history, setHistory] = useState<SavedAnalysis[]>([]);
   const lastSavedKey = useRef<string | null>(null);
 
-  const canProceed = useMemo(() => !loading && (!!selectedFile || rawText.trim().length > 2), [selectedFile, rawText, loading]);
+  const canProceed = useMemo(() => !loading && rawText.trim().length > 2, [rawText, loading]);
   const tacticalProfile = useMemo<TacticalProfile>(() => ({ formation, style: teamStyle }), [formation, teamStyle]);
 
   useEffect(() => {
@@ -964,7 +964,7 @@ export function CardVisionApp() {
     setCardPositionOverride('AUTO');
     setPlaystyleOverride('AUTO');
     setQualityReport(null);
-    setStatus('Envie outro print da carta para começar.');
+    setStatus('Console reiniciado. Abra o Console Elite Manual para começar a próxima carta.');
   }
 
   function restoreHistory(item: SavedAnalysis) {
@@ -976,7 +976,7 @@ export function CardVisionApp() {
     setPreview(item.fullPreview ?? item.playerImage);
     setDraftResult(null);
     setResult(item.result);
-    setManualMode(false);
+    setManualMode(true);
     setStatus(`Análise restaurada: ${item.result.parsed.playerName}.`);
   }
 
@@ -1055,20 +1055,22 @@ export function CardVisionApp() {
       'NÍVEL MÁXIMO: ',
       'PONTOS TOTAIS: ',
       '',
-      'Preencha os dados no painel de conferência. Este modo não depende de OCR.'
+      'Preencha os dados no painel de auditoria. Este modo não usa OCR nem leitura automática.'
     ].join('\n');
     setManualMode(true);
     setSelectedFile(null);
     setPreview(null);
     setPlayerCardImage(null);
+    setFileName('entrada-manual-premium');
     setRawText(template);
     setOcrDone(true);
     setResult(null);
-    setDraftResult(null);
     setCardPositionOverride('CF');
     setPlaystyleOverride('AUTO');
     setManualFields({ playerName: '', level: '', trainingPointsTotal: '', attributes: {} });
-    setStatus('Modo manual preciso ativado. Preencha os dados e toque em Gerar prévia para conferência.');
+    const nextResult = analyzeCard(template, objective, targetPosition, 'entrada-manual-premium', tacticalProfile);
+    setDraftResult(nextResult);
+    setStatus('Console Elite Manual aberto. Preencha os dados, revise e finalize o plano premium.');
   }
 
   async function analyzeSelectedImage() {
@@ -1159,7 +1161,7 @@ export function CardVisionApp() {
   }
 
   function runAnalysis(confirmed = false) {
-    setStatus(confirmed ? 'Gerando ficha final confirmada...' : 'Atualizando prévia para conferência...');
+    setStatus(confirmed ? 'Finalizando plano Elite confirmado...' : 'Atualizando prévia para conferência...');
     const lockedText = textWithManualLocks(rawText, confirmed);
     if (lockedText !== rawText) setRawText(lockedText);
     const nextResult = analyzeCard(lockedText, objective, targetPosition, fileName, tacticalProfile);
@@ -1178,7 +1180,7 @@ export function CardVisionApp() {
     } else {
       setDraftResult(nextResult);
       setResult(null);
-      setStatus('Prévia atualizada. Revise os dados e confirme para gerar a ficha final.');
+      setStatus('Prévia Elite atualizada. Revise os dados e finalize o plano premium.');
     }
   }
 
@@ -1189,7 +1191,7 @@ export function CardVisionApp() {
           <div className="brand-icon"><Sparkles size={19} /></div>
           <div>
             <strong>BuildMaster</strong>
-            <span>Local Pro</span>
+            <span>Elite Studio</span>
           </div>
         </div>
         <div className="session-badge"><ShieldCheck size={16} /> Sessão protegida</div>
@@ -1201,9 +1203,9 @@ export function CardVisionApp() {
 
       <section className="hero-redesign">
         <div>
-          <p className="kicker"><Sparkles size={16} /> BuildMaster Local Pro</p>
-          <h1>Analise sua carta. Descubra o build Elite.</h1>
-          <p>Envie o print e gere uma ficha voltada para desempenho real em campo. Overall é só referência visual; a ficha prioriza função, atributos úteis, estilo e melhor posicionamento.</p>
+          <p className="kicker"><Sparkles size={16} /> BuildMaster Elite Studio</p>
+          <h1>Monte uma ficha premium sem OCR e sem erro de leitura.</h1>
+          <p>Use entrada manual controlada para gerar uma ficha de desempenho real em campo. Overall é apenas referência; o motor prioriza função, atributos úteis, estilo e melhor posicionamento.</p>
         </div>
         <div className="orb-ball" aria-hidden="true" />
       </section>
@@ -1212,138 +1214,60 @@ export function CardVisionApp() {
         <aside className="control-panel luxury-panel">
           <div className="panel-heading">
             <div>
-              <p className="kicker">Nova análise</p>
-              <h2>Imagem da carta</h2>
+              <p className="kicker">Painel premium</p>
+              <h2>Console Elite</h2>
             </div>
-            <Camera size={24} />
+            <ShieldCheck size={24} />
           </div>
 
-          <div className="upload-box">
-            {preview ? <img src={preview} alt="Print enviado" /> : (
-              <div>
-                <UploadCloud size={36} />
-                <strong>Envie a imagem da sua carta</strong>
-                <span>Use print direto da tela com nome, posição, estilo, atributos e nível máximo visíveis.</span>
-              </div>
-            )}
+          <div className="manual-premium-card">
+            <div className="manual-premium-icon"><ShieldCheck size={28} /></div>
+            <strong>Entrada manual controlada</strong>
+            <span>Sem OCR, sem leitura de print e sem risco do programa trocar posição ou estilo por engano. Você informa os dados principais e o motor calcula a melhor ficha por desempenho real.</span>
           </div>
 
-          <div className="upload-buttons">
-            <label>
-              <input type="file" accept="image/*" onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.currentTarget.value = '';
-                if (file) void handleFile(file);
-              }} />
-              <ImagePlus size={18} /> Buscar print
-            </label>
-            <label>
-              <input type="file" accept="image/*" capture="environment" onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.currentTarget.value = '';
-                if (file) void handleFile(file);
-              }} />
-              <Camera size={18} /> Tirar foto
-            </label>
-          </div>
-
-          {qualityReport && (
-            <div className="quality-card">
-              <strong>Detector de print</strong>
-              <span>{qualityReport.width}×{qualityReport.height} • nitidez {qualityReport.sharpness} • contraste {qualityReport.contrast}</span>
-              {qualityReport.issues.length ? qualityReport.issues.map((issue) => <em key={issue.code}>⚠ {issue.message}</em>) : <em>✓ Print em condição boa para OCR.</em>}
-            </div>
-          )}
-
-          <button className="manual-mode-button" type="button" onClick={() => setCalibratorOpen((value) => !value)}>
-            <ScanText size={16} /> {calibratorOpen ? 'Fechar calibrador de print' : 'Abrir calibrador de print'}
-          </button>
-
-          {calibratorOpen && (
-            <div className="calibrator-panel">
-              <div className="calibration-preview">
-                {preview && <img src={preview} alt="Prévia calibrada" />}
-                {preview && ocrZones.filter((zone) => zone.enabled).map((zone) => (
-                  <div
-                    key={zone.key}
-                    className={`zone-box zone-${zone.key}`}
-                    style={{ left: `${zone.x * 100}%`, top: `${zone.y * 100}%`, width: `${zone.w * 100}%`, height: `${zone.h * 100}%` }}
-                  >
-                    <span>{zone.label}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="panel-note">Ajuste as áreas se seu print vier com resolução, zoom ou corte diferente. O OCR só lê as zonas ativas.</p>
-              <div className="zone-editor-list">
-                {ocrZones.map((zone) => (
-                  <div key={zone.key} className="zone-editor">
-                    <label className="zone-toggle">
-                      <input type="checkbox" checked={zone.enabled} onChange={() => toggleZone(zone.key)} />
-                      <strong>{zoneKeyLabel(zone.key)}</strong>
-                    </label>
-                    {(['x', 'y', 'w', 'h'] as const).map((field) => (
-                      <label key={field}>
-                        <span>{field.toUpperCase()} {Math.round(zone[field] * 100)}%</span>
-                        <input type="range" min="0" max="100" value={Math.round(zone[field] * 100)} onChange={(event) => updateZone(zone.key, field, event.target.value)} />
-                      </label>
-                    ))}
-                  </div>
-                ))}
-              </div>
-              <button type="button" className="secondary-action full-width" onClick={resetCalibration}>Restaurar calibração padrão</button>
-            </div>
-          )}
-
-          <button className="manual-mode-button" type="button" onClick={startManualPreciseMode}>
-            <ShieldCheck size={16} /> Modo manual preciso sem OCR
+          <button className="manual-mode-button primary-manual" type="button" onClick={startManualPreciseMode}>
+            <ShieldCheck size={16} /> Abrir Console Elite Manual
           </button>
 
           <div className="select-stack">
             <label>
-              <span>Modo de leitura</span>
-              <select value={readingMode} onChange={(event) => setReadingMode(event.target.value as ReadingMode)}>
-                <option value="precision">OCR local premium — mais preciso</option>
-                <option value="fast">OCR rápido — menos passadas</option>
-              </select>
-            </label>
-
-            <label>
-              <span>Objetivo da ficha</span>
+              <span>Perfil de performance</span>
               <select value={objective} onChange={(event) => setObjective(event.target.value as Objective)}>
                 {objectives.map((item) => <option key={item.value} value={item.value}>{item.title} — {item.hint}</option>)}
               </select>
             </label>
 
             <label>
-              <span>Formação que você usa</span>
+              <span>Sistema tático</span>
               <select value={formation} onChange={(event) => setFormation(event.target.value as TacticalFormation)}>
                 {formations.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
               </select>
             </label>
 
             <label>
-              <span>Seu estilo de jogo</span>
+              <span>Modelo de jogo</span>
               <select value={teamStyle} onChange={(event) => setTeamStyle(event.target.value as TacticalStyle)}>
                 {tacticalStyles.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
               </select>
             </label>
 
             <label>
-              <span>Melhor posição para jogar</span>
+              <span>Função alvo em campo</span>
               <select value={targetPosition} onChange={(event) => setTargetPosition(event.target.value as PositionCode | 'AUTO')}>
                 {POSITION_LABELS.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
               </select>
             </label>
 
             <label>
-              <span>Travar posição da carta se o OCR errar</span>
+              <span>Posição original da carta</span>
               <select value={cardPositionOverride} onChange={(event) => setCardPositionOverride(event.target.value as PositionCode | 'AUTO')}>
                 {POSITION_LABELS.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
               </select>
             </label>
 
             <label>
-              <span>Travar estilo de jogo se o OCR errar</span>
+              <span>Estilo real da carta</span>
               <select value={playstyleOverride} onChange={(event) => setPlaystyleOverride(event.target.value)}>
                 <option value="AUTO">Automático</option>
                 {playstyleOptions.map((style) => <option key={style} value={style}>{style}</option>)}
@@ -1351,26 +1275,26 @@ export function CardVisionApp() {
             </label>
           </div>
 
-          <button className="elite-button generate-button" type="button" onClick={selectedFile && !ocrDone ? analyzeSelectedImage : () => runAnalysis(false)} disabled={!canProceed}>
+          <button className="elite-button generate-button" type="button" onClick={() => runAnalysis(false)} disabled={!canProceed}>
             {loading ? <Loader2 className="spin" size={18} /> : <Zap size={18} />}
-            {loading ? 'Lendo imagem...' : selectedFile && !ocrDone ? 'Ler carta e abrir conferência' : result ? 'Reabrir conferência' : 'Gerar prévia para conferência'}
+            {loading ? 'Processando ficha...' : result ? 'Reabrir auditoria Elite' : 'Gerar prévia Elite'}
           </button>
 
           <div className="flow-steps">
-            <span className={selectedFile ? 'done' : ''}>1. Escolher carta</span>
-            <span className={ocrDone ? 'done' : selectedFile ? 'active' : ''}>2. Ler identidade</span>
-            <span className={draftResult ? 'active' : result ? 'done' : ocrDone ? 'active' : ''}>3. Conferir dados</span>
-            <span className={result ? 'done' : ''}>4. Ficha final</span>
+            <span className={manualMode ? 'done' : ''}>1. Dados manuais</span>
+            <span className={draftResult || result ? 'done' : manualMode ? 'active' : ''}>2. Auditoria Elite</span>
+            <span className={draftResult ? 'active' : result ? 'done' : ''}>3. Conferência</span>
+            <span className={result ? 'done' : ''}>4. Plano final</span>
           </div>
 
           <div className="status-card">
-            <ScanText size={18} />
+            <ShieldCheck size={18} />
             <p>{status}</p>
           </div>
 
           {rawText && (
             <details className="raw-details">
-              <summary>Dados detectados pelo OCR</summary>
+              <summary>Registro técnico manual</summary>
               <textarea value={rawText} onChange={(event) => setRawText(event.target.value)} spellCheck={false} />
             </details>
           )}
@@ -1407,17 +1331,17 @@ export function CardVisionApp() {
           ) : (
             <div className="empty-state luxury-panel">
               <div className="empty-icon"><Wand2 size={34} /></div>
-              <h2>Resultado da análise</h2>
-              <p>Depois da leitura, o resultado aparece como um painel premium com resumo, ficha, habilidades, posições e dados lidos.</p>
+              <h2>Painel Elite</h2>
+              <p>Depois de preencher os dados, o resultado aparece como um painel premium com plano, habilidades, posições e justificativa de gameplay.</p>
               <div className="empty-card-preview">
                 <strong>--</strong>
                 <span>CA</span>
-                <em>BuildMaster Local</em>
+                <em>Elite Studio</em>
               </div>
               <div className="feature-row">
-                <span><ShieldCheck size={15} /> 100% local</span>
-                <span><CheckCircle2 size={15} /> Sem API paga</span>
-                <span><Sparkles size={15} /> Ficha Elite</span>
+                <span><ShieldCheck size={15} /> Manual e local</span>
+                <span><CheckCircle2 size={15} /> Sem OCR / sem API paga</span>
+                <span><Sparkles size={15} /> Plano Elite</span>
               </div>
             </div>
           )}

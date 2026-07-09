@@ -1053,3 +1053,135 @@ a { color: inherit; }
 .variant-grid span { color: var(--soft); font-weight: 800; }
 .variant-grid em { color: var(--cyan); font-style: normal; font-size: 12px; line-height: 1.45; }
 .variant-grid p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+/* v21 — Premium manual-only polish */
+.manual-premium-card {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(57,255,149,.28);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 14% 18%, rgba(57,255,149,.16), transparent 12rem),
+    linear-gradient(180deg, rgba(11,31,50,.82), rgba(2,10,22,.74));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 14px 44px rgba(0,0,0,.20);
+}
+.manual-premium-icon {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  color: var(--green);
+  border: 1px solid rgba(57,255,149,.36);
+  background: rgba(57,255,149,.08);
+  box-shadow: 0 0 36px rgba(57,255,149,.16);
+}
+.manual-premium-card strong {
+  color: #fff;
+  font-size: 20px;
+  letter-spacing: -.03em;
+}
+.manual-premium-card span {
+  color: var(--soft);
+  line-height: 1.6;
+  font-size: 14px;
+}
+.primary-manual {
+  min-height: 58px;
+  color: #06121d;
+  border-color: rgba(57,255,149,.55);
+  background: linear-gradient(110deg, #39ff95 0%, #37d8ff 100%);
+  box-shadow: 0 16px 48px rgba(57,255,149,.18);
+}
+.primary-manual svg { color: #06121d; }
+
+/* Mais legibilidade: evita texto escondido, cortado ou visível só no hover */
+select,
+select option,
+input,
+textarea {
+  color: var(--text) !important;
+  background-color: #071424 !important;
+}
+select option {
+  padding: 10px;
+  white-space: normal;
+}
+button,
+label,
+.select-stack label,
+.review-form-grid label,
+.attribute-editor-grid label,
+.metric-grid div,
+.data-grid div,
+.skill-grid div,
+.position-list div,
+.variant-grid > div,
+.comparison-table > div,
+.history-strip button,
+.manual-premium-card,
+.status-card,
+.panel-note,
+.clean-list li,
+.review-copy,
+.identity-note {
+  overflow: visible;
+  text-overflow: unset;
+  white-space: normal;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+.select-stack select,
+.review-form-grid select,
+.review-form-grid input,
+.attribute-editor-grid input,
+.raw-details textarea {
+  min-height: 42px;
+  line-height: 1.35;
+  padding: 8px 0;
+}
+.select-stack span,
+.review-form-grid span,
+.attribute-editor-grid span,
+.metric-grid span,
+.data-grid span,
+.skill-grid span,
+.position-list span,
+.comparison-table span,
+.comparison-table strong,
+.variant-grid span,
+.variant-grid em,
+.variant-grid p {
+  line-height: 1.45;
+}
+.metric-grid strong,
+.data-grid strong,
+.skill-grid strong,
+.position-list strong,
+.variant-grid strong {
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.comparison-table {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.comparison-table > div {
+  min-width: 520px;
+}
+.training-ribbon {
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+}
+.stat-bars {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+.flow-steps span {
+  line-height: 1.25;
+}
+@media (max-width: 640px) {
+  .section-title-row { align-items: flex-start; flex-direction: column; }
+  .comparison-table > div { min-width: 460px; }
+  .manual-premium-card { padding: 16px; }
+}

@@ -1,7 +1,7 @@
 {
-  "name": "BuildMaster Local Pro v20",
+  "name": "BuildMaster Elite Studio v21",
   "short_name": "BuildMaster",
-  "description": "App premium privado com OCR local, calibrador de print, banco local, aprendizado local e ficha de desempenho real em campo.",
+  "description": "App premium privado com entrada manual controlada, banco local e ficha de desempenho real em campo, sem OCR e sem API paga.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020712",

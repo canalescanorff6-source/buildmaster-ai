@@ -1,8 +1,8 @@
 {
-  "name": "buildmaster-local-pro-v20-calibracao-banco",
-  "version": "20.0.0",
+  "name": "buildmaster-elite-studio-v21-manual-premium",
+  "version": "21.0.0",
   "private": true,
-  "description": "BuildMaster Local Pro v20 - calibrador de print, banco local maior, aprendizado local, detector de print e comparação de ficha sem IA paga.",
+  "description": "BuildMaster Elite Studio v21 - modo manual premium, auditoria de dados, banco local maior e ficha de desempenho real sem OCR e sem API paga.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

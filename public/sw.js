@@ -1,4 +1,4 @@
-const CACHE_NAME = 'buildmaster-local-pro-v20-calibration-bank';
+const CACHE_NAME = 'buildmaster-elite-studio-v21-manual-only';
 const STATIC_ASSETS = ['/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

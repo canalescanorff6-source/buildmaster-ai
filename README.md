@@ -1,33 +1,23 @@
-# BuildMaster Local Pro v20 — Calibração e Banco de Cartas
+# BuildMaster Elite Studio v21 — Manual Premium
 
-Versão criada para aumentar a precisão sem usar IA paga. O app continua com OCR local via `tesseract.js`, mas agora combina leitura por áreas, calibração visual, banco local maior, aprendizado local, detector de print ruim, comparação de ficha e perfil tático.
+Versão ajustada para ficar com aparência e fluxo mais premium, sem depender de OCR. O app agora trabalha com **Console Elite Manual**, onde você informa posição, estilo, pontos e atributos, revisa tudo na auditoria e só então gera o plano final.
 
-## O que entrou nesta versão
+## O que mudou
 
-1. **Calibrador visual de print** — mostra as áreas lidas pelo OCR: nome, overall, posição, estilo, atributos, ficha automática, posições jogáveis e habilidades. Dá para ajustar X/Y/largura/altura e ativar/desativar cada zona.
-2. **Banco local maior de cartas** — inclui regras offline para Davids, Gattuso, Maldini, Vieira, Tchouaméni, Beckenbauer, Neymar, Messi, Mbappé, Beckham, Rijkaard, Makelele, Kanté, Ronaldinho, Cristiano Ronaldo, Haaland, Rodri, Van Dijk, Cafu e Roberto Carlos.
-3. **Aprendizado local** — quando você confirma uma carta, o navegador salva nome, posição, estilo, melhor posição e pontos para corrigir leituras futuras da mesma carta, sem API e sem IA paga.
-4. **Mais testes com print real/texto OCR real** — `npm run test:prints` valida o caso Edgar Davids do print completo, impedindo que VOL destruidor vire LE/LD só porque o grid mostra 89.
-5. **Comparação de ficha** — mostra ficha automática lida do jogo, ficha recomendada pelo app e diferença ponto a ponto.
-6. **Explicação da recomendação** — explica por que recomendou a posição/ficha e quais atributos pesaram.
-7. **Perfil por formação/tática** — adiciona formação 4-2-2-2, 4-3-3, 4-1-2-3, 3-2-4-1 e estilos como passe curto, contra-ataque rápido, posse, bola longa e pressão alta.
-8. **Ficha segura, competitiva e alternativa** — além da ficha principal, mostra três versões para uso conservador, competitivo e fora da função principal.
-9. **Detector de print ruim** — mede resolução, nitidez, brilho e contraste antes do OCR e avisa se a imagem pode causar erro.
-10. **Organização do código** — foram separados módulos para banco local, regras de posição, OCR/calibração, validação de print e motor de comparação de treino.
+1. **Modo manual único** — a tela não mostra mais fluxo de leitura por print/OCR.
+2. **Novo nome premium** — BuildMaster Elite Studio v21.
+3. **Console Elite Manual** — substitui o nome comum “modo manual preciso sem OCR”.
+4. **Textos e botões renomeados** — termos mais profissionais: Perfil de performance, Sistema tático, Modelo de jogo, Função alvo, Plano Elite.
+5. **Layout corrigido** — campos, selects, botões, cards e tabelas foram ajustados para evitar texto cortado, bagunçado ou visível apenas ao passar o mouse.
+6. **Entrada manual controlada** — o programa não troca posição/estilo por leitura errada, porque não usa OCR nesse fluxo.
+7. **Auditoria Elite** — os dados principais precisam ser revisados antes do plano final.
+8. **Plano seguro, competitivo e alternativo** — mantém os três perfis de ficha.
+9. **Comparação com plano-base** — mostra diferença entre plano-base e recomendado quando houver dados.
+10. **Cache/PWA atualizado para v21** — limpar cache ou reinstalar PWA após subir no Vercel.
 
-## Mudança grande aplicada ao seu print do Edgar Davids
+## Validação
 
-A grade de posições pode mostrar LE/LD 89, mas o motor agora não escolhe lateral só pelo maior overall. Para cartas como Davids com `O destruidor` e posição de card `DMF/VOL`, a regra local e o motor de gameplay priorizam `VOL`, depois `MLG`, e só tratam outras posições como situacionais.
-
-## Como usar
-
-1. Envie o print completo da carta.
-2. Abra o **Calibrador de print** se o corte do OCR estiver errado.
-3. Clique em **Ler carta e abrir conferência**.
-4. Confira nome, posição, estilo, pontos, atributos e perfil tático.
-5. Confirme para gerar a ficha final.
-
-## Comandos validados
+Comandos usados para validar:
 
 ```bash
 npm run typecheck
@@ -35,17 +25,6 @@ npm run test:all
 npm run build
 ```
 
-Todos passaram nesta entrega.
+## Deploy no Vercel
 
-## Login
-
-Usuário: `thiago0126`  
-Senha: `iu1fsaa67a`
-
-## Vercel
-
-- Framework Preset: `Next.js`
-- Install Command: `npm install`
-- Build Command: `npm run vercel-build`
-
-Depois de atualizar, limpe o cache/dados do site no celular ou reinstale o PWA, porque o service worker mudou para v20.
+Substitua os arquivos antigos do repositório por esta versão extraída e faça redeploy com cache limpo.
