@@ -852,3 +852,91 @@ a { color: inherit; }
   .flow-steps { grid-template-columns: 1fr; }
   .flow-steps span { min-height: 34px; }
 }
+
+/* v19 — Conferência obrigatória e modo manual preciso */
+.manual-mode-button,
+.secondary-action {
+  width: 100%;
+  min-height: 48px;
+  margin: 0 0 14px;
+  border: 1px solid rgba(255,217,100,.28);
+  border-radius: 15px;
+  color: #ffe9a8;
+  background: rgba(255,217,100,.06);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font-weight: 900;
+}
+.review-panel { gap: 14px; }
+.compact-art { min-height: 320px; }
+.review-copy { color: var(--muted); line-height: 1.55; max-width: 760px; }
+.review-alert-card { border-color: rgba(255,217,100,.28); }
+.strong-alert { align-items: flex-start; }
+.strong-alert span { line-height: 1.4; }
+.review-grid { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.review-form-grid,
+.attribute-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.attribute-editor-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.review-form-grid label,
+.attribute-editor-grid label {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 15px;
+  background: rgba(1,8,18,.45);
+}
+.review-form-grid span,
+.attribute-editor-grid span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+.review-form-grid input,
+.review-form-grid select,
+.attribute-editor-grid input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  background: transparent;
+  font-weight: 900;
+}
+.review-actions {
+  position: sticky;
+  bottom: 14px;
+  z-index: 4;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--stroke);
+  border-radius: 20px;
+  background: rgba(3, 10, 22, .92);
+  backdrop-filter: blur(16px);
+}
+.review-actions .elite-button,
+.review-actions .secondary-action { margin: 0; }
+.avoid-kicker { margin-top: 18px; color: var(--red); }
+.avoid-list div { border-color: rgba(255,95,120,.24); background: rgba(255,95,120,.06); }
+.position-list div em {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  color: var(--muted-2);
+  font-size: 12px;
+  font-style: normal;
+  line-height: 1.35;
+}
+.flow-steps { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 980px) {
+  .review-form-grid,
+  .attribute-editor-grid,
+  .review-actions { grid-template-columns: 1fr; }
+}

@@ -18,10 +18,17 @@ import {
   Zap
 } from 'lucide-react';
 import { clearBuildMasterSession } from '@/components/AuthGate';
-import { analyzeCard, type AnalysisResult, type Objective, type PositionCode, POSITION_LABELS } from '@/lib/analyzer';
+import { analyzeCard, ATTRIBUTE_INPUTS, ATTRIBUTE_PT, PLAYSTYLE_OPTIONS, type AnalysisResult, type AttributeKey, type Objective, type PositionCode, POSITION_LABELS } from '@/lib/analyzer';
 
 type ReadingMode = 'precision' | 'fast';
 type ResultTab = 'resumo' | 'ficha' | 'habilidades' | 'posicoes' | 'dados';
+
+type ManualFields = {
+  playerName: string;
+  level: string;
+  trainingPointsTotal: string;
+  attributes: Partial<Record<AttributeKey, string>>;
+};
 
 type SavedAnalysis = {
   id: string;
@@ -32,10 +39,10 @@ type SavedAnalysis = {
   result: AnalysisResult;
 };
 
-const HISTORY_KEY = 'buildmaster_history_v15_premium';
+const HISTORY_KEY = 'buildmaster_history_v19_precision_check';
 
 const objectives: Array<{ value: Objective; title: string; hint: string }> = [
-  { value: 'COMPETITIVE', title: 'Competitivo', hint: 'maior rendimento real em campo' },
+  { value: 'COMPETITIVE', title: 'Desempenho máximo', hint: 'rendimento real em campo, não overall' },
   { value: 'FINISHER', title: 'Finalizador', hint: 'gols, área e chute' },
   { value: 'CREATOR', title: 'Criador', hint: 'passe, controle e assistência' },
   { value: 'DRIBBLER', title: 'Driblador', hint: 'giro curto e 1 contra 1' },
@@ -46,8 +53,10 @@ const objectives: Array<{ value: Objective; title: string; hint: string }> = [
   { value: 'AERIAL', title: 'Jogo aéreo', hint: 'cabeceio, salto e físico' }
 ];
 
+const playstyleOptions = PLAYSTYLE_OPTIONS;
+
 const trainingLabels: Record<string, string> = {
-  shooting: 'Tiroteio',
+  shooting: 'Finalização',
   passing: 'Passe',
   dribbling: 'Drible',
   dexterity: 'Destreza',
@@ -178,8 +187,10 @@ async function cropImage(file: File, region: { x: number; y: number; w: number; 
 async function createOcrVariants(file: File, readingMode: ReadingMode): Promise<Array<{ label: string; image: File | Blob }>> {
   const fullContrast = await preprocessImage(file, 'contrast');
   const cardIdentity = await cropImage(file, { x: 0, y: 0, w: 0.38, h: 0.44 }, 2100);
+  const cardBadge = await cropImage(file, { x: 0.035, y: 0.035, w: 0.24, h: 0.30 }, 2200);
   if (readingMode === 'fast') {
     return [
+      { label: 'CARD BADGE', image: cardBadge },
       { label: 'IDENTIDADE DA CARTA', image: cardIdentity },
       { label: 'imagem original', image: file },
       { label: 'imagem otimizada', image: fullContrast }
@@ -193,6 +204,7 @@ async function createOcrVariants(file: File, readingMode: ReadingMode): Promise<
   const lowerSkills = await cropImage(file, { x: 0, y: 0.48, w: 1, h: 0.52 }, 2300);
 
   return [
+    { label: 'CARD BADGE', image: cardBadge },
     { label: 'IDENTIDADE DA CARTA', image: cardIdentity },
     { label: 'TOPO DA CARTA', image: cardTopWide },
     { label: 'imagem original', image: file },
@@ -263,7 +275,7 @@ function copyBuildText(result: AnalysisResult) {
     .join('\n');
 
   const text = [
-    `BuildMaster Local Pro — ${result.parsed.playerName}`,
+    `BuildMaster Local Pro v19 — ${result.parsed.playerName}`,
     `Função: ${result.buildName}`,
     `Melhor posição: ${result.bestPosition.label}`,
     `PRI: ${result.pri.overall}`,
@@ -293,10 +305,7 @@ function positionPt(code: string) {
 }
 
 function attributeNamePt(key: string) {
-  const labels: Record<string, string> = {
-    offensiveAwareness: 'Talento ofensivo', ballControl: 'Controle de bola', dribbling: 'Drible', tightPossession: 'Condução firme', lowPass: 'Passe rasteiro', loftedPass: 'Passe alto', finishing: 'Finalização', heading: 'Cabeçada', placeKicking: 'Bola parada', curl: 'Curva', defensiveAwareness: 'Talento defensivo', defensiveEngagement: 'Dedicação defensiva', tackling: 'Desarme', aggression: 'Agressividade', goalkeeperAwareness: 'Talento GO', goalkeeperCatching: 'Firmeza GO', goalkeeperParrying: 'Defesa GO', goalkeeperReflexes: 'Reflexos GO', goalkeeperReach: 'Alcance GO', speed: 'Velocidade', acceleration: 'Aceleração', kickingPower: 'Força do chute', jump: 'Salto', physicalContact: 'Contato físico', balance: 'Equilíbrio', stamina: 'Resistência'
-  };
-  return labels[key] ?? key;
+  return ATTRIBUTE_PT[key as AttributeKey] ?? key;
 }
 
 function ResultCard({ result, playerImage }: { result: AnalysisResult; playerImage: string | null }) {
@@ -575,6 +584,171 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
   );
 }
 
+
+function ReviewPanel({
+  draft,
+  playerImage,
+  manualFields,
+  setManualFields,
+  cardPositionOverride,
+  setCardPositionOverride,
+  playstyleOverride,
+  setPlaystyleOverride,
+  targetPosition,
+  setTargetPosition,
+  onRefresh,
+  onConfirm
+}: {
+  draft: AnalysisResult;
+  playerImage: string | null;
+  manualFields: ManualFields;
+  setManualFields: (updater: ManualFields | ((current: ManualFields) => ManualFields)) => void;
+  cardPositionOverride: PositionCode | 'AUTO';
+  setCardPositionOverride: (value: PositionCode | 'AUTO') => void;
+  playstyleOverride: string;
+  setPlaystyleOverride: (value: string) => void;
+  targetPosition: PositionCode | 'AUTO';
+  setTargetPosition: (value: PositionCode | 'AUTO') => void;
+  onRefresh: () => void;
+  onConfirm: () => void;
+}) {
+  const card = draft.parsed;
+  const criticalIssues = draft.validation.issues.filter((issue) => issue.severity === 'block');
+  const reviewIssues = draft.validation.issues.filter((issue) => issue.severity === 'review');
+  const updateAttribute = (key: AttributeKey, value: string) => {
+    const cleaned = value.replace(/[^0-9]/g, '').slice(0, 3);
+    setManualFields((current) => ({
+      ...current,
+      attributes: { ...current.attributes, [key]: cleaned }
+    }));
+  };
+
+  return (
+    <section className="review-panel result-panel">
+      <div className="result-head luxury-panel">
+        <div className="premium-card-art compact-art">
+          {playerImage && <img src={playerImage} alt={`Imagem de ${card.playerName}`} />}
+          <div className="card-shine" />
+          <div className="card-number">
+            <strong>{card.maxOverall ?? card.overall ?? '--'}</strong>
+            <span>{card.mainPositionPt}</span>
+          </div>
+          <em>{card.playerName}</em>
+        </div>
+        <div className="result-intro">
+          <p className="kicker"><ShieldCheck size={16} /> Conferência obrigatória</p>
+          <h2>Revise antes da ficha final</h2>
+          <p className="review-copy">O OCR é local e gratuito. Para evitar erro de posição, estilo ou pontos, esta etapa segura bloqueia a ficha até você confirmar os dados principais.</p>
+          <div className="metric-grid">
+            <div><span>Confiança</span><strong>{card.confidence}%</strong></div>
+            <div><span>Posição lida</span><strong>{card.mainPositionPt}</strong></div>
+            <div><span>Estilo</span><strong>{card.playstyle ?? 'revisar'}</strong></div>
+            <div><span>Pontos</span><strong>{draft.trainingPointsTotal}</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <article className="luxury-panel wide-card review-alert-card">
+        <p className="kicker">Validação sem IA paga</p>
+        <div className="alert-strip strong-alert">
+          {criticalIssues.length ? criticalIssues.map((issue) => <span key={issue.code}>⚠ {issue.message}</span>) : <span>✓ Nenhum bloqueio crítico encontrado.</span>}
+          {reviewIssues.map((issue) => <span key={issue.code}>• {issue.message}</span>)}
+        </div>
+        <p className="panel-note">A ficha final só deve ser gerada quando posição, estilo, nível/pontos e atributos principais estiverem corretos.</p>
+      </article>
+
+      <div className="review-grid">
+        <article className="luxury-panel wide-card">
+          <p className="kicker">Dados principais</p>
+          <div className="review-form-grid">
+            <label>
+              <span>Nome do jogador</span>
+              <input value={manualFields.playerName} onChange={(event) => setManualFields((current) => ({ ...current, playerName: event.target.value }))} placeholder={card.playerName} />
+            </label>
+            <label>
+              <span>Posição principal correta</span>
+              <select value={cardPositionOverride} onChange={(event) => setCardPositionOverride(event.target.value as PositionCode | 'AUTO')}>
+                {POSITION_LABELS.filter((item) => item.code !== 'AUTO').map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Estilo de jogo correto</span>
+              <select value={playstyleOverride} onChange={(event) => setPlaystyleOverride(event.target.value)}>
+                <option value="AUTO">Automático / não sei</option>
+                {playstyleOptions.map((style) => <option key={style} value={style}>{style}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Melhor posição desejada</span>
+              <select value={targetPosition} onChange={(event) => setTargetPosition(event.target.value as PositionCode | 'AUTO')}>
+                {POSITION_LABELS.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Nível máximo</span>
+              <input inputMode="numeric" value={manualFields.level} onChange={(event) => setManualFields((current) => ({ ...current, level: event.target.value.replace(/[^0-9]/g, '').slice(0, 2) }))} placeholder={card.level ? String(card.level) : 'Ex.: 32'} />
+            </label>
+            <label>
+              <span>Pontos totais da ficha</span>
+              <input inputMode="numeric" value={manualFields.trainingPointsTotal} onChange={(event) => setManualFields((current) => ({ ...current, trainingPointsTotal: event.target.value.replace(/[^0-9]/g, '').slice(0, 3) }))} placeholder={String(draft.trainingPointsTotal)} />
+            </label>
+          </div>
+        </article>
+
+        <article className="luxury-panel wide-card">
+          <p className="kicker">Atributos revisáveis</p>
+          <div className="attribute-editor-grid">
+            {ATTRIBUTE_INPUTS.map((item) => (
+              <label key={item.key}>
+                <span>{item.label}</span>
+                <input
+                  inputMode="numeric"
+                  value={manualFields.attributes[item.key] ?? ''}
+                  onChange={(event) => updateAttribute(item.key, event.target.value)}
+                  placeholder={card.attributes[item.key] ? String(card.attributes[item.key]) : '--'}
+                />
+              </label>
+            ))}
+          </div>
+          <p className="panel-note">Preencha só os valores que você quer corrigir. O restante continua vindo do OCR e das regras locais.</p>
+        </article>
+
+        <article className="luxury-panel wide-card">
+          <p className="kicker">Posições separadas</p>
+          <div className="position-list">
+            {draft.permittedPositions.map((item) => (
+              <div key={item.code}>
+                <strong>{item.label}</strong>
+                <span>{item.reason}</span>
+                <em>{item.rating ? `Nota lida ${item.rating}` : 'Sem depender de overall'}</em>
+              </div>
+            ))}
+          </div>
+          {draft.avoidPositions.length > 0 && (
+            <>
+              <p className="kicker avoid-kicker">Evitar</p>
+              <div className="position-list avoid-list">
+                {draft.avoidPositions.map((item) => (
+                  <div key={item.code}>
+                    <strong>{item.label}</strong>
+                    <span>{item.reason}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </article>
+      </div>
+
+      <div className="review-actions">
+        <button type="button" className="secondary-action" onClick={onRefresh}>Atualizar prévia com correções</button>
+        <button type="button" className="elite-button" onClick={onConfirm}><CheckCircle2 size={18} /> Confirmar dados e gerar ficha final</button>
+      </div>
+    </section>
+  );
+}
+
+
 export function CardVisionApp() {
   const [preview, setPreview] = useState<string | null>(null);
   const [playerCardImage, setPlayerCardImage] = useState<string | null>(null);
@@ -584,10 +758,15 @@ export function CardVisionApp() {
   const [rawText, setRawText] = useState('');
   const [objective, setObjective] = useState<Objective>('COMPETITIVE');
   const [targetPosition, setTargetPosition] = useState<PositionCode | 'AUTO'>('AUTO');
+  const [cardPositionOverride, setCardPositionOverride] = useState<PositionCode | 'AUTO'>('AUTO');
+  const [playstyleOverride, setPlaystyleOverride] = useState<string>('AUTO');
   const [readingMode, setReadingMode] = useState<ReadingMode>('precision');
   const [status, setStatus] = useState('Envie o print da carta para começar.');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [draftResult, setDraftResult] = useState<AnalysisResult | null>(null);
+  const [manualFields, setManualFields] = useState<ManualFields>({ playerName: '', level: '', trainingPointsTotal: '', attributes: {} });
+  const [manualMode, setManualMode] = useState(false);
   const [history, setHistory] = useState<SavedAnalysis[]>([]);
   const lastSavedKey = useRef<string | null>(null);
 
@@ -641,6 +820,11 @@ export function CardVisionApp() {
     setOcrDone(false);
     setRawText('');
     setResult(null);
+    setDraftResult(null);
+    setManualFields({ playerName: '', level: '', trainingPointsTotal: '', attributes: {} });
+    setManualMode(false);
+    setCardPositionOverride('AUTO');
+    setPlaystyleOverride('AUTO');
     setStatus('Envie outro print da carta para começar.');
   }
 
@@ -651,7 +835,9 @@ export function CardVisionApp() {
     setRawText(item.rawText);
     setPlayerCardImage(item.playerImage);
     setPreview(item.fullPreview ?? item.playerImage);
+    setDraftResult(null);
     setResult(item.result);
+    setManualMode(false);
     setStatus(`Análise restaurada: ${item.result.parsed.playerName}.`);
   }
 
@@ -661,13 +847,78 @@ export function CardVisionApp() {
     setPreview(URL.createObjectURL(file));
     setPlayerCardImage(null);
     setResult(null);
+    setDraftResult(null);
+    setManualFields({ playerName: '', level: '', trainingPointsTotal: '', attributes: {} });
+    setManualMode(false);
     setRawText('');
     setOcrDone(false);
     setLoading(false);
-    setStatus('Imagem selecionada. Toque em Prosseguir para ler a carta e gerar a ficha Elite.');
+    setStatus('Imagem selecionada. Confira as travas opcionais se o OCR costuma errar posição/estilo e toque em Prosseguir.');
 
     const croppedPreview = await createPlayerCardPreview(file).catch(() => null);
     if (croppedPreview) setPlayerCardImage(croppedPreview);
+  }
+
+  function stripManualBlock(text: string) {
+    return text.replace(/\[AJUSTES MANUAIS\][\s\S]*?\[FIM AJUSTES\]\s*/gi, '').trimStart();
+  }
+
+  function textWithManualLocks(text: string, confirmed = false) {
+    const cleaned = stripManualBlock(text)
+      .replace(/^(POSIÇÃO PRINCIPAL|POSICAO PRINCIPAL|ESTILO DE JOGO|NOME|NOME DO JOGADOR|NÍVEL MÁXIMO|NIVEL MAXIMO|PONTOS TOTAIS)\s*[:=\-].*$/gim, '')
+      .replace(/^\s+/, '');
+    const locks: string[] = ['[AJUSTES MANUAIS]'];
+    if (confirmed) locks.push('CONFIRMAÇÃO MANUAL: SIM');
+    if (manualFields.playerName.trim()) locks.push(`NOME DO JOGADOR: ${manualFields.playerName.trim()}`);
+    if (cardPositionOverride !== 'AUTO') locks.push(`POSIÇÃO PRINCIPAL: ${cardPositionOverride}`);
+    if (playstyleOverride !== 'AUTO') locks.push(`ESTILO DE JOGO: ${playstyleOverride}`);
+    if (manualFields.level.trim()) locks.push(`NÍVEL MÁXIMO: ${manualFields.level.trim()}`);
+    if (manualFields.trainingPointsTotal.trim()) locks.push(`PONTOS TOTAIS: ${manualFields.trainingPointsTotal.trim()}`);
+    for (const item of ATTRIBUTE_INPUTS) {
+      const value = manualFields.attributes[item.key]?.trim();
+      if (value) locks.push(`${item.label}: ${value}`);
+    }
+    locks.push('[FIM AJUSTES]');
+    return `${locks.join('\n')}\n${cleaned}`.trim();
+  }
+
+  function hydrateReviewFields(nextResult: AnalysisResult) {
+    const nextAttributes: Partial<Record<AttributeKey, string>> = {};
+    for (const [key, value] of Object.entries(nextResult.parsed.attributes)) {
+      if (Number.isFinite(value)) nextAttributes[key as AttributeKey] = String(value);
+    }
+    setManualFields({
+      playerName: nextResult.parsed.playerName !== 'Jogador não identificado' ? nextResult.parsed.playerName : '',
+      level: nextResult.parsed.level ? String(nextResult.parsed.level) : '',
+      trainingPointsTotal: nextResult.trainingPointsTotal ? String(nextResult.trainingPointsTotal) : '',
+      attributes: nextAttributes
+    });
+    if (cardPositionOverride === 'AUTO') setCardPositionOverride(nextResult.parsed.mainPosition);
+    if (playstyleOverride === 'AUTO' && nextResult.parsed.playstyle) setPlaystyleOverride(nextResult.parsed.playstyle);
+  }
+
+  function startManualPreciseMode() {
+    const template = [
+      'NOME DO JOGADOR: ',
+      'POSIÇÃO PRINCIPAL: CF',
+      'ESTILO DE JOGO: AUTO',
+      'NÍVEL MÁXIMO: ',
+      'PONTOS TOTAIS: ',
+      '',
+      'Preencha os dados no painel de conferência. Este modo não depende de OCR.'
+    ].join('\n');
+    setManualMode(true);
+    setSelectedFile(null);
+    setPreview(null);
+    setPlayerCardImage(null);
+    setRawText(template);
+    setOcrDone(true);
+    setResult(null);
+    setDraftResult(null);
+    setCardPositionOverride('CF');
+    setPlaystyleOverride('AUTO');
+    setManualFields({ playerName: '', level: '', trainingPointsTotal: '', attributes: {} });
+    setStatus('Modo manual preciso ativado. Preencha os dados e toque em Gerar prévia para conferência.');
   }
 
   async function analyzeSelectedImage() {
@@ -678,6 +929,9 @@ export function CardVisionApp() {
 
     setLoading(true);
     setResult(null);
+    setDraftResult(null);
+    setManualFields({ playerName: '', level: '', trainingPointsTotal: '', attributes: {} });
+    setManualMode(false);
     setRawText('');
     setOcrDone(false);
     setStatus('Preparando imagem para OCR local premium...');
@@ -705,13 +959,16 @@ export function CardVisionApp() {
       }
 
       const mergedText = mergeOcrTexts(...texts);
-      setRawText(mergedText);
       setOcrDone(true);
 
       if (mergedText.trim().length > 2) {
-        const autoResult = analyzeCard(mergedText, objective, targetPosition, fileName);
-        setResult(autoResult);
-        setStatus('Carta lida. Identidade preservada e ficha Elite gerada para gameplay real.');
+        const lockedText = textWithManualLocks(mergedText);
+        setRawText(lockedText);
+        const autoResult = analyzeCard(lockedText, objective, targetPosition, fileName);
+        hydrateReviewFields(autoResult);
+        setDraftResult(autoResult);
+        setResult(null);
+        setStatus('Carta lida. Confira posição, estilo, pontos e atributos antes de gerar a ficha final.');
       } else {
         setStatus('Não consegui ler texto suficiente. Tente print direto da tela com nome, posição, estilo e ficha automática visíveis.');
       }
@@ -722,11 +979,20 @@ export function CardVisionApp() {
     }
   }
 
-  function runAnalysis() {
-    setStatus('Gerando ficha Elite de gameplay máximo...');
-    const nextResult = analyzeCard(rawText, objective, targetPosition, fileName);
-    setResult(nextResult);
-    setStatus(nextResult.note);
+  function runAnalysis(confirmed = false) {
+    setStatus(confirmed ? 'Gerando ficha final confirmada...' : 'Atualizando prévia para conferência...');
+    const lockedText = textWithManualLocks(rawText, confirmed);
+    if (lockedText !== rawText) setRawText(lockedText);
+    const nextResult = analyzeCard(lockedText, objective, targetPosition, fileName);
+    if (confirmed) {
+      setResult(nextResult);
+      setDraftResult(null);
+      setStatus(nextResult.note);
+    } else {
+      setDraftResult(nextResult);
+      setResult(null);
+      setStatus('Prévia atualizada. Revise os dados e confirme para gerar a ficha final.');
+    }
   }
 
   return (
@@ -750,7 +1016,7 @@ export function CardVisionApp() {
         <div>
           <p className="kicker"><Sparkles size={16} /> BuildMaster Local Pro</p>
           <h1>Analise sua carta. Descubra o build Elite.</h1>
-          <p>Envie o print, toque em prosseguir e gere uma ficha mais forte para gameplay real. O app preserva posição e estilo da carta; recomendações ficam abaixo.</p>
+          <p>Envie o print e gere uma ficha voltada para desempenho real em campo. Overall é só referência visual; a ficha prioriza função, atributos úteis, estilo e melhor posicionamento.</p>
         </div>
         <div className="orb-ball" aria-hidden="true" />
       </section>
@@ -770,7 +1036,7 @@ export function CardVisionApp() {
               <div>
                 <UploadCloud size={36} />
                 <strong>Envie a imagem da sua carta</strong>
-                <span>Use print direto da tela com nome, posição, estilo e ficha automática visíveis.</span>
+                <span>Use print direto da tela com nome, posição, estilo, atributos e nível máximo visíveis.</span>
               </div>
             )}
           </div>
@@ -794,6 +1060,10 @@ export function CardVisionApp() {
             </label>
           </div>
 
+          <button className="manual-mode-button" type="button" onClick={startManualPreciseMode}>
+            <ShieldCheck size={16} /> Modo manual preciso sem OCR
+          </button>
+
           <div className="select-stack">
             <label>
               <span>Modo de leitura</span>
@@ -811,22 +1081,38 @@ export function CardVisionApp() {
             </label>
 
             <label>
-              <span>Posição alvo</span>
+              <span>Melhor posição para jogar</span>
               <select value={targetPosition} onChange={(event) => setTargetPosition(event.target.value as PositionCode | 'AUTO')}>
                 {POSITION_LABELS.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
               </select>
             </label>
+
+            <label>
+              <span>Travar posição da carta se o OCR errar</span>
+              <select value={cardPositionOverride} onChange={(event) => setCardPositionOverride(event.target.value as PositionCode | 'AUTO')}>
+                {POSITION_LABELS.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <span>Travar estilo de jogo se o OCR errar</span>
+              <select value={playstyleOverride} onChange={(event) => setPlaystyleOverride(event.target.value)}>
+                <option value="AUTO">Automático</option>
+                {playstyleOptions.map((style) => <option key={style} value={style}>{style}</option>)}
+              </select>
+            </label>
           </div>
 
-          <button className="elite-button generate-button" type="button" onClick={selectedFile && !ocrDone ? analyzeSelectedImage : runAnalysis} disabled={!canProceed}>
+          <button className="elite-button generate-button" type="button" onClick={selectedFile && !ocrDone ? analyzeSelectedImage : () => runAnalysis(false)} disabled={!canProceed}>
             {loading ? <Loader2 className="spin" size={18} /> : <Zap size={18} />}
-            {loading ? 'Lendo imagem...' : selectedFile && !ocrDone ? 'Prosseguir: ler carta e gerar ficha Elite' : 'Gerar ficha Elite novamente'}
+            {loading ? 'Lendo imagem...' : selectedFile && !ocrDone ? 'Ler carta e abrir conferência' : result ? 'Reabrir conferência' : 'Gerar prévia para conferência'}
           </button>
 
           <div className="flow-steps">
             <span className={selectedFile ? 'done' : ''}>1. Escolher carta</span>
             <span className={ocrDone ? 'done' : selectedFile ? 'active' : ''}>2. Ler identidade</span>
-            <span className={result ? 'done' : ocrDone ? 'active' : ''}>3. Ficha gameplay</span>
+            <span className={draftResult ? 'active' : result ? 'done' : ocrDone ? 'active' : ''}>3. Conferir dados</span>
+            <span className={result ? 'done' : ''}>4. Ficha final</span>
           </div>
 
           <div className="status-card">
@@ -855,7 +1141,22 @@ export function CardVisionApp() {
         </aside>
 
         <section className="preview-panel">
-          {result ? <ResultCard result={result} playerImage={playerCardImage ?? preview} /> : (
+          {result ? <ResultCard result={result} playerImage={playerCardImage ?? preview} /> : draftResult ? (
+            <ReviewPanel
+              draft={draftResult}
+              playerImage={playerCardImage ?? preview}
+              manualFields={manualFields}
+              setManualFields={setManualFields}
+              cardPositionOverride={cardPositionOverride}
+              setCardPositionOverride={setCardPositionOverride}
+              playstyleOverride={playstyleOverride}
+              setPlaystyleOverride={setPlaystyleOverride}
+              targetPosition={targetPosition}
+              setTargetPosition={setTargetPosition}
+              onRefresh={() => runAnalysis(false)}
+              onConfirm={() => runAnalysis(true)}
+            />
+          ) : (
             <div className="empty-state luxury-panel">
               <div className="empty-icon"><Wand2 size={34} /></div>
               <h2>Resultado da análise</h2>

@@ -1,14 +1,15 @@
 {
-  "name": "buildmaster-local-pro-v15-performance-identity",
-  "version": "15.0.0",
+  "name": "buildmaster-local-pro-v19-precision-check",
+  "version": "19.0.0",
   "private": true,
-  "description": "BuildMaster Local Pro v15 - identidade preservada, fluxo por botão, OCR local por áreas e ficha Elite focada em gameplay real, sem buscar overall alto.",
+  "description": "BuildMaster Local Pro v19 - conferência obrigatória, modo manual preciso, banco local e validação anti-erro sem IA paga.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "vercel-build": "next build"
+    "vercel-build": "next build",
+    "test:cards": "tsx tests/card-regression.ts"
   },
   "dependencies": {
     "lucide-react": "^1.23.0",
@@ -21,6 +22,7 @@
     "@types/node": "^24.10.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "tsx": "^4.23.0",
     "typescript": "^5.9.3"
   }
 }

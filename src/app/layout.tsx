@@ -4,8 +4,8 @@ import { RegisterServiceWorker } from '@/components/RegisterServiceWorker';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'BuildMaster Local Pro v15',
-  description: 'App premium privado com OCR local por áreas, identidade preservada e ficha Elite focada em gameplay real.',
+  title: 'BuildMaster Local Pro v19',
+  description: 'App premium privado com OCR local, conferência obrigatória, banco local e ficha focada em desempenho real em campo.',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
