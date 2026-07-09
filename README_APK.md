@@ -1,4 +1,4 @@
-# BuildMaster Elite Tático v25.1 — APK Android
+# BuildMaster Elite Tático v25 — APK Android
 
 Esta versão está preparada para virar APK usando Capacitor.
 
@@ -8,7 +8,7 @@ Esta versão está preparada para virar APK usando Capacitor.
 - Configuração `capacitor.config.ts` com nome do app e ID Android.
 - Scripts prontos para gerar projeto Android.
 - Vercel ajustado para usar `npm install` no registro público do npm.
-- Cache/PWA atualizado para v25.1.
+- Cache/PWA atualizado para v25.
 - Middleware removido nesta versão porque o APK usa app local/exportado, sem servidor Next.
 
 ## Gerar APK no computador
