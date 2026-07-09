@@ -1,8 +1,8 @@
 {
-  "name": "buildmaster-elite-tatico-v25-apk-ready",
-  "version": "25.0.0",
+  "name": "buildmaster-elite-tatico-v26-vercel-apk-stable",
+  "version": "26.0.0",
   "private": true,
-  "description": "BuildMaster Elite Tatico v25 - versão preparada para gerar APK Android com Capacitor e continuar publicando no Vercel.",
+  "description": "BuildMaster Elite Tático v26 - versão estável para Vercel e preparada para APK Android com Capacitor.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
