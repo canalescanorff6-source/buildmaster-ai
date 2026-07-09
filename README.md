@@ -1,36 +1,34 @@
-# BuildMaster Local Pro v9
+# BuildMaster Elite Tático v25.1
 
-Versão baseada na **v7 que estava funcionando**, com as modificações visuais e de experiência da **v8 premium** aplicadas em cima do projeto Next.js.
+Versão premium local, sem IA paga, com foco em ficha de desempenho real dentro do jogo.
 
-## Login
+## Modos principais
 
-- Usuário: `thiago0126`
-- Senha: `iu1fsaa67a`
+- **Leitor Elite de Carta**: envio de print completo, leitura local, calibração por zonas e Auditoria Elite antes do plano final.
+- **Central de Precisão Manual**: preenchimento manual para máxima confiança quando o print não estiver ideal.
+- **Guia Tático Premium**: variações de formação, estilo de técnico recomendado, orientação de como jogar e função de cada setor.
 
-## O que esta versão mantém da v7
+## Novidades v25
 
-- Next.js/Vercel.
-- Login local sem middleware travando.
-- OCR local com Tesseract.js.
-- Motor de ficha Elite local.
-- Histórico local.
-- Cálculo de pontos e travas contra valores absurdos.
-- Posições travadas pela carta/estilo.
+1. Textos revisados para português e nomes mais premium.
+2. Adicionadas variações de formações: 4-2-2-2, 4-3-3, 4-1-2-3, 4-2-1-3, 4-2-3-1, 4-3-1-2, 4-1-3-2, 4-4-2, 4-1-4-1, 3-2-4-1, 3-4-3, 3-5-2, 5-3-2 e 5-2-3.
+3. Estilos de técnico ajustados para: Posse de bola, Contra-ataque, Contra-ataque rápido, Por fora e Passe longo.
+4. Cada formação mostra o melhor estilo sugerido, como jogar e o papel dos jogadores.
+5. Motor tático atualizado para considerar formação e estilo na recomendação da melhor função em campo.
+6. Layout reforçado para evitar texto cortado, escondido ou dependente de passar o mouse.
+7. Cache/PWA atualizado para v25.
 
-## O que entrou da v8 premium
+## Validação
 
-- Tela de login mais parecida com a referência visual.
-- Tela inicial premium com hero, upload, cards de vidro e botões em gradiente.
-- Resultado com card maior, métricas compactas, abas, chips de habilidades e distribuição de pontos.
-- Paleta dark premium com verde, ciano e roxo.
-- Layout mais elegante e menos básico.
+```bash
+npm run typecheck
+npm run test:all
+npm run build
+```
 
-## Vercel
+Tudo continua local, privado e sem chamada para IA paga.
 
-Use as configurações:
 
-- Framework Preset: `Next.js`
-- Install Command: `npm install`
-- Build Command: `npm run vercel-build`
+## Correção Vercel v25.1
 
-Depois de publicar, limpe o cache/dados do site no celular para não carregar versão antiga.
+Esta versão fixa o ambiente de build no Vercel: Node.js travado em 24.x, `.nvmrc`, `.node-version` e `installCommand` com `npm ci` usando o registro público do npm.

@@ -18,10 +18,19 @@ import {
   Zap
 } from 'lucide-react';
 import { clearBuildMasterSession } from '@/components/AuthGate';
-import { analyzeCard, type AnalysisResult, type Objective, type PositionCode, POSITION_LABELS } from '@/lib/analyzer';
+import { analyzeCard, ATTRIBUTE_INPUTS, ATTRIBUTE_PT, PLAYSTYLE_OPTIONS, type AnalysisResult, type AttributeKey, type Objective, type PositionCode, POSITION_LABELS, type TacticalFormation, type TacticalProfile, type TacticalStyle } from '@/lib/analyzer';
+import { DEFAULT_OCR_ZONES, inspectPrintQuality, type OcrZone } from '@/lib/ocr';
+import type { PrintQualityReport } from '@/lib/validation';
 
 type ReadingMode = 'precision' | 'fast';
 type ResultTab = 'resumo' | 'ficha' | 'habilidades' | 'posicoes' | 'dados';
+
+type ManualFields = {
+  playerName: string;
+  level: string;
+  trainingPointsTotal: string;
+  attributes: Partial<Record<AttributeKey, string>>;
+};
 
 type SavedAnalysis = {
   id: string;
@@ -32,10 +41,12 @@ type SavedAnalysis = {
   result: AnalysisResult;
 };
 
-const HISTORY_KEY = 'buildmaster_history_v7_premium';
+const HISTORY_KEY = 'buildmaster_history_v24_tatico_premium';
+const CALIBRATION_KEY = 'buildmaster_ocr_zones_v24_tatico_premium';
+const LEARNING_KEY = 'buildmaster_local_learning_v24';
 
 const objectives: Array<{ value: Objective; title: string; hint: string }> = [
-  { value: 'COMPETITIVE', title: 'Competitivo', hint: 'maior rendimento real em campo' },
+  { value: 'COMPETITIVE', title: 'Desempenho máximo', hint: 'rendimento real em campo, não GER alto' },
   { value: 'FINISHER', title: 'Finalizador', hint: 'gols, área e chute' },
   { value: 'CREATOR', title: 'Criador', hint: 'passe, controle e assistência' },
   { value: 'DRIBBLER', title: 'Driblador', hint: 'giro curto e 1 contra 1' },
@@ -46,8 +57,10 @@ const objectives: Array<{ value: Objective; title: string; hint: string }> = [
   { value: 'AERIAL', title: 'Jogo aéreo', hint: 'cabeceio, salto e físico' }
 ];
 
+const playstyleOptions = PLAYSTYLE_OPTIONS;
+
 const trainingLabels: Record<string, string> = {
-  shooting: 'Tiroteio',
+  shooting: 'Finalização',
   passing: 'Passe',
   dribbling: 'Drible',
   dexterity: 'Destreza',
@@ -69,15 +82,213 @@ const priLabels: Record<string, string> = {
   physical: 'Físico',
   stamina: 'Resistência',
   aerial: 'Jogo aéreo',
-  overall: 'PRI geral'
+  GER: 'PRI geral'
 };
+
+
+type LearnedCardMemory = {
+  playerName: string;
+  mainPosition: PositionCode;
+  playstyle?: string | null;
+  targetPosition: PositionCode | 'AUTO';
+  trainingPointsTotal?: string;
+  updatedAt: string;
+};
+
+const formations: Array<{ value: TacticalFormation; label: string }> = [
+  { value: 'AUTO', label: 'Automático inteligente' },
+  { value: '4-2-2-2', label: '4-2-2-2 — 2 meias + 2 atacantes' },
+  { value: '4-3-3', label: '4-3-3 — pontas abertos' },
+  { value: '4-1-2-3', label: '4-1-2-3 — VOL + 2 meias + trio' },
+  { value: '4-2-1-3', label: '4-2-1-3 — 2 volantes + MAT + trio' },
+  { value: '4-2-3-1', label: '4-2-3-1 — proteção + 3 meias' },
+  { value: '4-3-1-2', label: '4-3-1-2 — MAT + 2 atacantes' },
+  { value: '4-1-3-2', label: '4-1-3-2 — VOL único + pressão' },
+  { value: '4-4-2', label: '4-4-2 — equilíbrio clássico' },
+  { value: '4-1-4-1', label: '4-1-4-1 — posse segura' },
+  { value: '3-2-4-1', label: '3-2-4-1 — saída de três' },
+  { value: '3-4-3', label: '3-4-3 — alas + ataque aberto' },
+  { value: '3-5-2', label: '3-5-2 — meio dominante' },
+  { value: '5-3-2', label: '5-3-2 — bloco seguro' },
+  { value: '5-2-3', label: '5-2-3 — defesa + pontas' }
+];
+
+const tacticalStyles: Array<{ value: TacticalStyle; label: string }> = [
+  { value: 'AUTO', label: 'Automático inteligente' },
+  { value: 'POSSE_DE_BOLA', label: 'Posse de bola' },
+  { value: 'CONTRA_ATAQUE', label: 'Contra-ataque normal' },
+  { value: 'CONTRA_ATAQUE_RAPIDO', label: 'Contra-ataque rápido' },
+  { value: 'POR_FORA', label: 'Por fora' },
+  { value: 'PASSE_LONGO', label: 'Passe longo' }
+];
+
+const tacticalStyleName: Record<TacticalStyle, string> = {
+  AUTO: 'Automático inteligente',
+  POSSE_DE_BOLA: 'Posse de bola',
+  CONTRA_ATAQUE: 'Contra-ataque normal',
+  CONTRA_ATAQUE_RAPIDO: 'Contra-ataque rápido',
+  POR_FORA: 'Por fora',
+  PASSE_LONGO: 'Passe longo'
+};
+
+type FormationGuide = {
+  title: string;
+  bestStyle: TacticalStyle;
+  styleReason: string;
+  howToPlay: string;
+  roles: string[];
+};
+
+const formationGuides: Record<Exclude<TacticalFormation, 'AUTO'>, FormationGuide> = {
+  '4-2-2-2': {
+    title: '4-2-2-2 — Compacto e direto',
+    bestStyle: 'CONTRA_ATAQUE_RAPIDO',
+    styleReason: 'combina bem com dois meias por dentro e dupla de ataque para sair rápido após o roubo.',
+    howToPlay: 'Recupere com VOL/MLG, toque vertical no MAT/SA e finalize rápido antes da defesa adversária recompor.',
+    roles: ['VOL: marcação e primeiro passe', 'MLG: condução curta e cobertura', 'MAT/SA: giro e assistência', 'CA: ataque ao espaço e finalização']
+  },
+  '4-3-3': {
+    title: '4-3-3 — Amplitude e pressão pelos lados',
+    bestStyle: 'POR_FORA',
+    styleReason: 'usa pontas e laterais para abrir campo, cruzar, inverter jogadas e atacar o lado fraco.',
+    howToPlay: 'Abra com PE/PD, apoie com laterais, procure cruzamento rasteiro/alto e finalize com CA bem posicionado.',
+    roles: ['Pontas: velocidade, drible e diagonal', 'CA: presença de área', 'MLG: cobertura e passe', 'Laterais: apoio com recomposição']
+  },
+  '4-1-2-3': {
+    title: '4-1-2-3 — Triângulo central ofensivo',
+    bestStyle: 'POSSE_DE_BOLA',
+    styleReason: 'o VOL protege e os dois meias criam linhas de passe para manter controle sem perder verticalidade.',
+    howToPlay: 'Faça triangulações curtas, atraia a marcação no meio e solte nos pontas quando abrir espaço.',
+    roles: ['VOL: segurança e cobertura', 'MLG/MAT: passe curto e giro', 'Pontas: amplitude', 'CA: finalização e pivô curto']
+  },
+  '4-2-1-3': {
+    title: '4-2-1-3 — Proteção e trio ofensivo',
+    bestStyle: 'CONTRA_ATAQUE_RAPIDO',
+    styleReason: 'a dupla de volantes dá segurança para o MAT acelerar o trio de ataque.',
+    howToPlay: 'Roube por dentro, passe no MAT e ataque com os três da frente em velocidade.',
+    roles: ['2 VOL/MLG: roubo e cobertura', 'MAT: passe final', 'Pontas: profundidade', 'CA: finalizar no primeiro toque']
+  },
+  '4-2-3-1': {
+    title: '4-2-3-1 — Controle com proteção dupla',
+    bestStyle: 'POSSE_DE_BOLA',
+    styleReason: 'a base com dois volantes permite circular a bola e criar com três meias atrás do CA.',
+    howToPlay: 'Gire a bola entre laterais e meias, espere o espaço e use o CA como pivô ou finalizador.',
+    roles: ['Dupla central: proteção e passe', 'Meias abertos: infiltração', 'MAT: criação', 'CA: pivô e presença de área']
+  },
+  '4-3-1-2': {
+    title: '4-3-1-2 — Compacto pelo centro',
+    bestStyle: 'CONTRA_ATAQUE',
+    styleReason: 'protege o corredor central e usa MAT com dois atacantes para contra-atacar com segurança.',
+    howToPlay: 'Feche o meio, recupere, acione o MAT e ataque com tabelas curtas entre os dois atacantes.',
+    roles: ['MAT: último passe', '2 CA/SA: tabela e ataque ao espaço', 'MLG: pressão central', 'Laterais: única largura do time']
+  },
+  '4-1-3-2': {
+    title: '4-1-3-2 — Pressão e ataque em dupla',
+    bestStyle: 'CONTRA_ATAQUE_RAPIDO',
+    styleReason: 'muitos jogadores próximos para recuperar rápido e servir a dupla de ataque.',
+    howToPlay: 'Pressione após perder, recupere no meio e finalize rápido com a dupla da frente.',
+    roles: ['VOL: proteger contra bola nas costas', 'Linha de 3: pressão e passe', 'Dupla de ataque: movimentação e finalização']
+  },
+  '4-4-2': {
+    title: '4-4-2 — Equilíbrio clássico',
+    bestStyle: 'CONTRA_ATAQUE',
+    styleReason: 'mantém duas linhas fortes e dois atacantes prontos para sair quando a bola é recuperada.',
+    howToPlay: 'Defenda em bloco médio, force o adversário para o lado e ataque com cruzamentos ou passes diretos.',
+    roles: ['Meias laterais: recomposição e cruzamento', '2 atacantes: presença e tabela', 'Centrais: cobertura e segundo passe']
+  },
+  '4-1-4-1': {
+    title: '4-1-4-1 — Posse e controle territorial',
+    bestStyle: 'POSSE_DE_BOLA',
+    styleReason: 'tem muitas linhas de passe e um VOL fixo para segurar a transição defensiva.',
+    howToPlay: 'Circule a bola com paciência, avance em bloco e não force passe vertical sem apoio.',
+    roles: ['VOL: âncora defensiva', 'Meias: circulação e pressão pós-perda', 'CA: pivô e finalização', 'Laterais: apoio alternado']
+  },
+  '3-2-4-1': {
+    title: '3-2-4-1 — Superioridade no meio',
+    bestStyle: 'POSSE_DE_BOLA',
+    styleReason: 'a saída de três e os dois volantes sustentam posse com muitos jogadores entrelinhas.',
+    howToPlay: 'Saia com três, encontre os meias entre linhas e use os alas para prender a defesa adversária aberta.',
+    roles: ['3 ZAG: cobertura e saída', '2 VOL: proteção', 'Alas/meias: amplitude e criação', 'CA: finalizar e prender zagueiros']
+  },
+  '3-4-3': {
+    title: '3-4-3 — Ataque aberto e agressivo',
+    bestStyle: 'POR_FORA',
+    styleReason: 'favorece amplitude máxima com alas e pontas pressionando os lados.',
+    howToPlay: 'Ataque pelos corredores, use inversões rápidas e proteja contra contra-ataques com três zagueiros fortes.',
+    roles: ['Alas: fôlego e cruzamento', 'Pontas: 1 contra 1', 'Zagueiros: cobertura longa', 'CA: presença de área']
+  },
+  '3-5-2': {
+    title: '3-5-2 — Meio dominante e dupla de ataque',
+    bestStyle: 'CONTRA_ATAQUE',
+    styleReason: 'ganha o meio, rouba por dentro e acha dois atacantes em vantagem.',
+    howToPlay: 'Feche o centro, use alas para abrir e procure a dupla de ataque com passe rápido após recuperar.',
+    roles: ['3 ZAG: segurança', 'Alas: amplitude total', 'Meias: pressão e passe', '2 atacantes: tabela e profundidade']
+  },
+  '5-3-2': {
+    title: '5-3-2 — Segurança máxima',
+    bestStyle: 'CONTRA_ATAQUE',
+    styleReason: 'protege a área, baixa o risco e usa dois atacantes para aproveitar espaço nas costas.',
+    howToPlay: 'Defenda compacto, não quebre a linha de cinco sem necessidade e saia em passe direto para a dupla.',
+    roles: ['Laterais/alas: recomposição', '3 ZAG: cobertura aérea', 'Meio: roubo e passe direto', '2 atacantes: profundidade']
+  },
+  '5-2-3': {
+    title: '5-2-3 — Defesa forte e pontas velozes',
+    bestStyle: 'PASSE_LONGO',
+    styleReason: 'a defesa baixa encontra pontas e CA com lançamentos rápidos para atacar campo aberto.',
+    howToPlay: 'Recupere baixo, procure passe longo ou inversão rápida para os pontas e ataque com poucos toques.',
+    roles: ['5 defensores: bloco seguro', '2 meios: interceptação e lançamento', 'Pontas: velocidade', 'CA: pivô e finalização']
+  }
+};
+
+function zoneKeyLabel(key: string) {
+  return DEFAULT_OCR_ZONES.find((zone) => zone.key === key)?.label ?? key;
+}
+
+function memoryKey(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+function readLearningStore(): Record<string, LearnedCardMemory> {
+  try {
+    const raw = localStorage.getItem(LEARNING_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function findLearnedCard(text: string, fileName?: string | null): LearnedCardMemory | null {
+  if (typeof window === 'undefined') return null;
+  const store = readLearningStore();
+  const haystack = memoryKey(`${text}
+${fileName ?? ''}`);
+  return Object.entries(store).find(([key]) => key && haystack.includes(key))?.[1] ?? null;
+}
+
+function saveLearnedCard(memory: LearnedCardMemory) {
+  if (typeof window === 'undefined') return;
+  const key = memoryKey(memory.playerName);
+  if (!key) return;
+  const store = readLearningStore();
+  store[key] = memory;
+  try {
+    localStorage.setItem(LEARNING_KEY, JSON.stringify(store));
+  } catch {
+    // Aprendizado local é opcional e não pode travar a ficha.
+  }
+}
 
 const tacticalLabels: Record<string, string> = {
   possession: 'Posse de bola',
   quickCounter: 'Contra-ataque rápido',
-  longBallCounter: 'Contra-ataque bola longa',
-  outWide: 'Pelas pontas',
-  longBall: 'Bola longa'
+  longBallCounter: 'Contra-ataque',
+  outWide: 'Por fora',
+  longBall: 'Passe longo'
 };
 
 function normalizeLine(line: string) {
@@ -175,27 +386,31 @@ async function cropImage(file: File, region: { x: number; y: number; w: number; 
   });
 }
 
-async function createOcrVariants(file: File, readingMode: ReadingMode): Promise<Array<{ label: string; image: File | Blob }>> {
+async function createOcrVariants(file: File, readingMode: ReadingMode, zones: OcrZone[] = DEFAULT_OCR_ZONES): Promise<Array<{ label: string; image: File | Blob }>> {
   const fullContrast = await preprocessImage(file, 'contrast');
+  const variants: Array<{ label: string; image: File | Blob }> = [];
+  const enabledZones = zones.filter((zone) => zone.enabled);
+
+  for (const zone of enabledZones) {
+    const widthTarget = zone.key === 'attributes' || zone.key === 'positionGrid' || zone.key === 'autoTraining' ? 2350 : 2200;
+    const image = await cropImage(file, { x: zone.x, y: zone.y, w: zone.w, h: zone.h }, widthTarget);
+    variants.push({ label: zone.label.toUpperCase(), image });
+  }
+
   if (readingMode === 'fast') {
     return [
+      ...variants.slice(0, 5),
       { label: 'imagem original', image: file },
       { label: 'imagem otimizada', image: fullContrast }
     ];
   }
 
   const sharp = await preprocessImage(file, 'sharp');
-  const topStats = await cropImage(file, { x: 0, y: 0, w: 1, h: 0.48 }, 2300);
-  const rightStats = await cropImage(file, { x: 0.34, y: 0.08, w: 0.66, h: 0.74 }, 2350);
-  const lowerSkills = await cropImage(file, { x: 0, y: 0.48, w: 1, h: 0.52 }, 2300);
-
   return [
+    ...variants,
     { label: 'imagem original', image: file },
     { label: 'imagem otimizada', image: fullContrast },
-    { label: 'imagem reforçada', image: sharp },
-    { label: 'área superior/posições', image: topStats },
-    { label: 'área de atributos', image: rightStats },
-    { label: 'área de habilidades', image: lowerSkills }
+    { label: 'imagem reforçada', image: sharp }
   ];
 }
 
@@ -258,17 +473,20 @@ function copyBuildText(result: AnalysisResult) {
     .join('\n');
 
   const text = [
-    `BuildMaster Local Pro — ${result.parsed.playerName}`,
+    `BuildMaster Elite Tático v24 — ${result.parsed.playerName}`,
     `Função: ${result.buildName}`,
     `Melhor posição: ${result.bestPosition.label}`,
-    `PRI: ${result.pri.overall}`,
+    `PRI: ${result.pri.GER}`,
     `Pontos: ${result.trainingPointsUsed}/${result.trainingPointsTotal}`,
     '',
-    'Ficha Elite:',
+    'Plano Elite:',
     training,
     '',
     'Habilidades adicionais:',
     result.recommendedSkills.map((skill, index) => `${index + 1}. ${skill}`).join('\n'),
+    '',
+    'Ímpetos recomendados:',
+    result.recommendedImpetos.filter((item) => item.tier !== 'evitar').map((item, index) => `${index + 1}. ${item.name} — ${item.attributes.join(', ')}`).join('\n'),
     '',
     'Como usar:',
     result.usageTips.join('\n')
@@ -279,35 +497,42 @@ function copyBuildText(result: AnalysisResult) {
 
 function positionPt(code: string) {
   const labels: Record<string, string> = {
-    CF: 'CA', SS: 'SA', LWF: 'PE', RWF: 'PD', LMF: 'ME', RMF: 'MD', AMF: 'MAT', CMF: 'MC', DMF: 'VOL', CB: 'ZAG', LB: 'LE', RB: 'LD', GK: 'GOL'
+    CF: 'CA', SS: 'SA', LWF: 'PE', RWF: 'PD', LMF: 'ME', RMF: 'MD', AMF: 'MAT', CMF: 'MLG', DMF: 'VOL', CB: 'ZAG', LB: 'LE', RB: 'LD', GK: 'GOL'
   };
   return labels[code] ?? code;
 }
 
 function attributeNamePt(key: string) {
-  const labels: Record<string, string> = {
-    offensiveAwareness: 'Talento ofensivo', ballControl: 'Controle de bola', dribbling: 'Drible', tightPossession: 'Condução firme', lowPass: 'Passe rasteiro', loftedPass: 'Passe alto', finishing: 'Finalização', heading: 'Cabeçada', placeKicking: 'Bola parada', curl: 'Curva', defensiveAwareness: 'Talento defensivo', defensiveEngagement: 'Dedicação defensiva', tackling: 'Desarme', aggression: 'Agressividade', goalkeeperAwareness: 'Talento GO', goalkeeperCatching: 'Firmeza GO', goalkeeperParrying: 'Defesa GO', goalkeeperReflexes: 'Reflexos GO', goalkeeperReach: 'Alcance GO', speed: 'Velocidade', acceleration: 'Aceleração', kickingPower: 'Força do chute', jump: 'Salto', physicalContact: 'Contato físico', balance: 'Equilíbrio', stamina: 'Resistência'
-  };
-  return labels[key] ?? key;
+  return ATTRIBUTE_PT[key as AttributeKey] ?? key;
+}
+
+
+function trainingSummary(plan: Record<string, number>) {
+  return Object.entries(plan)
+    .filter(([, value]) => Number(value) > 0)
+    .map(([key, value]) => `${trainingLabels[key] ?? key} +${value}`)
+    .join(' • ');
 }
 
 function ResultCard({ result, playerImage }: { result: AnalysisResult; playerImage: string | null }) {
   const [tab, setTab] = useState<ResultTab>('resumo');
   const card = result.parsed;
-  const overall = card.maxOverall ?? card.overall ?? '--';
+  const GER = card.maxOverall ?? card.overall ?? '--';
   const trainingItems = Object.entries(result.training).filter(([, value]) => Number(value) > 0);
   const pointPercent = Math.min(100, Math.round((result.trainingPointsUsed / Math.max(1, result.trainingPointsTotal)) * 100));
   const positionItems = result.positionScores.slice(0, 8);
+  const cardPositions = Array.from(new Set([card.mainPosition, ...card.positions])).slice(0, 10);
   const nativeSkills = card.nativeSkills.slice(0, 8);
   const recommendedSkills = result.recommendedSkills.slice(0, 8);
+  const recommendedImpetos = result.recommendedImpetos.slice(0, 8);
   const positionRatings = Object.entries(card.positionRatings).filter(([, value]) => Number.isFinite(value));
   const attributes = Object.entries(card.attributes).filter(([, value]) => Number.isFinite(value));
   const sourceLabel = card.trainingPointSource === 'TRAINING_READ'
-    ? 'Ficha automática somada'
+    ? 'Plano automático somado'
     : card.trainingPointSource === 'LEVEL_INFERRED'
       ? 'Calculado pelo nível'
       : card.trainingPointSource === 'OCR'
-        ? 'Lido no print'
+        ? 'Informado no registro técnico'
         : 'Padrão seguro';
 
   return (
@@ -317,20 +542,22 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
           {playerImage && <img src={playerImage} alt={`Imagem de ${card.playerName}`} />}
           <div className="card-shine" />
           <div className="card-number">
-            <strong>{overall}</strong>
+            <strong>{GER}</strong>
             <span>{card.mainPositionPt}</span>
           </div>
           <em>{card.playstyle ?? 'BuildMaster'}</em>
         </div>
 
         <div className="result-intro">
-          <p className="kicker">Resumo</p>
+          <p className="kicker">Painel</p>
           <h2>{card.playerName}</h2>
           <div className="playstyle-pill">{card.playstyle ?? 'Estilo não lido'}</div>
+          <p className="identity-note">Identidade preservada: {card.mainPositionPt}{card.playstyle ? ` • ${card.playstyle}` : ''}. O programa não altera a posição/estilo da carta; só recomenda abaixo onde ela rende mais.</p>
           <div className="metric-grid">
-            <div><span>GER</span><strong>{overall}</strong></div>
+            <div><span>GER lido</span><strong>{GER}</strong></div>
+            <div><span>Pos. carta</span><strong>{card.mainPositionPt}</strong></div>
             <div><span>Melhor pos.</span><strong>{result.bestPosition.label}</strong></div>
-            <div><span>PRI</span><strong>{result.pri.overall}</strong></div>
+            <div><span>PRI em campo</span><strong>{result.pri.GER}</strong></div>
             <div><span>Confiança</span><strong>{card.confidence}%</strong></div>
             <div className="wide-metric"><span>Pontos totais</span><strong>{result.trainingPointsUsed}/{result.trainingPointsTotal}</strong></div>
           </div>
@@ -345,11 +572,11 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
 
       <nav className="elite-tabs" aria-label="Seções do resultado">
         {[
-          ['resumo', 'Resumo'],
-          ['ficha', 'Ficha'],
+          ['resumo', 'Painel'],
+          ['ficha', 'Plano'],
           ['habilidades', 'Habilidades'],
-          ['posicoes', 'Posições'],
-          ['dados', 'Dados']
+          ['posicoes', 'Funções'],
+          ['dados', 'Base técnica']
         ].map(([value, label]) => (
           <button key={value} className={tab === value ? 'active' : ''} type="button" onClick={() => setTab(value as ResultTab)}>
             {label}
@@ -360,7 +587,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
       {tab === 'resumo' && (
         <div className="result-section-grid">
           <article className="luxury-panel elite-build-card">
-            <p className="kicker">Build Elite recomendado</p>
+            <p className="kicker">Plano Elite recomendado</p>
             <div className="section-title-row">
               <h3>{result.buildName}</h3>
               <span>Elite</span>
@@ -397,10 +624,25 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
             <p className="panel-note">{sourceLabel}</p>
           </article>
 
+          <article className="luxury-panel compact-card">
+            <p className="kicker">Ímpeto ideal</p>
+            <div className="chip-cloud purple">
+              {recommendedImpetos.filter((item) => item.tier !== 'evitar').slice(0, 3).map((item) => <span key={item.name}>{item.name}</span>)}
+            </div>
+            <p className="panel-note">Escolhido por posição + estilo + função real.</p>
+          </article>
+
           <article className="luxury-panel wide-card">
             <p className="kicker">Como jogar</p>
             <ul className="clean-list">
               {result.usageTips.slice(0, 4).map((tip) => <li key={tip}>{tip}</li>)}
+            </ul>
+          </article>
+
+          <article className="luxury-panel wide-card">
+            <p className="kicker">Por que esta recomendação?</p>
+            <ul className="clean-list">
+              {result.recommendationExplanation.slice(0, 5).map((line) => <li key={line}>{line}</li>)}
             </ul>
           </article>
         </div>
@@ -412,7 +654,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
             <div className="section-title-row">
               <div>
                 <p className="kicker">Distribuição de pontos</p>
-                <h3>Ficha Elite de gameplay</h3>
+                <h3>Plano Elite de desempenho</h3>
               </div>
               <span>{result.trainingPointsUsed}/{result.trainingPointsTotal}</span>
             </div>
@@ -426,6 +668,35 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
               ))}
             </div>
             <p className="panel-note">Custo real: {result.trainingCostRule}. Restante: {result.trainingPointsRemaining} ponto(s).</p>
+          </article>
+
+          <article className="luxury-panel wide-card">
+            <p className="kicker">Comparação com plano-base</p>
+            <div className="comparison-table">
+              <div><strong>Treino</strong><strong>Jogo</strong><strong>App</strong><strong>Dif.</strong></div>
+              {result.trainingComparison.length ? result.trainingComparison.map((item) => (
+                <div key={item.key}>
+                  <span>{item.label}</span>
+                  <span>{item.auto}</span>
+                  <span>{item.recommended}</span>
+                  <strong>{item.difference > 0 ? `+${item.difference}` : item.difference}</strong>
+                </div>
+              )) : <p className="panel-note">O plano automático não foi lido; comparação indisponível.</p>}
+            </div>
+          </article>
+
+          <article className="luxury-panel wide-card">
+            <p className="kicker">Perfil seguro / competitivo / alternativo</p>
+            <div className="variant-grid">
+              {result.buildVariants.map((variant) => (
+                <div key={variant.kind}>
+                  <strong>{variant.title}</strong>
+                  <span>{variant.positionLabel} • {variant.pointsUsed} pts</span>
+                  <em>{trainingSummary(variant.training)}</em>
+                  <p>{variant.note}</p>
+                </div>
+              ))}
+            </div>
           </article>
 
           <article className="luxury-panel wide-card">
@@ -464,23 +735,39 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
       {tab === 'posicoes' && (
         <div className="result-section-grid">
           <article className="luxury-panel wide-card">
-            <p className="kicker">Posições da carta</p>
+            <p className="kicker">Identidade da carta</p>
+            <div className="position-list">
+              {cardPositions.map((code, index) => (
+                <div key={code}>
+                  <strong>{positionPt(code)}</strong>
+                  <span>{index === 0 ? 'Posição da carta' : 'Compatível'}</span>
+                  <em>{code === card.mainPosition ? `Preservada na carta • ${card.playstyle ?? 'estilo não lido'}` : `Registrada no painel${card.positionRatings[code] ? ` • ${card.positionRatings[code]}` : ''}`}</em>
+                </div>
+              ))}
+            </div>
+            <p className="panel-note">Esta seção não é ranking: ela mostra a posição/estilo originais da carta e as posições compatíveis lidas.</p>
+          </article>
+
+          <article className="luxury-panel wide-card">
+            <p className="kicker">Ranking de rendimento real</p>
             <div className="position-list">
               {positionItems.map((item, index) => (
                 <div key={item.code}>
                   <strong>{item.label}</strong>
-                  <span>{index === 0 ? 'Primária' : item.score >= 90 ? 'Ótima' : item.score >= 82 ? 'Boa' : 'Alternativa'}</span>
+                  <span>{index === 0 ? 'Melhor uso' : item.score >= 90 ? 'Ótima' : item.score >= 82 ? 'Boa' : 'Alternativa'}</span>
                   <em>{item.role}{item.cardRating ? ` • ${item.cardRating}` : ''}</em>
                 </div>
               ))}
             </div>
+            <p className="panel-note">Aqui sim o app pode recomendar outra posição, mas sem alterar a identidade original da carta.</p>
           </article>
+
           <article className="luxury-panel wide-card">
-            <p className="kicker">Overalls lidos</p>
+            <p className="kicker">GERs lidos</p>
             <div className="data-grid">
               {positionRatings.length ? positionRatings.map(([code, value]) => (
                 <div key={code}><span>{positionPt(code)}</span><strong>{value}</strong></div>
-              )) : <p className="panel-note">Nenhum overall por posição lido com segurança.</p>}
+              )) : <p className="panel-note">Nenhum GER por posição lido com segurança.</p>}
             </div>
           </article>
         </div>
@@ -489,20 +776,34 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
       {tab === 'dados' && (
         <div className="result-section-grid">
           <article className="luxury-panel wide-card">
-            <p className="kicker">Dados lidos</p>
+            <p className="kicker">Dados técnicos lidos</p>
             <div className="data-grid">
+              <div><span>Posição da carta</span><strong>{card.mainPositionPt}</strong></div>
               <div><span>Estilo de jogo</span><strong>{card.playstyle ?? '—'}</strong></div>
+              <div><span>Melhor posição</span><strong>{result.bestPosition.label}</strong></div>
               <div><span>Nível máximo</span><strong>{card.level ?? '—'}</strong></div>
               <div><span>Total de pontos</span><strong>{result.trainingPointsUsed}/{result.trainingPointsTotal}</strong></div>
               <div><span>Origem dos pontos</span><strong>{sourceLabel}</strong></div>
               <div><span>Altura</span><strong>{card.height ? `${card.height} cm` : '—'}</strong></div>
               <div><span>Peso</span><strong>{card.weight ? `${card.weight} kg` : '—'}</strong></div>
               <div><span>Idade</span><strong>{card.age ?? '—'}</strong></div>
-              <div><span>OCR</span><strong>100% local</strong></div>
+              <div><span>Entrada</span><strong>Manual de precisão</strong></div>
             </div>
           </article>
           <article className="luxury-panel wide-card">
-            <p className="kicker">Ímpetos / boosters</p>
+            <p className="kicker">Ímpetos recomendados</p>
+            <div className="skill-grid">
+              {recommendedImpetos.length ? recommendedImpetos.map((item) => (
+                <div key={`${item.name}-${item.tier}`}>
+                  <strong>{item.tier === 'ideal' ? 'Ideal' : item.tier === 'alternativo' ? 'Alternativo' : 'Evitar'} • {item.name}</strong>
+                  <span>{item.attributes.join(', ')} — {item.reason}</span>
+                </div>
+              )) : <p className="panel-note">Nenhum ímpeto recomendado com segurança.</p>}
+            </div>
+          </article>
+
+          <article className="luxury-panel wide-card">
+            <p className="kicker">Ímpetos lidos</p>
             <div className="chip-cloud purple">
               {card.impetos.length ? card.impetos.map((item) => (
                 <span key={`${item.name}-${item.value ?? ''}`}>{item.name}{item.value ? ` +${item.value}` : ''}{item.active === false ? ' — inativo' : ''}</span>
@@ -520,26 +821,205 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
         </div>
       )}
 
-      <button className="copy-floating" type="button" onClick={() => copyBuildText(result)}><Copy size={16} /> Copiar ficha</button>
+      <button className="copy-floating" type="button" onClick={() => copyBuildText(result)}><Copy size={16} /> Copiar plano</button>
     </section>
   );
 }
+
+
+function ReviewPanel({
+  draft,
+  playerImage,
+  manualFields,
+  setManualFields,
+  cardPositionOverride,
+  setCardPositionOverride,
+  playstyleOverride,
+  setPlaystyleOverride,
+  targetPosition,
+  setTargetPosition,
+  onRefresh,
+  onConfirm
+}: {
+  draft: AnalysisResult;
+  playerImage: string | null;
+  manualFields: ManualFields;
+  setManualFields: (updater: ManualFields | ((current: ManualFields) => ManualFields)) => void;
+  cardPositionOverride: PositionCode | 'AUTO';
+  setCardPositionOverride: (value: PositionCode | 'AUTO') => void;
+  playstyleOverride: string;
+  setPlaystyleOverride: (value: string) => void;
+  targetPosition: PositionCode | 'AUTO';
+  setTargetPosition: (value: PositionCode | 'AUTO') => void;
+  onRefresh: () => void;
+  onConfirm: () => void;
+}) {
+  const card = draft.parsed;
+  const criticalIssues = draft.validation.issues.filter((issue) => issue.severity === 'block');
+  const reviewIssues = draft.validation.issues.filter((issue) => issue.severity === 'review');
+  const updateAttribute = (key: AttributeKey, value: string) => {
+    const cleaned = value.replace(/[^0-9]/g, '').slice(0, 3);
+    setManualFields((current) => ({
+      ...current,
+      attributes: { ...current.attributes, [key]: cleaned }
+    }));
+  };
+
+  return (
+    <section className="review-panel result-panel">
+      <div className="result-head luxury-panel">
+        <div className="premium-card-art compact-art">
+          {playerImage && <img src={playerImage} alt={`Imagem de ${card.playerName}`} />}
+          <div className="card-shine" />
+          <div className="card-number">
+            <strong>{card.maxOverall ?? card.overall ?? '--'}</strong>
+            <span>{card.mainPositionPt}</span>
+          </div>
+          <em>{card.playerName}</em>
+        </div>
+        <div className="result-intro">
+          <p className="kicker"><ShieldCheck size={16} /> Auditoria Elite</p>
+          <h2>Revise antes do plano final</h2>
+          <p className="review-copy">Fluxo de precisão: você confirma posição, estilo, pontos e atributos antes de finalizar. Assim o programa não depende de leitura automática e reduz erros de ficha.</p>
+          <div className="metric-grid">
+            <div><span>Confiança</span><strong>{card.confidence}%</strong></div>
+            <div><span>Posição lida</span><strong>{card.mainPositionPt}</strong></div>
+            <div><span>Estilo</span><strong>{card.playstyle ?? 'revisar'}</strong></div>
+            <div><span>Pontos</span><strong>{draft.trainingPointsTotal}</strong></div>
+          </div>
+        </div>
+      </div>
+
+      <article className="luxury-panel wide-card review-alert-card">
+        <p className="kicker">Validação sem IA paga</p>
+        <div className="alert-strip strong-alert">
+          {criticalIssues.length ? criticalIssues.map((issue) => <span key={issue.code}>⚠ {issue.message}</span>) : <span>✓ Nenhum bloqueio crítico encontrado.</span>}
+          {reviewIssues.map((issue) => <span key={issue.code}>• {issue.message}</span>)}
+        </div>
+        <p className="panel-note">A ficha final só deve ser gerada quando posição, estilo, nível/pontos e atributos principais estiverem corretos.</p>
+      </article>
+
+      <div className="review-grid">
+        <article className="luxury-panel wide-card">
+          <p className="kicker">Identidade da carta</p>
+          <div className="review-form-grid">
+            <label>
+              <span>Nome do jogador</span>
+              <input value={manualFields.playerName} onChange={(event) => setManualFields((current) => ({ ...current, playerName: event.target.value }))} placeholder={card.playerName} />
+            </label>
+            <label>
+              <span>Posição principal correta</span>
+              <select value={cardPositionOverride} onChange={(event) => setCardPositionOverride(event.target.value as PositionCode | 'AUTO')}>
+                {POSITION_LABELS.filter((item) => item.code !== 'AUTO').map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Estilo de jogo correto</span>
+              <select value={playstyleOverride} onChange={(event) => setPlaystyleOverride(event.target.value)}>
+                <option value="AUTO">Automático / não sei</option>
+                {playstyleOptions.map((style) => <option key={style} value={style}>{style}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Função alvo premium</span>
+              <select value={targetPosition} onChange={(event) => setTargetPosition(event.target.value as PositionCode | 'AUTO')}>
+                {POSITION_LABELS.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Nível máximo</span>
+              <input inputMode="numeric" value={manualFields.level} onChange={(event) => setManualFields((current) => ({ ...current, level: event.target.value.replace(/[^0-9]/g, '').slice(0, 2) }))} placeholder={card.level ? String(card.level) : 'Ex.: 32'} />
+            </label>
+            <label>
+              <span>Pontos totais disponíveis</span>
+              <input inputMode="numeric" value={manualFields.trainingPointsTotal} onChange={(event) => setManualFields((current) => ({ ...current, trainingPointsTotal: event.target.value.replace(/[^0-9]/g, '').slice(0, 3) }))} placeholder={String(draft.trainingPointsTotal)} />
+            </label>
+          </div>
+        </article>
+
+        <article className="luxury-panel wide-card">
+          <p className="kicker">Atributos revisáveis</p>
+          <div className="attribute-editor-grid">
+            {ATTRIBUTE_INPUTS.map((item) => (
+              <label key={item.key}>
+                <span>{item.label}</span>
+                <input
+                  inputMode="numeric"
+                  value={manualFields.attributes[item.key] ?? ''}
+                  onChange={(event) => updateAttribute(item.key, event.target.value)}
+                  placeholder={card.attributes[item.key] ? String(card.attributes[item.key]) : '--'}
+                />
+              </label>
+            ))}
+          </div>
+          <p className="panel-note">Preencha os valores que você deseja usar na ficha. Os demais dados seguem o motor local, banco de cartas e regras premium de desempenho em campo.</p>
+        </article>
+
+        <article className="luxury-panel wide-card">
+          <p className="kicker">Funções separadas</p>
+          <div className="position-list">
+            {draft.permittedPositions.map((item) => (
+              <div key={item.code}>
+                <strong>{item.label}</strong>
+                <span>{item.reason}</span>
+                <em>{item.rating ? `Nota lida ${item.rating}` : 'Sem depender de GER'}</em>
+              </div>
+            ))}
+          </div>
+          {draft.avoidPositions.length > 0 && (
+            <>
+              <p className="kicker avoid-kicker">Evitar</p>
+              <div className="position-list avoid-list">
+                {draft.avoidPositions.map((item) => (
+                  <div key={item.code}>
+                    <strong>{item.label}</strong>
+                    <span>{item.reason}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </article>
+      </div>
+
+      <div className="review-actions">
+        <button type="button" className="secondary-action" onClick={onRefresh}>Atualizar prévia premium</button>
+        <button type="button" className="elite-button" onClick={onConfirm}><CheckCircle2 size={18} /> Finalizar plano Elite</button>
+      </div>
+    </section>
+  );
+}
+
 
 export function CardVisionApp() {
   const [preview, setPreview] = useState<string | null>(null);
   const [playerCardImage, setPlayerCardImage] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [ocrDone, setOcrDone] = useState(false);
   const [rawText, setRawText] = useState('');
   const [objective, setObjective] = useState<Objective>('COMPETITIVE');
   const [targetPosition, setTargetPosition] = useState<PositionCode | 'AUTO'>('AUTO');
+  const [cardPositionOverride, setCardPositionOverride] = useState<PositionCode | 'AUTO'>('AUTO');
+  const [playstyleOverride, setPlaystyleOverride] = useState<string>('AUTO');
   const [readingMode, setReadingMode] = useState<ReadingMode>('precision');
-  const [status, setStatus] = useState('Envie o print da carta para começar.');
+  const [ocrZones, setOcrZones] = useState<OcrZone[]>(DEFAULT_OCR_ZONES);
+  const [calibratorOpen, setCalibratorOpen] = useState(false);
+  const [qualityReport, setQualityReport] = useState<PrintQualityReport | null>(null);
+  const [formation, setFormation] = useState<TacticalFormation>('AUTO');
+  const [teamStyle, setTeamStyle] = useState<TacticalStyle>('AUTO');
+  const [status, setStatus] = useState('Escolha o Leitor Elite de Carta ou a Central de Precisão Manual. Tudo roda localmente, sem IA paga.');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [draftResult, setDraftResult] = useState<AnalysisResult | null>(null);
+  const [manualFields, setManualFields] = useState<ManualFields>({ playerName: '', level: '', trainingPointsTotal: '', attributes: {} });
+  const [manualMode, setManualMode] = useState(false);
   const [history, setHistory] = useState<SavedAnalysis[]>([]);
   const lastSavedKey = useRef<string | null>(null);
 
-  const canAnalyze = useMemo(() => rawText.trim().length > 2 && !loading, [rawText, loading]);
+  const canProceed = useMemo(() => !loading && rawText.trim().length > 2, [rawText, loading]);
+  const tacticalProfile = useMemo<TacticalProfile>(() => ({ formation, style: teamStyle }), [formation, teamStyle]);
+  const selectedFormationGuide = formation === 'AUTO' ? null : formationGuides[formation];
 
   useEffect(() => {
     try {
@@ -548,7 +1028,25 @@ export function CardVisionApp() {
     } catch {
       setHistory([]);
     }
+
+    try {
+      const storedZones = localStorage.getItem(CALIBRATION_KEY);
+      if (storedZones) {
+        const parsedZones = JSON.parse(storedZones) as OcrZone[];
+        if (Array.isArray(parsedZones) && parsedZones.length) setOcrZones(parsedZones);
+      }
+    } catch {
+      setOcrZones(DEFAULT_OCR_ZONES);
+    }
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CALIBRATION_KEY, JSON.stringify(ocrZones));
+    } catch {
+      // Calibração é local e opcional.
+    }
+  }, [ocrZones]);
 
   useEffect(() => {
     if (!result) return;
@@ -585,35 +1083,146 @@ export function CardVisionApp() {
     setPreview(null);
     setPlayerCardImage(null);
     setFileName(null);
+    setSelectedFile(null);
+    setOcrDone(false);
     setRawText('');
     setResult(null);
-    setStatus('Envie outro print da carta para começar.');
+    setDraftResult(null);
+    setManualFields({ playerName: '', level: '', trainingPointsTotal: '', attributes: {} });
+    setManualMode(false);
+    setCardPositionOverride('AUTO');
+    setPlaystyleOverride('AUTO');
+    setQualityReport(null);
+    setStatus('Central reiniciada. Escolha o Leitor Elite de Carta ou a Central de Precisão Manual para começar.');
   }
 
   function restoreHistory(item: SavedAnalysis) {
     lastSavedKey.current = `${item.result.parsed.playerName}-${item.result.bestPosition.code}-${item.result.trainingPointsUsed}-${item.result.trainingPointsTotal}`;
+    setSelectedFile(null);
+    setOcrDone(true);
     setRawText(item.rawText);
     setPlayerCardImage(item.playerImage);
     setPreview(item.fullPreview ?? item.playerImage);
+    setDraftResult(null);
     setResult(item.result);
+    setManualMode(true);
     setStatus(`Análise restaurada: ${item.result.parsed.playerName}.`);
   }
 
   async function handleFile(file: File) {
     setFileName(file.name);
+    setSelectedFile(file);
     setPreview(URL.createObjectURL(file));
     setPlayerCardImage(null);
     setResult(null);
-    setLoading(true);
+    setDraftResult(null);
+    setManualFields({ playerName: '', level: '', trainingPointsTotal: '', attributes: {} });
+    setManualMode(false);
     setRawText('');
-    setStatus('Preparando imagem para OCR local premium...');
+    setOcrDone(false);
+    setLoading(false);
+    setStatus('Imagem selecionada. Confira posição, estilo e tática antes de executar a leitura premium.');
+
+    const croppedPreview = await createPlayerCardPreview(file).catch(() => null);
+    if (croppedPreview) setPlayerCardImage(croppedPreview);
+
+    const quality = await inspectPrintQuality(file).catch(() => null);
+    setQualityReport(quality);
+    if (quality?.issues.length) {
+      setStatus(`Imagem selecionada, mas revise o print: ${quality.issues[0].message}`);
+    }
+  }
+
+  function stripManualBlock(text: string) {
+    return text.replace(/\[AJUSTES MANUAIS\][\s\S]*?\[FIM AJUSTES\]\s*/gi, '').trimStart();
+  }
+
+  function textWithManualLocks(text: string, confirmed = false) {
+    const learned = findLearnedCard(text, fileName);
+    const cleaned = stripManualBlock(text)
+      .replace(/^(POSIÇÃO PRINCIPAL|POSICAO PRINCIPAL|ESTILO DE JOGO|NOME|NOME DO JOGADOR|NÍVEL MÁXIMO|NIVEL MAXIMO|PONTOS TOTAIS)\s*[:=\-].*$/gim, '')
+      .replace(/^\s+/, '');
+    const locks: string[] = ['[AJUSTES MANUAIS]'];
+    if (confirmed) locks.push('CONFIRMAÇÃO MANUAL: SIM');
+    const learnedName = learned?.playerName ?? '';
+    const learnedPosition = learned?.mainPosition ?? 'AUTO';
+    const learnedStyle = learned?.playstyle ?? 'AUTO';
+    const learnedPoints = learned?.trainingPointsTotal ?? '';
+    if (manualFields.playerName.trim() || learnedName) locks.push(`NOME DO JOGADOR: ${manualFields.playerName.trim() || learnedName}`);
+    if (cardPositionOverride !== 'AUTO' || learnedPosition !== 'AUTO') locks.push(`POSIÇÃO PRINCIPAL: ${cardPositionOverride !== 'AUTO' ? cardPositionOverride : learnedPosition}`);
+    if (playstyleOverride !== 'AUTO' || learnedStyle !== 'AUTO') locks.push(`ESTILO DE JOGO: ${playstyleOverride !== 'AUTO' ? playstyleOverride : learnedStyle}`);
+    if (manualFields.level.trim()) locks.push(`NÍVEL MÁXIMO: ${manualFields.level.trim()}`);
+    if (manualFields.trainingPointsTotal.trim() || learnedPoints) locks.push(`PONTOS TOTAIS: ${manualFields.trainingPointsTotal.trim() || learnedPoints}`);
+    for (const item of ATTRIBUTE_INPUTS) {
+      const value = manualFields.attributes[item.key]?.trim();
+      if (value) locks.push(`${item.label}: ${value}`);
+    }
+    locks.push('[FIM AJUSTES]');
+    return `${locks.join('\n')}\n${cleaned}`.trim();
+  }
+
+  function hydrateReviewFields(nextResult: AnalysisResult) {
+    const nextAttributes: Partial<Record<AttributeKey, string>> = {};
+    for (const [key, value] of Object.entries(nextResult.parsed.attributes)) {
+      if (Number.isFinite(value)) nextAttributes[key as AttributeKey] = String(value);
+    }
+    setManualFields({
+      playerName: nextResult.parsed.playerName !== 'Jogador não identificado' ? nextResult.parsed.playerName : '',
+      level: nextResult.parsed.level ? String(nextResult.parsed.level) : '',
+      trainingPointsTotal: nextResult.trainingPointsTotal ? String(nextResult.trainingPointsTotal) : '',
+      attributes: nextAttributes
+    });
+    if (cardPositionOverride === 'AUTO') setCardPositionOverride(nextResult.parsed.mainPosition);
+    if (playstyleOverride === 'AUTO' && nextResult.parsed.playstyle) setPlaystyleOverride(nextResult.parsed.playstyle);
+  }
+
+  function startManualPreciseMode() {
+    const template = [
+      'NOME DO JOGADOR: ',
+      'POSIÇÃO PRINCIPAL: CF',
+      'ESTILO DE JOGO: AUTO',
+      'NÍVEL MÁXIMO: ',
+      'PONTOS TOTAIS: ',
+      '',
+      'Preencha os dados no painel de auditoria. Este modo não usa leitura automática nem depende do print.'
+    ].join('\n');
+    setManualMode(true);
+    setSelectedFile(null);
+    setPreview(null);
+    setPlayerCardImage(null);
+    setFileName('entrada-manual-precisao');
+    setRawText(template);
+    setOcrDone(true);
+    setResult(null);
+    setCardPositionOverride('CF');
+    setPlaystyleOverride('AUTO');
+    setManualFields({ playerName: '', level: '', trainingPointsTotal: '', attributes: {} });
+    const nextResult = analyzeCard(template, objective, targetPosition, 'entrada-manual-precisao', tacticalProfile);
+    setDraftResult(nextResult);
+    setStatus('Central de Precisão Manual aberta. Preencha os dados, revise e finalize o plano premium.');
+  }
+
+  async function analyzeSelectedImage() {
+    if (!selectedFile) {
+      if (rawText.trim().length > 2) runAnalysis();
+      return;
+    }
+
+    setLoading(true);
+    setResult(null);
+    setDraftResult(null);
+    setManualFields({ playerName: '', level: '', trainingPointsTotal: '', attributes: {} });
+    setManualMode(false);
+    setRawText('');
+    setOcrDone(false);
+    setStatus('Preparando imagem para leitura local premium...');
 
     try {
       const Tesseract = await import('tesseract.js');
-      const croppedPreview = await createPlayerCardPreview(file);
+      const croppedPreview = await createPlayerCardPreview(selectedFile);
       if (croppedPreview) setPlayerCardImage(croppedPreview);
 
-      const variants = await createOcrVariants(file, readingMode);
+      const variants = await createOcrVariants(selectedFile, readingMode, ocrZones);
       const texts: string[] = [];
 
       for (let index = 0; index < variants.length; index += 1) {
@@ -626,31 +1235,83 @@ export function CardVisionApp() {
             }
           }
         });
-        if (pass.data.text.trim()) texts.push(pass.data.text.trim());
+        const variantText = pass.data.text.trim();
+        if (variantText) texts.push(`### ${variant.label}\n${variantText}`);
       }
 
       const mergedText = mergeOcrTexts(...texts);
-      setRawText(mergedText);
+      setOcrDone(true);
 
       if (mergedText.trim().length > 2) {
-        const autoResult = analyzeCard(mergedText, objective, targetPosition, file.name);
-        setResult(autoResult);
-        setStatus('Carta analisada. Ficha Elite gerada com OCR local.');
+        const learnedText = applyLearningToText(mergedText);
+        const lockedText = textWithManualLocks(learnedText);
+        setRawText(lockedText);
+        const autoResult = analyzeCard(lockedText, objective, targetPosition, fileName, tacticalProfile);
+        hydrateReviewFields(autoResult);
+        setDraftResult(autoResult);
+        setResult(null);
+        setStatus('Carta lida. Confira posição, estilo, pontos e atributos antes de gerar a ficha final.');
       } else {
-        setStatus('Não consegui ler texto suficiente. Tente print direto da tela com ficha automática visível.');
+        setStatus('Não consegui ler texto suficiente. Tente print direto da tela com nome, posição, estilo e ficha automática visíveis.');
       }
     } catch {
-      setStatus('Não consegui ler automaticamente. Tente outro print direto da tela com ficha automática visível.');
+      setStatus('Não consegui ler automaticamente. Tente outro print direto da tela com nome, posição, estilo e ficha automática visíveis.');
     } finally {
       setLoading(false);
     }
   }
 
-  function runAnalysis() {
-    setStatus('Gerando ficha Elite de gameplay máximo...');
-    const nextResult = analyzeCard(rawText, objective, targetPosition, fileName);
-    setResult(nextResult);
-    setStatus(nextResult.note);
+
+  function resetCalibration() {
+    setOcrZones(DEFAULT_OCR_ZONES);
+    setStatus('Calibração restaurada para o padrão do print completo 1400x1600.');
+  }
+
+  function updateZone(key: OcrZone['key'], field: keyof Pick<OcrZone, 'x' | 'y' | 'w' | 'h'>, value: string) {
+    const nextValue = Math.max(0, Math.min(1, Number(value) / 100));
+    setOcrZones((current) => current.map((zone) => zone.key === key ? { ...zone, [field]: nextValue } : zone));
+  }
+
+  function toggleZone(key: OcrZone['key']) {
+    setOcrZones((current) => current.map((zone) => zone.key === key ? { ...zone, enabled: !zone.enabled } : zone));
+  }
+
+  function applyLearningToText(text: string) {
+    const learned = findLearnedCard(text, fileName);
+    if (!learned) return text;
+    const lines = [
+      '[APRENDIZADO LOCAL]',
+      `NOME DO JOGADOR: ${learned.playerName}`,
+      `POSIÇÃO PRINCIPAL: ${learned.mainPosition}`,
+      learned.playstyle ? `ESTILO DE JOGO: ${learned.playstyle}` : '',
+      learned.trainingPointsTotal ? `PONTOS TOTAIS: ${learned.trainingPointsTotal}` : '',
+      '[FIM APRENDIZADO]'
+    ].filter(Boolean);
+    return `${lines.join('\n')}\n${text}`;
+  }
+
+  function runAnalysis(confirmed = false) {
+    setStatus(confirmed ? 'Finalizando plano Elite confirmado...' : 'Atualizando prévia para conferência...');
+    const lockedText = textWithManualLocks(rawText, confirmed);
+    if (lockedText !== rawText) setRawText(lockedText);
+    const nextResult = analyzeCard(lockedText, objective, targetPosition, fileName, tacticalProfile);
+    if (confirmed) {
+      saveLearnedCard({
+        playerName: nextResult.parsed.playerName,
+        mainPosition: nextResult.parsed.mainPosition,
+        playstyle: nextResult.parsed.playstyle,
+        targetPosition,
+        trainingPointsTotal: String(nextResult.trainingPointsTotal),
+        updatedAt: new Date().toISOString()
+      });
+      setResult(nextResult);
+      setDraftResult(null);
+      setStatus(nextResult.note);
+    } else {
+      setDraftResult(nextResult);
+      setResult(null);
+      setStatus('Prévia Elite atualizada. Revise os dados e finalize o plano premium.');
+    }
   }
 
   return (
@@ -660,7 +1321,7 @@ export function CardVisionApp() {
           <div className="brand-icon"><Sparkles size={19} /></div>
           <div>
             <strong>BuildMaster</strong>
-            <span>Local Pro</span>
+            <span>Elite Tático</span>
           </div>
         </div>
         <div className="session-badge"><ShieldCheck size={16} /> Sessão protegida</div>
@@ -672,9 +1333,9 @@ export function CardVisionApp() {
 
       <section className="hero-redesign">
         <div>
-          <p className="kicker"><Sparkles size={16} /> BuildMaster Local Pro</p>
-          <h1>Analise sua carta. Descubra o build Elite.</h1>
-          <p>Envie o print, leia tudo localmente e gere uma ficha mais forte para gameplay real, sem API paga e sem copiar a ficha automática do jogo.</p>
+          <p className="kicker"><Sparkles size={16} /> BuildMaster Elite Tático</p>
+          <h1>Monte uma ficha premium por print ou manual, com auditoria antes do plano final.</h1>
+          <p>Use o Leitor Elite de Carta para leitura local ou o Central de Precisão Manual para máxima precisão. GER é apenas referência; o motor prioriza função, atributos úteis, estilo e melhor posicionamento.</p>
         </div>
         <div className="orb-ball" aria-hidden="true" />
       </section>
@@ -683,78 +1344,204 @@ export function CardVisionApp() {
         <aside className="control-panel luxury-panel">
           <div className="panel-heading">
             <div>
-              <p className="kicker">Nova análise</p>
-              <h2>Imagem da carta</h2>
+              <p className="kicker">Painel premium</p>
+              <h2>Central Elite</h2>
             </div>
-            <Camera size={24} />
+            <ShieldCheck size={24} />
           </div>
 
-          <div className="upload-box">
-            {preview ? <img src={preview} alt="Print enviado" /> : (
+          <div className="premium-entry-grid">
+            <article className="manual-premium-card vision-entry-card">
+              <div className="manual-premium-icon"><ScanText size={28} /></div>
+              <strong>Leitor Elite de Carta</strong>
+              <span>Envie o print completo da carta. O programa faz leitura local, aplica calibração por zonas e abre a Auditoria Elite antes de finalizar a ficha.</span>
+            </article>
+
+            <article className="manual-premium-card manual-entry-card">
+              <div className="manual-premium-icon"><ShieldCheck size={28} /></div>
+              <strong>Central de Precisão Manual</strong>
+              <span>Modo de precisão máxima: você informa posição, estilo, pontos e atributos. Ideal quando quer zero risco de leitura errada.</span>
+            </article>
+          </div>
+
+          <div className="upload-box premium-upload-box">
+            {preview ? (
+              <img src={preview} alt="Print selecionado da carta" />
+            ) : (
               <div>
-                <UploadCloud size={36} />
-                <strong>Envie a imagem da sua carta</strong>
-                <span>Use print direto da tela com ficha automática visível.</span>
+                <UploadCloud size={34} />
+                <strong>Enviar print da carta</strong>
+                <span>Use print completo, sem corte, com nome, posição, estilo, grade e atributos visíveis.</span>
               </div>
             )}
           </div>
 
-          <div className="upload-buttons">
+          <div className="upload-buttons premium-upload-actions">
             <label>
-              <input type="file" accept="image/*" onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.currentTarget.value = '';
-                if (file) void handleFile(file);
-              }} />
-              <ImagePlus size={18} /> Buscar print
+              <ImagePlus size={17} /> Importar print
+              <input type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (file) void handleFile(file); event.currentTarget.value = ''; }} />
             </label>
             <label>
-              <input type="file" accept="image/*" capture="environment" onChange={(event) => {
-                const file = event.target.files?.[0];
-                event.currentTarget.value = '';
-                if (file) void handleFile(file);
-              }} />
-              <Camera size={18} /> Tirar foto
+              <Camera size={17} /> Câmera
+              <input type="file" accept="image/*" capture="environment" onChange={(event) => { const file = event.target.files?.[0]; if (file) void handleFile(file); event.currentTarget.value = ''; }} />
             </label>
           </div>
 
+          <div className="vision-toolbar">
+            <button className="manual-mode-button scanner-action" type="button" onClick={analyzeSelectedImage} disabled={!selectedFile || loading}>
+              {loading ? <Loader2 className="spin" size={17} /> : <ScanText size={17} />}
+              {loading ? 'Lendo carta...' : 'Executar Leitor Elite'}
+            </button>
+            <button className="manual-mode-button calibrator-action" type="button" onClick={() => setCalibratorOpen((current) => !current)} disabled={!preview}>
+              <Wand2 size={17} /> Ajustar zonas
+            </button>
+          </div>
+
+          <button className="manual-mode-button primary-manual" type="button" onClick={startManualPreciseMode}>
+            <ShieldCheck size={16} /> Abrir Central de Precisão Manual
+          </button>
+
+          {qualityReport && (
+            <div className="quality-card">
+              <strong>Diagnóstico do print</strong>
+              <span>{qualityReport.width}x{qualityReport.height}px • nitidez {qualityReport.sharpness} • contraste {qualityReport.contrast}</span>
+              {qualityReport.issues.length ? (
+                <em>{qualityReport.issues.map((issue) => issue.message).join(' ')}</em>
+              ) : (
+                <em>Print em condição boa para leitura local.</em>
+              )}
+            </div>
+          )}
+
+          {calibratorOpen && preview && (
+            <details className="calibrator-panel" open>
+              <summary>Calibrador Elite de áreas</summary>
+              <p className="panel-note">Ajuste somente quando o print vier de resolução, zoom ou corte diferente. A posição original deve sair da área da carta, não da grade de GERs.</p>
+              <div className="calibration-preview">
+                <img src={preview} alt="Prévia para calibrar leitura" />
+                {ocrZones.filter((zone) => zone.enabled).map((zone) => (
+                  <div
+                    key={zone.key}
+                    className={`zone-box zone-${zone.key}`}
+                    style={{ left: `${zone.x * 100}%`, top: `${zone.y * 100}%`, width: `${zone.w * 100}%`, height: `${zone.h * 100}%` }}
+                  >
+                    <span>{zone.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="zone-editor-list">
+                {ocrZones.map((zone) => (
+                  <div className="zone-editor" key={zone.key}>
+                    <label className="zone-toggle">
+                      <input type="checkbox" checked={zone.enabled} onChange={() => toggleZone(zone.key)} />
+                      <strong>{zone.label}</strong>
+                    </label>
+                    <label><span>X</span><input type="range" min="0" max="100" value={Math.round(zone.x * 100)} onChange={(event) => updateZone(zone.key, 'x', event.target.value)} /></label>
+                    <label><span>Y</span><input type="range" min="0" max="100" value={Math.round(zone.y * 100)} onChange={(event) => updateZone(zone.key, 'y', event.target.value)} /></label>
+                    <label><span>Largura</span><input type="range" min="1" max="100" value={Math.round(zone.w * 100)} onChange={(event) => updateZone(zone.key, 'w', event.target.value)} /></label>
+                    <label><span>Altura</span><input type="range" min="1" max="100" value={Math.round(zone.h * 100)} onChange={(event) => updateZone(zone.key, 'h', event.target.value)} /></label>
+                  </div>
+                ))}
+              </div>
+              <button className="manual-mode-button calibrator-action full-width" type="button" onClick={resetCalibration}>Restaurar calibração padrão</button>
+            </details>
+          )}
+
           <div className="select-stack">
             <label>
-              <span>Modo de leitura</span>
-              <select value={readingMode} onChange={(event) => setReadingMode(event.target.value as ReadingMode)}>
-                <option value="precision">OCR local premium — mais preciso</option>
-                <option value="fast">OCR rápido — menos passadas</option>
-              </select>
-            </label>
-
-            <label>
-              <span>Objetivo da ficha</span>
+              <span>Perfil de performance</span>
               <select value={objective} onChange={(event) => setObjective(event.target.value as Objective)}>
                 {objectives.map((item) => <option key={item.value} value={item.value}>{item.title} — {item.hint}</option>)}
               </select>
             </label>
 
             <label>
-              <span>Posição alvo</span>
+              <span>Sistema tático</span>
+              <select value={formation} onChange={(event) => setFormation(event.target.value as TacticalFormation)}>
+                {formations.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <span>Modelo de jogo</span>
+              <select value={teamStyle} onChange={(event) => setTeamStyle(event.target.value as TacticalStyle)}>
+                {tacticalStyles.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <span>Função alvo em campo</span>
               <select value={targetPosition} onChange={(event) => setTargetPosition(event.target.value as PositionCode | 'AUTO')}>
                 {POSITION_LABELS.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
               </select>
             </label>
+
+            <label>
+              <span>Posição original da carta</span>
+              <select value={cardPositionOverride} onChange={(event) => setCardPositionOverride(event.target.value as PositionCode | 'AUTO')}>
+                {POSITION_LABELS.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <span>Estilo real da carta</span>
+              <select value={playstyleOverride} onChange={(event) => setPlaystyleOverride(event.target.value)}>
+                <option value="AUTO">Automático</option>
+                {playstyleOptions.map((style) => <option key={style} value={style}>{style}</option>)}
+              </select>
+            </label>
           </div>
 
-          <button className="elite-button generate-button" type="button" onClick={runAnalysis} disabled={!canAnalyze}>
+          <article className="tactical-guide-card">
+            <div className="tactical-guide-head">
+              <div>
+                <p className="kicker">Guia tático premium</p>
+                <h3>{selectedFormationGuide ? selectedFormationGuide.title : 'Escolha uma formação'}</h3>
+              </div>
+              {selectedFormationGuide && (
+                <button className="mini-action" type="button" onClick={() => setTeamStyle(selectedFormationGuide.bestStyle)}>
+                  Aplicar estilo sugerido
+                </button>
+              )}
+            </div>
+            {selectedFormationGuide ? (
+              <>
+                <div className="guide-highlight">
+                  <span>Melhor estilo do técnico</span>
+                  <strong>{tacticalStyleName[selectedFormationGuide.bestStyle]}</strong>
+                  <em>{selectedFormationGuide.styleReason}</em>
+                </div>
+                <p>{selectedFormationGuide.howToPlay}</p>
+                <div className="role-chip-grid">
+                  {selectedFormationGuide.roles.map((role) => <span key={role}>{role}</span>)}
+                </div>
+                <small>Selecionado agora: {teamStyle === 'AUTO' ? 'automático premium' : tacticalStyleName[teamStyle]}.</small>
+              </>
+            ) : (
+              <p>Selecione uma formação para ver o estilo de técnico recomendado, como jogar nela e a função principal de cada setor.</p>
+            )}
+          </article>
+
+          <button className="elite-button generate-button" type="button" onClick={() => runAnalysis(false)} disabled={!canProceed}>
             {loading ? <Loader2 className="spin" size={18} /> : <Zap size={18} />}
-            {loading ? 'Lendo imagem...' : 'Gerar ficha Elite'}
+            {loading ? 'Processando ficha...' : result ? 'Reabrir auditoria Elite' : 'Gerar prévia Elite'}
           </button>
 
+          <div className="flow-steps">
+            <span className={selectedFile || manualMode ? 'done' : ''}>1. Print ou manual</span>
+            <span className={draftResult || result ? 'done' : (manualMode || selectedFile) ? 'active' : ''}>2. Auditoria Elite</span>
+            <span className={draftResult ? 'active' : result ? 'done' : ''}>3. Conferência</span>
+            <span className={result ? 'done' : ''}>4. Plano final</span>
+          </div>
+
           <div className="status-card">
-            <ScanText size={18} />
+            <ShieldCheck size={18} />
             <p>{status}</p>
           </div>
 
           {rawText && (
             <details className="raw-details">
-              <summary>Dados detectados pelo OCR</summary>
+              <summary>Registro técnico da leitura</summary>
               <textarea value={rawText} onChange={(event) => setRawText(event.target.value)} spellCheck={false} />
             </details>
           )}
@@ -773,20 +1560,35 @@ export function CardVisionApp() {
         </aside>
 
         <section className="preview-panel">
-          {result ? <ResultCard result={result} playerImage={playerCardImage ?? preview} /> : (
+          {result ? <ResultCard result={result} playerImage={playerCardImage ?? preview} /> : draftResult ? (
+            <ReviewPanel
+              draft={draftResult}
+              playerImage={playerCardImage ?? preview}
+              manualFields={manualFields}
+              setManualFields={setManualFields}
+              cardPositionOverride={cardPositionOverride}
+              setCardPositionOverride={setCardPositionOverride}
+              playstyleOverride={playstyleOverride}
+              setPlaystyleOverride={setPlaystyleOverride}
+              targetPosition={targetPosition}
+              setTargetPosition={setTargetPosition}
+              onRefresh={() => runAnalysis(false)}
+              onConfirm={() => runAnalysis(true)}
+            />
+          ) : (
             <div className="empty-state luxury-panel">
               <div className="empty-icon"><Wand2 size={34} /></div>
-              <h2>Resultado da análise</h2>
-              <p>Depois da leitura, o resultado aparece como um painel premium com resumo, ficha, habilidades, posições e dados lidos.</p>
+              <h2>Painel Elite</h2>
+              <p>Depois de preencher os dados, o resultado aparece como um painel premium com plano, habilidades, posições e justificativa de desempenho em campo.</p>
               <div className="empty-card-preview">
                 <strong>--</strong>
                 <span>CA</span>
-                <em>BuildMaster Local</em>
+                <em>Elite Tático</em>
               </div>
               <div className="feature-row">
-                <span><ShieldCheck size={15} /> 100% local</span>
-                <span><CheckCircle2 size={15} /> Sem API paga</span>
-                <span><Sparkles size={15} /> Ficha Elite</span>
+                <span><ScanText size={15} /> Leitura por print</span>
+                <span><ShieldCheck size={15} /> Manual de precisão</span>
+                <span><CheckCircle2 size={15} /> Sem IA paga</span>
               </div>
             </div>
           )}

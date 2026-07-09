@@ -1,14 +1,24 @@
 {
-  "name": "BuildMaster Local Pro v7",
+  "name": "BuildMaster Elite Tático v25 APK",
   "short_name": "BuildMaster",
-  "description": "App premium privado com OCR local para ficha Elite por imagem.",
+  "description": "App premium privado com Leitor Elite de Carta, Central de Precisão Manual, guia tático e ficha de desempenho real em campo. Preparado para APK Android.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020712",
   "theme_color": "#020712",
   "orientation": "portrait-primary",
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }

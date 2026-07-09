@@ -1,4 +1,4 @@
-const CACHE_NAME = 'buildmaster-local-pro-v9-v7-v8-premium';
+const CACHE_NAME = 'buildmaster-elite-tatico-v25-apk-ready';
 const STATIC_ASSETS = ['/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

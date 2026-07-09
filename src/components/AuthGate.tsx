@@ -3,7 +3,7 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { Eye, EyeOff, LockKeyhole, ShieldCheck, Sparkles, UserRound } from 'lucide-react';
 
-const AUTH_KEY = 'buildmaster_local_auth_v7_premium';
+const AUTH_KEY = 'buildmaster_local_auth_v15_premium';
 const LOGIN_USER = 'thiago0126';
 const LOGIN_PASSWORD = 'iu1fsaa67a';
 const SESSION_DURATION = 1000 * 60 * 60 * 24 * 14;
@@ -85,8 +85,8 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
       <section className="auth-card luxury-panel">
         <div className="auth-logo-mark"><Sparkles size={34} /></div>
         <p className="auth-app-name">BuildMaster</p>
-        <h1>Local Pro</h1>
-        <p className="auth-subtitle">Análise local, privada e mais estável.</p>
+        <h1>Elite Tático</h1>
+        <p className="auth-subtitle">Central premium local, privada e focada em desempenho real.</p>
 
         <div className="auth-security-note">
           <LockKeyhole size={18} />

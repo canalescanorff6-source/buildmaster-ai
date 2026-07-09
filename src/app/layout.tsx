@@ -4,12 +4,12 @@ import { RegisterServiceWorker } from '@/components/RegisterServiceWorker';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'BuildMaster Local Pro v7',
-  description: 'App premium privado, OCR local, ficha Elite e design mobile elegante para análise de cartas por imagem.',
+  title: 'BuildMaster Elite Tático v25',
+  description: 'App premium privado com Leitor Elite de Carta, Central de Precisão Manual, guia tático, variações de formação e ficha focada em desempenho real em campo. Versão preparada para APK Android.',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
-    title: 'BuildMaster Local Pro',
+    title: 'BuildMaster Elite Tático',
     statusBarStyle: 'black-translucent'
   },
   icons: {
