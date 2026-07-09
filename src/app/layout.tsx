@@ -4,8 +4,8 @@ import { RegisterServiceWorker } from '@/components/RegisterServiceWorker';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'BuildMaster Elite Studio v21',
-  description: 'App premium privado com entrada manual controlada, banco local, auditoria de dados e ficha focada em desempenho real em campo, sem OCR e sem API paga.',
+  title: 'BuildMaster Elite Studio v22',
+  description: 'App premium privado com Scanner Elite por Print, Console Pro Manual, banco local, auditoria de dados e ficha focada em desempenho real em campo, sem IA paga.',
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,

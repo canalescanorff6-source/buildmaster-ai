@@ -1,7 +1,7 @@
 {
-  "name": "BuildMaster Elite Studio v21",
+  "name": "BuildMaster Elite Studio v22",
   "short_name": "BuildMaster",
-  "description": "App premium privado com entrada manual controlada, banco local e ficha de desempenho real em campo, sem OCR e sem API paga.",
+  "description": "App premium privado com Scanner Elite por Print, Console Pro Manual, banco local e ficha de desempenho real em campo, sem IA paga.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020712",

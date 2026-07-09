@@ -41,9 +41,9 @@ type SavedAnalysis = {
   result: AnalysisResult;
 };
 
-const HISTORY_KEY = 'buildmaster_history_v21_elite_manual';
-const CALIBRATION_KEY = 'buildmaster_ocr_zones_v21_disabled';
-const LEARNING_KEY = 'buildmaster_local_learning_v21';
+const HISTORY_KEY = 'buildmaster_history_v22_elite_hybrid';
+const CALIBRATION_KEY = 'buildmaster_ocr_zones_v22_elite_hybrid';
+const LEARNING_KEY = 'buildmaster_local_learning_v22';
 
 const objectives: Array<{ value: Objective; title: string; hint: string }> = [
   { value: 'COMPETITIVE', title: 'Desempenho máximo', hint: 'rendimento real em campo, não overall' },
@@ -345,7 +345,7 @@ function copyBuildText(result: AnalysisResult) {
     .join('\n');
 
   const text = [
-    `BuildMaster Elite Studio v21 — ${result.parsed.playerName}`,
+    `BuildMaster Elite Studio v22 — ${result.parsed.playerName}`,
     `Função: ${result.buildName}`,
     `Melhor posição: ${result.bestPosition.label}`,
     `PRI: ${result.pri.overall}`,
@@ -400,7 +400,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
   const positionRatings = Object.entries(card.positionRatings).filter(([, value]) => Number.isFinite(value));
   const attributes = Object.entries(card.attributes).filter(([, value]) => Number.isFinite(value));
   const sourceLabel = card.trainingPointSource === 'TRAINING_READ'
-    ? 'Plano automática somada'
+    ? 'Plano automático somado'
     : card.trainingPointSource === 'LEVEL_INFERRED'
       ? 'Calculado pelo nível'
       : card.trainingPointSource === 'OCR'
@@ -880,7 +880,7 @@ export function CardVisionApp() {
   const [qualityReport, setQualityReport] = useState<PrintQualityReport | null>(null);
   const [formation, setFormation] = useState<TacticalFormation>('AUTO');
   const [teamStyle, setTeamStyle] = useState<TacticalStyle>('AUTO');
-  const [status, setStatus] = useState('Abra o Console Elite e preencha os dados da carta manualmente.');
+  const [status, setStatus] = useState('Escolha Scanner Elite por Print ou Console Pro Manual. Tudo roda localmente, sem IA paga.');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [draftResult, setDraftResult] = useState<AnalysisResult | null>(null);
@@ -964,7 +964,7 @@ export function CardVisionApp() {
     setCardPositionOverride('AUTO');
     setPlaystyleOverride('AUTO');
     setQualityReport(null);
-    setStatus('Console reiniciado. Abra o Console Elite Manual para começar a próxima carta.');
+    setStatus('Console reiniciado. Escolha Scanner Elite por Print ou Console Pro Manual para começar.');
   }
 
   function restoreHistory(item: SavedAnalysis) {
@@ -1114,7 +1114,8 @@ export function CardVisionApp() {
       setOcrDone(true);
 
       if (mergedText.trim().length > 2) {
-        const lockedText = textWithManualLocks(mergedText);
+        const learnedText = applyLearningToText(mergedText);
+        const lockedText = textWithManualLocks(learnedText);
         setRawText(lockedText);
         const autoResult = analyzeCard(lockedText, objective, targetPosition, fileName, tacticalProfile);
         hydrateReviewFields(autoResult);
@@ -1204,8 +1205,8 @@ export function CardVisionApp() {
       <section className="hero-redesign">
         <div>
           <p className="kicker"><Sparkles size={16} /> BuildMaster Elite Studio</p>
-          <h1>Monte uma ficha premium sem OCR e sem erro de leitura.</h1>
-          <p>Use entrada manual controlada para gerar uma ficha de desempenho real em campo. Overall é apenas referência; o motor prioriza função, atributos úteis, estilo e melhor posicionamento.</p>
+          <h1>Monte uma ficha premium por print ou manual, com auditoria antes do plano final.</h1>
+          <p>Use o Scanner Elite por Print para leitura local ou o Console Pro Manual para máxima precisão. Overall é apenas referência; o motor prioriza função, atributos úteis, estilo e melhor posicionamento.</p>
         </div>
         <div className="orb-ball" aria-hidden="true" />
       </section>
@@ -1220,15 +1221,102 @@ export function CardVisionApp() {
             <ShieldCheck size={24} />
           </div>
 
-          <div className="manual-premium-card">
-            <div className="manual-premium-icon"><ShieldCheck size={28} /></div>
-            <strong>Entrada manual controlada</strong>
-            <span>Sem OCR, sem leitura de print e sem risco do programa trocar posição ou estilo por engano. Você informa os dados principais e o motor calcula a melhor ficha por desempenho real.</span>
+          <div className="premium-entry-grid">
+            <article className="manual-premium-card vision-entry-card">
+              <div className="manual-premium-icon"><ScanText size={28} /></div>
+              <strong>Scanner Elite por Print</strong>
+              <span>Envie o print completo da carta. O app faz leitura local, aplica calibração por zonas e abre a Auditoria Elite antes de finalizar a ficha.</span>
+            </article>
+
+            <article className="manual-premium-card manual-entry-card">
+              <div className="manual-premium-icon"><ShieldCheck size={28} /></div>
+              <strong>Console Pro Manual</strong>
+              <span>Modo de precisão máxima: você informa posição, estilo, pontos e atributos. Ideal quando quer zero risco de leitura errada.</span>
+            </article>
+          </div>
+
+          <div className="upload-box premium-upload-box">
+            {preview ? (
+              <img src={preview} alt="Print selecionado da carta" />
+            ) : (
+              <div>
+                <UploadCloud size={34} />
+                <strong>Enviar print da carta</strong>
+                <span>Use print completo, sem corte, com nome, posição, estilo, grade e atributos visíveis.</span>
+              </div>
+            )}
+          </div>
+
+          <div className="upload-buttons premium-upload-actions">
+            <label>
+              <ImagePlus size={17} /> Importar print
+              <input type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (file) void handleFile(file); event.currentTarget.value = ''; }} />
+            </label>
+            <label>
+              <Camera size={17} /> Câmera
+              <input type="file" accept="image/*" capture="environment" onChange={(event) => { const file = event.target.files?.[0]; if (file) void handleFile(file); event.currentTarget.value = ''; }} />
+            </label>
+          </div>
+
+          <div className="vision-toolbar">
+            <button className="manual-mode-button scanner-action" type="button" onClick={analyzeSelectedImage} disabled={!selectedFile || loading}>
+              {loading ? <Loader2 className="spin" size={17} /> : <ScanText size={17} />}
+              {loading ? 'Lendo print...' : 'Executar Scanner Elite'}
+            </button>
+            <button className="manual-mode-button calibrator-action" type="button" onClick={() => setCalibratorOpen((current) => !current)} disabled={!preview}>
+              <Wand2 size={17} /> Ajustar zonas
+            </button>
           </div>
 
           <button className="manual-mode-button primary-manual" type="button" onClick={startManualPreciseMode}>
-            <ShieldCheck size={16} /> Abrir Console Elite Manual
+            <ShieldCheck size={16} /> Abrir Console Pro Manual
           </button>
+
+          {qualityReport && (
+            <div className="quality-card">
+              <strong>Diagnóstico do print</strong>
+              <span>{qualityReport.width}x{qualityReport.height}px • nitidez {qualityReport.sharpness} • contraste {qualityReport.contrast}</span>
+              {qualityReport.issues.length ? (
+                <em>{qualityReport.issues.map((issue) => issue.message).join(' ')}</em>
+              ) : (
+                <em>Print em condição boa para leitura local.</em>
+              )}
+            </div>
+          )}
+
+          {calibratorOpen && preview && (
+            <details className="calibrator-panel" open>
+              <summary>Calibrador Elite de áreas</summary>
+              <p className="panel-note">Ajuste somente quando o print vier de resolução, zoom ou corte diferente. A posição original deve sair da área da carta, não da grade de overalls.</p>
+              <div className="calibration-preview">
+                <img src={preview} alt="Prévia para calibrar leitura" />
+                {ocrZones.filter((zone) => zone.enabled).map((zone) => (
+                  <div
+                    key={zone.key}
+                    className={`zone-box zone-${zone.key}`}
+                    style={{ left: `${zone.x * 100}%`, top: `${zone.y * 100}%`, width: `${zone.w * 100}%`, height: `${zone.h * 100}%` }}
+                  >
+                    <span>{zone.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="zone-editor-list">
+                {ocrZones.map((zone) => (
+                  <div className="zone-editor" key={zone.key}>
+                    <label className="zone-toggle">
+                      <input type="checkbox" checked={zone.enabled} onChange={() => toggleZone(zone.key)} />
+                      <strong>{zone.label}</strong>
+                    </label>
+                    <label><span>X</span><input type="range" min="0" max="100" value={Math.round(zone.x * 100)} onChange={(event) => updateZone(zone.key, 'x', event.target.value)} /></label>
+                    <label><span>Y</span><input type="range" min="0" max="100" value={Math.round(zone.y * 100)} onChange={(event) => updateZone(zone.key, 'y', event.target.value)} /></label>
+                    <label><span>Largura</span><input type="range" min="1" max="100" value={Math.round(zone.w * 100)} onChange={(event) => updateZone(zone.key, 'w', event.target.value)} /></label>
+                    <label><span>Altura</span><input type="range" min="1" max="100" value={Math.round(zone.h * 100)} onChange={(event) => updateZone(zone.key, 'h', event.target.value)} /></label>
+                  </div>
+                ))}
+              </div>
+              <button className="manual-mode-button calibrator-action full-width" type="button" onClick={resetCalibration}>Restaurar calibração padrão</button>
+            </details>
+          )}
 
           <div className="select-stack">
             <label>
@@ -1281,8 +1369,8 @@ export function CardVisionApp() {
           </button>
 
           <div className="flow-steps">
-            <span className={manualMode ? 'done' : ''}>1. Dados manuais</span>
-            <span className={draftResult || result ? 'done' : manualMode ? 'active' : ''}>2. Auditoria Elite</span>
+            <span className={selectedFile || manualMode ? 'done' : ''}>1. Print ou manual</span>
+            <span className={draftResult || result ? 'done' : (manualMode || selectedFile) ? 'active' : ''}>2. Auditoria Elite</span>
             <span className={draftResult ? 'active' : result ? 'done' : ''}>3. Conferência</span>
             <span className={result ? 'done' : ''}>4. Plano final</span>
           </div>
@@ -1294,7 +1382,7 @@ export function CardVisionApp() {
 
           {rawText && (
             <details className="raw-details">
-              <summary>Registro técnico manual</summary>
+              <summary>Registro técnico da leitura</summary>
               <textarea value={rawText} onChange={(event) => setRawText(event.target.value)} spellCheck={false} />
             </details>
           )}
@@ -1339,9 +1427,9 @@ export function CardVisionApp() {
                 <em>Elite Studio</em>
               </div>
               <div className="feature-row">
-                <span><ShieldCheck size={15} /> Manual e local</span>
-                <span><CheckCircle2 size={15} /> Sem OCR / sem API paga</span>
-                <span><Sparkles size={15} /> Plano Elite</span>
+                <span><ScanText size={15} /> Scanner por print</span>
+                <span><ShieldCheck size={15} /> Manual premium</span>
+                <span><CheckCircle2 size={15} /> Sem IA paga</span>
               </div>
             </div>
           )}

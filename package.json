@@ -1,8 +1,8 @@
 {
-  "name": "buildmaster-elite-studio-v21-manual-premium",
-  "version": "21.0.0",
+  "name": "buildmaster-elite-studio-v22-scanner-manual",
+  "version": "22.0.0",
   "private": true,
-  "description": "BuildMaster Elite Studio v21 - modo manual premium, auditoria de dados, banco local maior e ficha de desempenho real sem OCR e sem API paga.",
+  "description": "BuildMaster Elite Studio v22 - Scanner Elite por Print e Console Pro Manual, auditoria de dados, banco local maior e ficha de desempenho real sem IA paga.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
