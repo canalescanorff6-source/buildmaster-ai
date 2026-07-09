@@ -1,15 +1,8 @@
 {
-<<<<<<< HEAD
-  "name": "buildmaster-elite-tatico-v25-apk-ready",
-  "version": "25.0.0",
+  "name": "buildmaster-elite-tatico-v25-apk-vercel-fix",
+  "version": "25.1.0",
   "private": true,
-  "description": "BuildMaster Elite Tatico v25 - versão preparada para gerar APK Android com Capacitor e continuar publicando no Vercel.",
-=======
-  "name": "buildmaster-elite-tatico-v24-json-fix",
-  "version": "24.2.0",
-  "private": true,
-  "description": "BuildMaster Elite Tatico v24 - pacote corrigido com package.json validado para Vercel.",
->>>>>>> c6c88af0748f1d196664c43bfafc67441e91c32e
+  "description": "BuildMaster Elite Tatico v25.1 - APK Ready com vercel.json corrigido para deploy no Vercel.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -18,16 +11,12 @@
     "vercel-build": "next build",
     "test:cards": "tsx tests/card-regression.ts",
     "test:prints": "tsx tests/print-regression.ts",
-<<<<<<< HEAD
     "test:all": "npm run test:cards && npm run test:prints",
     "apk:web": "next build",
     "apk:add-android": "npx cap add android",
     "apk:sync": "npm run apk:web && npx cap sync android",
     "apk:open": "npm run apk:sync && npx cap open android",
     "apk:debug": "npm run apk:sync && cd android && ./gradlew assembleDebug"
-=======
-    "test:all": "npm run test:cards && npm run test:prints"
->>>>>>> c6c88af0748f1d196664c43bfafc67441e91c32e
   },
   "dependencies": {
     "@capacitor/core": "^7.0.0",
@@ -47,10 +36,6 @@
     "typescript": "^5.9.3"
   },
   "engines": {
-<<<<<<< HEAD
     "node": ">=22 <25"
-=======
-    "node": "24.x"
->>>>>>> c6c88af0748f1d196664c43bfafc67441e91c32e
   }
 }

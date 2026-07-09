@@ -4,13 +4,8 @@ import { RegisterServiceWorker } from '@/components/RegisterServiceWorker';
 import './globals.css';
 
 export const metadata: Metadata = {
-<<<<<<< HEAD
   title: 'BuildMaster Elite Tático v25',
   description: 'App premium privado com Leitor Elite de Carta, Central de Precisão Manual, guia tático, variações de formação e ficha focada em desempenho real em campo. Versão preparada para APK Android.',
-=======
-  title: 'BuildMaster Elite Tático v24',
-  description: 'App premium privado com Leitor Elite de Carta, Central de Precisão Manual, guia tático, variações de formação e ficha focada em desempenho real em campo, sem IA paga.',
->>>>>>> c6c88af0748f1d196664c43bfafc67441e91c32e
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
