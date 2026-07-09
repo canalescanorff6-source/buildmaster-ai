@@ -1,6 +1,5 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "npm install --registry=https://registry.npmjs.org/ --legacy-peer-deps",
   "buildCommand": "npm run vercel-build",
-  "outputDirectory": "out"
+  "framework": "nextjs",
+  "installCommand": "npm ci --registry=https://registry.npmjs.org/"
 }

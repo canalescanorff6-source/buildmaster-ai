@@ -1,7 +1,7 @@
 {
-  "name": "BuildMaster Elite Tático v26 APK",
+  "name": "BuildMaster Elite Tático v24",
   "short_name": "BuildMaster",
-  "description": "App premium privado com Leitor Elite de Carta, Central de Precisão Manual, guia tático e ficha de desempenho real em campo. Preparado para APK Android.",
+  "description": "App premium privado com Leitor Elite de Carta, Central de Precisão Manual, guia tático e ficha de desempenho real em campo, sem IA paga.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020712",

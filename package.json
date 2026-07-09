@@ -1,8 +1,8 @@
 {
-  "name": "buildmaster-elite-tatico-v27-capacitor-ts-fix",
-  "version": "27.0.0",
+  "name": "buildmaster-elite-tatico-v24-json-fix",
+  "version": "24.2.0",
   "private": true,
-  "description": "BuildMaster Elite Tático v27 - correção TypeScript, Capacitor e build Vercel/APK estável.",
+  "description": "BuildMaster Elite Tatico v24 - pacote corrigido com package.json validado para Vercel.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,15 +11,9 @@
     "vercel-build": "next build",
     "test:cards": "tsx tests/card-regression.ts",
     "test:prints": "tsx tests/print-regression.ts",
-    "test:all": "npm run test:cards && npm run test:prints",
-    "apk:web": "next build",
-    "apk:add-android": "npx cap add android",
-    "apk:sync": "npm run apk:web && npx cap sync android",
-    "apk:open": "npm run apk:sync && npx cap open android",
-    "apk:debug": "npm run apk:sync && cd android && ./gradlew assembleDebug"
+    "test:all": "npm run test:cards && npm run test:prints"
   },
   "dependencies": {
-    "@capacitor/core": "^7.0.0",
     "lucide-react": "^1.23.0",
     "next": "^16.2.10",
     "react": "^19.2.7",
@@ -27,8 +21,6 @@
     "tesseract.js": "^5.1.1"
   },
   "devDependencies": {
-    "@capacitor/android": "^7.0.0",
-    "@capacitor/cli": "^7.0.0",
     "@types/node": "^24.10.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
@@ -36,6 +28,6 @@
     "typescript": "^5.9.3"
   },
   "engines": {
-    "node": ">=22 <25"
+    "node": "24.x"
   }
 }

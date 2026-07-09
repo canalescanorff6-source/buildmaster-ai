@@ -905,34 +905,34 @@ function ReviewPanel({
           <div className="review-form-grid">
             <label>
               <span>Nome do jogador</span>
-              <input value={manualFields.playerName} onChange={(event: any) => setManualFields((current) => ({ ...current, playerName: event.target.value }))} placeholder={card.playerName} />
+              <input value={manualFields.playerName} onChange={(event) => setManualFields((current) => ({ ...current, playerName: event.target.value }))} placeholder={card.playerName} />
             </label>
             <label>
               <span>Posição principal correta</span>
-              <select value={cardPositionOverride} onChange={(event: any) => setCardPositionOverride(event.target.value as PositionCode | 'AUTO')}>
+              <select value={cardPositionOverride} onChange={(event) => setCardPositionOverride(event.target.value as PositionCode | 'AUTO')}>
                 {POSITION_LABELS.filter((item) => item.code !== 'AUTO').map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
               </select>
             </label>
             <label>
               <span>Estilo de jogo correto</span>
-              <select value={playstyleOverride} onChange={(event: any) => setPlaystyleOverride(event.target.value)}>
+              <select value={playstyleOverride} onChange={(event) => setPlaystyleOverride(event.target.value)}>
                 <option value="AUTO">Automático / não sei</option>
                 {playstyleOptions.map((style) => <option key={style} value={style}>{style}</option>)}
               </select>
             </label>
             <label>
               <span>Função alvo premium</span>
-              <select value={targetPosition} onChange={(event: any) => setTargetPosition(event.target.value as PositionCode | 'AUTO')}>
+              <select value={targetPosition} onChange={(event) => setTargetPosition(event.target.value as PositionCode | 'AUTO')}>
                 {POSITION_LABELS.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
               </select>
             </label>
             <label>
               <span>Nível máximo</span>
-              <input inputMode="numeric" value={manualFields.level} onChange={(event: any) => setManualFields((current) => ({ ...current, level: event.target.value.replace(/[^0-9]/g, '').slice(0, 2) }))} placeholder={card.level ? String(card.level) : 'Ex.: 32'} />
+              <input inputMode="numeric" value={manualFields.level} onChange={(event) => setManualFields((current) => ({ ...current, level: event.target.value.replace(/[^0-9]/g, '').slice(0, 2) }))} placeholder={card.level ? String(card.level) : 'Ex.: 32'} />
             </label>
             <label>
               <span>Pontos totais disponíveis</span>
-              <input inputMode="numeric" value={manualFields.trainingPointsTotal} onChange={(event: any) => setManualFields((current) => ({ ...current, trainingPointsTotal: event.target.value.replace(/[^0-9]/g, '').slice(0, 3) }))} placeholder={String(draft.trainingPointsTotal)} />
+              <input inputMode="numeric" value={manualFields.trainingPointsTotal} onChange={(event) => setManualFields((current) => ({ ...current, trainingPointsTotal: event.target.value.replace(/[^0-9]/g, '').slice(0, 3) }))} placeholder={String(draft.trainingPointsTotal)} />
             </label>
           </div>
         </article>
@@ -946,7 +946,7 @@ function ReviewPanel({
                 <input
                   inputMode="numeric"
                   value={manualFields.attributes[item.key] ?? ''}
-                  onChange={(event: any) => updateAttribute(item.key, event.target.value)}
+                  onChange={(event) => updateAttribute(item.key, event.target.value)}
                   placeholder={card.attributes[item.key] ? String(card.attributes[item.key]) : '--'}
                 />
               </label>
@@ -1229,7 +1229,7 @@ export function CardVisionApp() {
         const variant = variants[index];
         setStatus(`Lendo ${variant.label} (${index + 1}/${variants.length})...`);
         const pass = await Tesseract.recognize(variant.image, 'por+eng', {
-          logger: (message: { status?: string; progress?: number }) => {
+          logger: (message) => {
             if (message.status) {
               setStatus(`${variant.label}: ${message.status}${message.progress ? ` ${Math.round(message.progress * 100)}%` : ''}`);
             }
@@ -1379,11 +1379,11 @@ export function CardVisionApp() {
           <div className="upload-buttons premium-upload-actions">
             <label>
               <ImagePlus size={17} /> Importar print
-              <input type="file" accept="image/*" onChange={(event: any) => { const file = event.target.files?.[0]; if (file) void handleFile(file); event.currentTarget.value = ''; }} />
+              <input type="file" accept="image/*" onChange={(event) => { const file = event.target.files?.[0]; if (file) void handleFile(file); event.currentTarget.value = ''; }} />
             </label>
             <label>
               <Camera size={17} /> Câmera
-              <input type="file" accept="image/*" capture="environment" onChange={(event: any) => { const file = event.target.files?.[0]; if (file) void handleFile(file); event.currentTarget.value = ''; }} />
+              <input type="file" accept="image/*" capture="environment" onChange={(event) => { const file = event.target.files?.[0]; if (file) void handleFile(file); event.currentTarget.value = ''; }} />
             </label>
           </div>
 
@@ -1436,10 +1436,10 @@ export function CardVisionApp() {
                       <input type="checkbox" checked={zone.enabled} onChange={() => toggleZone(zone.key)} />
                       <strong>{zone.label}</strong>
                     </label>
-                    <label><span>X</span><input type="range" min="0" max="100" value={Math.round(zone.x * 100)} onChange={(event: any) => updateZone(zone.key, 'x', event.target.value)} /></label>
-                    <label><span>Y</span><input type="range" min="0" max="100" value={Math.round(zone.y * 100)} onChange={(event: any) => updateZone(zone.key, 'y', event.target.value)} /></label>
-                    <label><span>Largura</span><input type="range" min="1" max="100" value={Math.round(zone.w * 100)} onChange={(event: any) => updateZone(zone.key, 'w', event.target.value)} /></label>
-                    <label><span>Altura</span><input type="range" min="1" max="100" value={Math.round(zone.h * 100)} onChange={(event: any) => updateZone(zone.key, 'h', event.target.value)} /></label>
+                    <label><span>X</span><input type="range" min="0" max="100" value={Math.round(zone.x * 100)} onChange={(event) => updateZone(zone.key, 'x', event.target.value)} /></label>
+                    <label><span>Y</span><input type="range" min="0" max="100" value={Math.round(zone.y * 100)} onChange={(event) => updateZone(zone.key, 'y', event.target.value)} /></label>
+                    <label><span>Largura</span><input type="range" min="1" max="100" value={Math.round(zone.w * 100)} onChange={(event) => updateZone(zone.key, 'w', event.target.value)} /></label>
+                    <label><span>Altura</span><input type="range" min="1" max="100" value={Math.round(zone.h * 100)} onChange={(event) => updateZone(zone.key, 'h', event.target.value)} /></label>
                   </div>
                 ))}
               </div>
@@ -1450,42 +1450,42 @@ export function CardVisionApp() {
           <div className="select-stack">
             <label>
               <span>Perfil de performance</span>
-              <select value={objective} onChange={(event: any) => setObjective(event.target.value as Objective)}>
+              <select value={objective} onChange={(event) => setObjective(event.target.value as Objective)}>
                 {objectives.map((item) => <option key={item.value} value={item.value}>{item.title} — {item.hint}</option>)}
               </select>
             </label>
 
             <label>
               <span>Sistema tático</span>
-              <select value={formation} onChange={(event: any) => setFormation(event.target.value as TacticalFormation)}>
+              <select value={formation} onChange={(event) => setFormation(event.target.value as TacticalFormation)}>
                 {formations.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
               </select>
             </label>
 
             <label>
               <span>Modelo de jogo</span>
-              <select value={teamStyle} onChange={(event: any) => setTeamStyle(event.target.value as TacticalStyle)}>
+              <select value={teamStyle} onChange={(event) => setTeamStyle(event.target.value as TacticalStyle)}>
                 {tacticalStyles.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
               </select>
             </label>
 
             <label>
               <span>Função alvo em campo</span>
-              <select value={targetPosition} onChange={(event: any) => setTargetPosition(event.target.value as PositionCode | 'AUTO')}>
+              <select value={targetPosition} onChange={(event) => setTargetPosition(event.target.value as PositionCode | 'AUTO')}>
                 {POSITION_LABELS.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
               </select>
             </label>
 
             <label>
               <span>Posição original da carta</span>
-              <select value={cardPositionOverride} onChange={(event: any) => setCardPositionOverride(event.target.value as PositionCode | 'AUTO')}>
+              <select value={cardPositionOverride} onChange={(event) => setCardPositionOverride(event.target.value as PositionCode | 'AUTO')}>
                 {POSITION_LABELS.map((item) => <option key={item.code} value={item.code}>{item.label}</option>)}
               </select>
             </label>
 
             <label>
               <span>Estilo real da carta</span>
-              <select value={playstyleOverride} onChange={(event: any) => setPlaystyleOverride(event.target.value)}>
+              <select value={playstyleOverride} onChange={(event) => setPlaystyleOverride(event.target.value)}>
                 <option value="AUTO">Automático</option>
                 {playstyleOptions.map((style) => <option key={style} value={style}>{style}</option>)}
               </select>
@@ -1542,7 +1542,7 @@ export function CardVisionApp() {
           {rawText && (
             <details className="raw-details">
               <summary>Registro técnico da leitura</summary>
-              <textarea value={rawText} onChange={(event: any) => setRawText(event.target.value)} spellCheck={false} />
+              <textarea value={rawText} onChange={(event) => setRawText(event.target.value)} spellCheck={false} />
             </details>
           )}
 
