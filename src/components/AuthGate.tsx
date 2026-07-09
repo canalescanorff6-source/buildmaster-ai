@@ -103,7 +103,7 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
             <span>Usuário</span>
             <div>
               <UserRound size={18} />
-              <input value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" />
+              <input value={username} onChange={(event: any) => setUsername(event.target.value)} autoComplete="username" />
             </div>
           </label>
 
@@ -113,7 +113,7 @@ function LoginScreen({ onSuccess }: { onSuccess: () => void }) {
               <LockKeyhole size={18} />
               <input
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(event: any) => setPassword(event.target.value)}
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Digite sua senha"
                 autoComplete="current-password"

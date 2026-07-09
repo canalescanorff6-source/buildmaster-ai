@@ -4,7 +4,6 @@ const config: CapacitorConfig = {
   appId: 'com.luistiago.buildmaster.elitetatico',
   appName: 'BuildMaster Elite Tático',
   webDir: 'out',
-  bundledWebRuntime: false,
   server: {
     androidScheme: 'https'
   }
