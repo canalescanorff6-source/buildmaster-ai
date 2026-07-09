@@ -1,7 +1,7 @@
 {
-  "name": "BuildMaster Local Pro v19",
+  "name": "BuildMaster Local Pro v20",
   "short_name": "BuildMaster",
-  "description": "App premium privado com OCR local, conferência obrigatória e ficha de desempenho real em campo.",
+  "description": "App premium privado com OCR local, calibrador de print, banco local, aprendizado local e ficha de desempenho real em campo.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020712",

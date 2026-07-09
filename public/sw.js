@@ -1,4 +1,4 @@
-const CACHE_NAME = 'buildmaster-local-pro-v19-precision-check';
+const CACHE_NAME = 'buildmaster-local-pro-v20-calibration-bank';
 const STATIC_ASSETS = ['/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

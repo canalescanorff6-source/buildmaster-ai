@@ -1,15 +1,17 @@
 {
-  "name": "buildmaster-local-pro-v19-precision-check",
-  "version": "19.0.0",
+  "name": "buildmaster-local-pro-v20-calibracao-banco",
+  "version": "20.0.0",
   "private": true,
-  "description": "BuildMaster Local Pro v19 - conferência obrigatória, modo manual preciso, banco local e validação anti-erro sem IA paga.",
+  "description": "BuildMaster Local Pro v20 - calibrador de print, banco local maior, aprendizado local, detector de print e comparação de ficha sem IA paga.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "vercel-build": "next build",
-    "test:cards": "tsx tests/card-regression.ts"
+    "test:cards": "tsx tests/card-regression.ts",
+    "test:prints": "tsx tests/print-regression.ts",
+    "test:all": "npm run test:cards && npm run test:prints"
   },
   "dependencies": {
     "lucide-react": "^1.23.0",

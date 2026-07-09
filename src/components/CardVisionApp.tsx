@@ -18,7 +18,9 @@ import {
   Zap
 } from 'lucide-react';
 import { clearBuildMasterSession } from '@/components/AuthGate';
-import { analyzeCard, ATTRIBUTE_INPUTS, ATTRIBUTE_PT, PLAYSTYLE_OPTIONS, type AnalysisResult, type AttributeKey, type Objective, type PositionCode, POSITION_LABELS } from '@/lib/analyzer';
+import { analyzeCard, ATTRIBUTE_INPUTS, ATTRIBUTE_PT, PLAYSTYLE_OPTIONS, type AnalysisResult, type AttributeKey, type Objective, type PositionCode, POSITION_LABELS, type TacticalFormation, type TacticalProfile, type TacticalStyle } from '@/lib/analyzer';
+import { DEFAULT_OCR_ZONES, inspectPrintQuality, type OcrZone } from '@/lib/ocr';
+import type { PrintQualityReport } from '@/lib/validation';
 
 type ReadingMode = 'precision' | 'fast';
 type ResultTab = 'resumo' | 'ficha' | 'habilidades' | 'posicoes' | 'dados';
@@ -39,7 +41,9 @@ type SavedAnalysis = {
   result: AnalysisResult;
 };
 
-const HISTORY_KEY = 'buildmaster_history_v19_precision_check';
+const HISTORY_KEY = 'buildmaster_history_v20_calibration_bank';
+const CALIBRATION_KEY = 'buildmaster_ocr_zones_v20';
+const LEARNING_KEY = 'buildmaster_local_learning_v20';
 
 const objectives: Array<{ value: Objective; title: string; hint: string }> = [
   { value: 'COMPETITIVE', title: 'Desempenho máximo', hint: 'rendimento real em campo, não overall' },
@@ -80,6 +84,76 @@ const priLabels: Record<string, string> = {
   aerial: 'Jogo aéreo',
   overall: 'PRI geral'
 };
+
+
+type LearnedCardMemory = {
+  playerName: string;
+  mainPosition: PositionCode;
+  playstyle?: string | null;
+  targetPosition: PositionCode | 'AUTO';
+  trainingPointsTotal?: string;
+  updatedAt: string;
+};
+
+const formations: Array<{ value: TacticalFormation; label: string }> = [
+  { value: 'AUTO', label: 'Automático' },
+  { value: '4-2-2-2', label: '4-2-2-2 — dois meias/dupla central' },
+  { value: '4-3-3', label: '4-3-3 — pontas e amplitude' },
+  { value: '4-1-2-3', label: '4-1-2-3 — um VOL + dois meias' },
+  { value: '3-2-4-1', label: '3-2-4-1 — cobertura e alas/meias' }
+];
+
+const tacticalStyles: Array<{ value: TacticalStyle; label: string }> = [
+  { value: 'AUTO', label: 'Automático' },
+  { value: 'PASSE_CURTO', label: 'Passe curto' },
+  { value: 'CONTRA_ATAQUE_RAPIDO', label: 'Contra-ataque rápido' },
+  { value: 'POSSE_DE_BOLA', label: 'Posse de bola' },
+  { value: 'BOLA_LONGA', label: 'Bola longa' },
+  { value: 'PRESSAO_ALTA', label: 'Pressão alta' }
+];
+
+function zoneKeyLabel(key: string) {
+  return DEFAULT_OCR_ZONES.find((zone) => zone.key === key)?.label ?? key;
+}
+
+function memoryKey(value: string) {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+function readLearningStore(): Record<string, LearnedCardMemory> {
+  try {
+    const raw = localStorage.getItem(LEARNING_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function findLearnedCard(text: string, fileName?: string | null): LearnedCardMemory | null {
+  if (typeof window === 'undefined') return null;
+  const store = readLearningStore();
+  const haystack = memoryKey(`${text}
+${fileName ?? ''}`);
+  return Object.entries(store).find(([key]) => key && haystack.includes(key))?.[1] ?? null;
+}
+
+function saveLearnedCard(memory: LearnedCardMemory) {
+  if (typeof window === 'undefined') return;
+  const key = memoryKey(memory.playerName);
+  if (!key) return;
+  const store = readLearningStore();
+  store[key] = memory;
+  try {
+    localStorage.setItem(LEARNING_KEY, JSON.stringify(store));
+  } catch {
+    // Aprendizado local é opcional e não pode travar a ficha.
+  }
+}
 
 const tacticalLabels: Record<string, string> = {
   possession: 'Posse de bola',
@@ -184,35 +258,31 @@ async function cropImage(file: File, region: { x: number; y: number; w: number; 
   });
 }
 
-async function createOcrVariants(file: File, readingMode: ReadingMode): Promise<Array<{ label: string; image: File | Blob }>> {
+async function createOcrVariants(file: File, readingMode: ReadingMode, zones: OcrZone[] = DEFAULT_OCR_ZONES): Promise<Array<{ label: string; image: File | Blob }>> {
   const fullContrast = await preprocessImage(file, 'contrast');
-  const cardIdentity = await cropImage(file, { x: 0, y: 0, w: 0.38, h: 0.44 }, 2100);
-  const cardBadge = await cropImage(file, { x: 0.035, y: 0.035, w: 0.24, h: 0.30 }, 2200);
+  const variants: Array<{ label: string; image: File | Blob }> = [];
+  const enabledZones = zones.filter((zone) => zone.enabled);
+
+  for (const zone of enabledZones) {
+    const widthTarget = zone.key === 'attributes' || zone.key === 'positionGrid' || zone.key === 'autoTraining' ? 2350 : 2200;
+    const image = await cropImage(file, { x: zone.x, y: zone.y, w: zone.w, h: zone.h }, widthTarget);
+    variants.push({ label: zone.label.toUpperCase(), image });
+  }
+
   if (readingMode === 'fast') {
     return [
-      { label: 'CARD BADGE', image: cardBadge },
-      { label: 'IDENTIDADE DA CARTA', image: cardIdentity },
+      ...variants.slice(0, 5),
       { label: 'imagem original', image: file },
       { label: 'imagem otimizada', image: fullContrast }
     ];
   }
 
   const sharp = await preprocessImage(file, 'sharp');
-  const cardTopWide = await cropImage(file, { x: 0, y: 0, w: 0.62, h: 0.36 }, 2300);
-  const topStats = await cropImage(file, { x: 0, y: 0, w: 1, h: 0.48 }, 2300);
-  const rightStats = await cropImage(file, { x: 0.34, y: 0.08, w: 0.66, h: 0.74 }, 2350);
-  const lowerSkills = await cropImage(file, { x: 0, y: 0.48, w: 1, h: 0.52 }, 2300);
-
   return [
-    { label: 'CARD BADGE', image: cardBadge },
-    { label: 'IDENTIDADE DA CARTA', image: cardIdentity },
-    { label: 'TOPO DA CARTA', image: cardTopWide },
+    ...variants,
     { label: 'imagem original', image: file },
     { label: 'imagem otimizada', image: fullContrast },
-    { label: 'imagem reforçada', image: sharp },
-    { label: 'área superior/posições', image: topStats },
-    { label: 'área de atributos', image: rightStats },
-    { label: 'área de habilidades', image: lowerSkills }
+    { label: 'imagem reforçada', image: sharp }
   ];
 }
 
@@ -275,7 +345,7 @@ function copyBuildText(result: AnalysisResult) {
     .join('\n');
 
   const text = [
-    `BuildMaster Local Pro v19 — ${result.parsed.playerName}`,
+    `BuildMaster Local Pro v20 — ${result.parsed.playerName}`,
     `Função: ${result.buildName}`,
     `Melhor posição: ${result.bestPosition.label}`,
     `PRI: ${result.pri.overall}`,
@@ -306,6 +376,14 @@ function positionPt(code: string) {
 
 function attributeNamePt(key: string) {
   return ATTRIBUTE_PT[key as AttributeKey] ?? key;
+}
+
+
+function trainingSummary(plan: Record<string, number>) {
+  return Object.entries(plan)
+    .filter(([, value]) => Number(value) > 0)
+    .map(([key, value]) => `${trainingLabels[key] ?? key} +${value}`)
+    .join(' • ');
 }
 
 function ResultCard({ result, playerImage }: { result: AnalysisResult; playerImage: string | null }) {
@@ -432,6 +510,13 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
               {result.usageTips.slice(0, 4).map((tip) => <li key={tip}>{tip}</li>)}
             </ul>
           </article>
+
+          <article className="luxury-panel wide-card">
+            <p className="kicker">Por que esta recomendação?</p>
+            <ul className="clean-list">
+              {result.recommendationExplanation.slice(0, 5).map((line) => <li key={line}>{line}</li>)}
+            </ul>
+          </article>
         </div>
       )}
 
@@ -455,6 +540,35 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
               ))}
             </div>
             <p className="panel-note">Custo real: {result.trainingCostRule}. Restante: {result.trainingPointsRemaining} ponto(s).</p>
+          </article>
+
+          <article className="luxury-panel wide-card">
+            <p className="kicker">Comparação com a ficha automática</p>
+            <div className="comparison-table">
+              <div><strong>Treino</strong><strong>Jogo</strong><strong>App</strong><strong>Dif.</strong></div>
+              {result.trainingComparison.length ? result.trainingComparison.map((item) => (
+                <div key={item.key}>
+                  <span>{item.label}</span>
+                  <span>{item.auto}</span>
+                  <span>{item.recommended}</span>
+                  <strong>{item.difference > 0 ? `+${item.difference}` : item.difference}</strong>
+                </div>
+              )) : <p className="panel-note">Ficha automática não foi lida; comparação indisponível.</p>}
+            </div>
+          </article>
+
+          <article className="luxury-panel wide-card">
+            <p className="kicker">Ficha segura / competitiva / alternativa</p>
+            <div className="variant-grid">
+              {result.buildVariants.map((variant) => (
+                <div key={variant.kind}>
+                  <strong>{variant.title}</strong>
+                  <span>{variant.positionLabel} • {variant.pointsUsed} pts</span>
+                  <em>{trainingSummary(variant.training)}</em>
+                  <p>{variant.note}</p>
+                </div>
+              ))}
+            </div>
           </article>
 
           <article className="luxury-panel wide-card">
@@ -761,6 +875,11 @@ export function CardVisionApp() {
   const [cardPositionOverride, setCardPositionOverride] = useState<PositionCode | 'AUTO'>('AUTO');
   const [playstyleOverride, setPlaystyleOverride] = useState<string>('AUTO');
   const [readingMode, setReadingMode] = useState<ReadingMode>('precision');
+  const [ocrZones, setOcrZones] = useState<OcrZone[]>(DEFAULT_OCR_ZONES);
+  const [calibratorOpen, setCalibratorOpen] = useState(false);
+  const [qualityReport, setQualityReport] = useState<PrintQualityReport | null>(null);
+  const [formation, setFormation] = useState<TacticalFormation>('AUTO');
+  const [teamStyle, setTeamStyle] = useState<TacticalStyle>('AUTO');
   const [status, setStatus] = useState('Envie o print da carta para começar.');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
@@ -771,6 +890,7 @@ export function CardVisionApp() {
   const lastSavedKey = useRef<string | null>(null);
 
   const canProceed = useMemo(() => !loading && (!!selectedFile || rawText.trim().length > 2), [selectedFile, rawText, loading]);
+  const tacticalProfile = useMemo<TacticalProfile>(() => ({ formation, style: teamStyle }), [formation, teamStyle]);
 
   useEffect(() => {
     try {
@@ -779,7 +899,25 @@ export function CardVisionApp() {
     } catch {
       setHistory([]);
     }
+
+    try {
+      const storedZones = localStorage.getItem(CALIBRATION_KEY);
+      if (storedZones) {
+        const parsedZones = JSON.parse(storedZones) as OcrZone[];
+        if (Array.isArray(parsedZones) && parsedZones.length) setOcrZones(parsedZones);
+      }
+    } catch {
+      setOcrZones(DEFAULT_OCR_ZONES);
+    }
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CALIBRATION_KEY, JSON.stringify(ocrZones));
+    } catch {
+      // Calibração é local e opcional.
+    }
+  }, [ocrZones]);
 
   useEffect(() => {
     if (!result) return;
@@ -825,6 +963,7 @@ export function CardVisionApp() {
     setManualMode(false);
     setCardPositionOverride('AUTO');
     setPlaystyleOverride('AUTO');
+    setQualityReport(null);
     setStatus('Envie outro print da carta para começar.');
   }
 
@@ -857,6 +996,12 @@ export function CardVisionApp() {
 
     const croppedPreview = await createPlayerCardPreview(file).catch(() => null);
     if (croppedPreview) setPlayerCardImage(croppedPreview);
+
+    const quality = await inspectPrintQuality(file).catch(() => null);
+    setQualityReport(quality);
+    if (quality?.issues.length) {
+      setStatus(`Imagem selecionada, mas revise o print: ${quality.issues[0].message}`);
+    }
   }
 
   function stripManualBlock(text: string) {
@@ -864,16 +1009,21 @@ export function CardVisionApp() {
   }
 
   function textWithManualLocks(text: string, confirmed = false) {
+    const learned = findLearnedCard(text, fileName);
     const cleaned = stripManualBlock(text)
       .replace(/^(POSIÇÃO PRINCIPAL|POSICAO PRINCIPAL|ESTILO DE JOGO|NOME|NOME DO JOGADOR|NÍVEL MÁXIMO|NIVEL MAXIMO|PONTOS TOTAIS)\s*[:=\-].*$/gim, '')
       .replace(/^\s+/, '');
     const locks: string[] = ['[AJUSTES MANUAIS]'];
     if (confirmed) locks.push('CONFIRMAÇÃO MANUAL: SIM');
-    if (manualFields.playerName.trim()) locks.push(`NOME DO JOGADOR: ${manualFields.playerName.trim()}`);
-    if (cardPositionOverride !== 'AUTO') locks.push(`POSIÇÃO PRINCIPAL: ${cardPositionOverride}`);
-    if (playstyleOverride !== 'AUTO') locks.push(`ESTILO DE JOGO: ${playstyleOverride}`);
+    const learnedName = learned?.playerName ?? '';
+    const learnedPosition = learned?.mainPosition ?? 'AUTO';
+    const learnedStyle = learned?.playstyle ?? 'AUTO';
+    const learnedPoints = learned?.trainingPointsTotal ?? '';
+    if (manualFields.playerName.trim() || learnedName) locks.push(`NOME DO JOGADOR: ${manualFields.playerName.trim() || learnedName}`);
+    if (cardPositionOverride !== 'AUTO' || learnedPosition !== 'AUTO') locks.push(`POSIÇÃO PRINCIPAL: ${cardPositionOverride !== 'AUTO' ? cardPositionOverride : learnedPosition}`);
+    if (playstyleOverride !== 'AUTO' || learnedStyle !== 'AUTO') locks.push(`ESTILO DE JOGO: ${playstyleOverride !== 'AUTO' ? playstyleOverride : learnedStyle}`);
     if (manualFields.level.trim()) locks.push(`NÍVEL MÁXIMO: ${manualFields.level.trim()}`);
-    if (manualFields.trainingPointsTotal.trim()) locks.push(`PONTOS TOTAIS: ${manualFields.trainingPointsTotal.trim()}`);
+    if (manualFields.trainingPointsTotal.trim() || learnedPoints) locks.push(`PONTOS TOTAIS: ${manualFields.trainingPointsTotal.trim() || learnedPoints}`);
     for (const item of ATTRIBUTE_INPUTS) {
       const value = manualFields.attributes[item.key]?.trim();
       if (value) locks.push(`${item.label}: ${value}`);
@@ -941,7 +1091,7 @@ export function CardVisionApp() {
       const croppedPreview = await createPlayerCardPreview(selectedFile);
       if (croppedPreview) setPlayerCardImage(croppedPreview);
 
-      const variants = await createOcrVariants(selectedFile, readingMode);
+      const variants = await createOcrVariants(selectedFile, readingMode, ocrZones);
       const texts: string[] = [];
 
       for (let index = 0; index < variants.length; index += 1) {
@@ -964,7 +1114,7 @@ export function CardVisionApp() {
       if (mergedText.trim().length > 2) {
         const lockedText = textWithManualLocks(mergedText);
         setRawText(lockedText);
-        const autoResult = analyzeCard(lockedText, objective, targetPosition, fileName);
+        const autoResult = analyzeCard(lockedText, objective, targetPosition, fileName, tacticalProfile);
         hydrateReviewFields(autoResult);
         setDraftResult(autoResult);
         setResult(null);
@@ -979,12 +1129,49 @@ export function CardVisionApp() {
     }
   }
 
+
+  function resetCalibration() {
+    setOcrZones(DEFAULT_OCR_ZONES);
+    setStatus('Calibração restaurada para o padrão do print completo 1400x1600.');
+  }
+
+  function updateZone(key: OcrZone['key'], field: keyof Pick<OcrZone, 'x' | 'y' | 'w' | 'h'>, value: string) {
+    const nextValue = Math.max(0, Math.min(1, Number(value) / 100));
+    setOcrZones((current) => current.map((zone) => zone.key === key ? { ...zone, [field]: nextValue } : zone));
+  }
+
+  function toggleZone(key: OcrZone['key']) {
+    setOcrZones((current) => current.map((zone) => zone.key === key ? { ...zone, enabled: !zone.enabled } : zone));
+  }
+
+  function applyLearningToText(text: string) {
+    const learned = findLearnedCard(text, fileName);
+    if (!learned) return text;
+    const lines = [
+      '[APRENDIZADO LOCAL]',
+      `NOME DO JOGADOR: ${learned.playerName}`,
+      `POSIÇÃO PRINCIPAL: ${learned.mainPosition}`,
+      learned.playstyle ? `ESTILO DE JOGO: ${learned.playstyle}` : '',
+      learned.trainingPointsTotal ? `PONTOS TOTAIS: ${learned.trainingPointsTotal}` : '',
+      '[FIM APRENDIZADO]'
+    ].filter(Boolean);
+    return `${lines.join('\n')}\n${text}`;
+  }
+
   function runAnalysis(confirmed = false) {
     setStatus(confirmed ? 'Gerando ficha final confirmada...' : 'Atualizando prévia para conferência...');
     const lockedText = textWithManualLocks(rawText, confirmed);
     if (lockedText !== rawText) setRawText(lockedText);
-    const nextResult = analyzeCard(lockedText, objective, targetPosition, fileName);
+    const nextResult = analyzeCard(lockedText, objective, targetPosition, fileName, tacticalProfile);
     if (confirmed) {
+      saveLearnedCard({
+        playerName: nextResult.parsed.playerName,
+        mainPosition: nextResult.parsed.mainPosition,
+        playstyle: nextResult.parsed.playstyle,
+        targetPosition,
+        trainingPointsTotal: String(nextResult.trainingPointsTotal),
+        updatedAt: new Date().toISOString()
+      });
       setResult(nextResult);
       setDraftResult(null);
       setStatus(nextResult.note);
@@ -1060,6 +1247,53 @@ export function CardVisionApp() {
             </label>
           </div>
 
+          {qualityReport && (
+            <div className="quality-card">
+              <strong>Detector de print</strong>
+              <span>{qualityReport.width}×{qualityReport.height} • nitidez {qualityReport.sharpness} • contraste {qualityReport.contrast}</span>
+              {qualityReport.issues.length ? qualityReport.issues.map((issue) => <em key={issue.code}>⚠ {issue.message}</em>) : <em>✓ Print em condição boa para OCR.</em>}
+            </div>
+          )}
+
+          <button className="manual-mode-button" type="button" onClick={() => setCalibratorOpen((value) => !value)}>
+            <ScanText size={16} /> {calibratorOpen ? 'Fechar calibrador de print' : 'Abrir calibrador de print'}
+          </button>
+
+          {calibratorOpen && (
+            <div className="calibrator-panel">
+              <div className="calibration-preview">
+                {preview && <img src={preview} alt="Prévia calibrada" />}
+                {preview && ocrZones.filter((zone) => zone.enabled).map((zone) => (
+                  <div
+                    key={zone.key}
+                    className={`zone-box zone-${zone.key}`}
+                    style={{ left: `${zone.x * 100}%`, top: `${zone.y * 100}%`, width: `${zone.w * 100}%`, height: `${zone.h * 100}%` }}
+                  >
+                    <span>{zone.label}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="panel-note">Ajuste as áreas se seu print vier com resolução, zoom ou corte diferente. O OCR só lê as zonas ativas.</p>
+              <div className="zone-editor-list">
+                {ocrZones.map((zone) => (
+                  <div key={zone.key} className="zone-editor">
+                    <label className="zone-toggle">
+                      <input type="checkbox" checked={zone.enabled} onChange={() => toggleZone(zone.key)} />
+                      <strong>{zoneKeyLabel(zone.key)}</strong>
+                    </label>
+                    {(['x', 'y', 'w', 'h'] as const).map((field) => (
+                      <label key={field}>
+                        <span>{field.toUpperCase()} {Math.round(zone[field] * 100)}%</span>
+                        <input type="range" min="0" max="100" value={Math.round(zone[field] * 100)} onChange={(event) => updateZone(zone.key, field, event.target.value)} />
+                      </label>
+                    ))}
+                  </div>
+                ))}
+              </div>
+              <button type="button" className="secondary-action full-width" onClick={resetCalibration}>Restaurar calibração padrão</button>
+            </div>
+          )}
+
           <button className="manual-mode-button" type="button" onClick={startManualPreciseMode}>
             <ShieldCheck size={16} /> Modo manual preciso sem OCR
           </button>
@@ -1077,6 +1311,20 @@ export function CardVisionApp() {
               <span>Objetivo da ficha</span>
               <select value={objective} onChange={(event) => setObjective(event.target.value as Objective)}>
                 {objectives.map((item) => <option key={item.value} value={item.value}>{item.title} — {item.hint}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <span>Formação que você usa</span>
+              <select value={formation} onChange={(event) => setFormation(event.target.value as TacticalFormation)}>
+                {formations.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <span>Seu estilo de jogo</span>
+              <select value={teamStyle} onChange={(event) => setTeamStyle(event.target.value as TacticalStyle)}>
+                {tacticalStyles.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
               </select>
             </label>
 
