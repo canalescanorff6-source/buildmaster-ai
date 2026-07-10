@@ -11,7 +11,8 @@ export type Objective =
   | 'POSSESSION'
   | 'QUICK_COUNTER'
   | 'DEFENSIVE'
-  | 'AERIAL';
+  | 'AERIAL'
+  | 'GOALKEEPER';
 
 export type TacticalFormation = '4-2-2-2' | '4-3-3' | '4-1-2-3' | '4-2-1-3' | '4-2-3-1' | '4-3-1-2' | '4-1-3-2' | '4-4-2' | '4-1-4-1' | '3-2-4-1' | '3-4-3' | '3-5-2' | '5-3-2' | '5-2-3' | 'AUTO';
 export type TacticalStyle = 'POSSE_DE_BOLA' | 'CONTRA_ATAQUE' | 'CONTRA_ATAQUE_RAPIDO' | 'POR_FORA' | 'PASSE_LONGO' | 'AUTO';
@@ -467,6 +468,11 @@ const SKILL_PROFILES: Record<string, { category: string; boosts: Partial<Record<
   'Liderança': { category: 'MENTAL', boosts: { stamina: 2, pressure: 2 }, aliases: ['Captaincy'] },
   'Super substituto': { category: 'MENTAL', boosts: { finishing: 2, mobility: 2 }, aliases: ['Super-sub', 'Super Sub'] },
   'Espírito guerreiro': { category: 'MENTAL', boosts: { stamina: 4, pressure: 2 }, aliases: ['Fighting Spirit', 'Espirito guerreiro'] },
+  'Defesa de pênalti': { category: 'GOLEIRO', boosts: { defense: 3, pressure: 2 }, aliases: ['Penalty Saver', 'Defesa de penalti', 'Pegador de pênalti', 'Pegador de penalti'] },
+  'Arremesso longo de goleiro': { category: 'GOLEIRO', boosts: { creation: 2, pressure: 1 }, aliases: ['GK Long Throw', 'Arremesso longo do goleiro', 'Arremesso longo GO'] },
+  'Lançamento baixo de goleiro': { category: 'GOLEIRO', boosts: { creation: 2 }, aliases: ['Low Punt Trajectory', 'Lancamento baixo de goleiro', 'Saque baixo de goleiro'] },
+  'Saque longo de goleiro': { category: 'GOLEIRO', boosts: { creation: 2, physical: 1 }, aliases: ['High Punt', 'Saque longo do goleiro', 'Lançamento longo de goleiro'] },
+  'Saída rápida de goleiro': { category: 'GOLEIRO', boosts: { mobility: 2, pressure: 1 }, aliases: ['Saida rapida de goleiro', 'Saída do goleiro', 'GK Rush'] },
   'Esticada de Perna': { category: 'ÍMPETO', boosts: { defense: 2, physical: 1 }, aliases: ['Long Legs', 'Esticada da Perna', 'Esticada de perna'] },
   'Sombra veloz': { category: 'ÍMPETO', boosts: { mobility: 2, pressure: 1 }, aliases: ['Speeding Bullet', 'Sombra Veloz'] },
   'Finalizador nato': { category: 'ÍMPETO', boosts: { finishing: 3 }, aliases: ['Born Finisher'] }
@@ -1471,6 +1477,68 @@ function applyPlanEntries(entries: Partial<TrainingPlan>): TrainingPlan {
   return { ...emptyTraining(), ...entries };
 }
 
+function isGoalkeeperStyle(playstyle?: string | null) {
+  return /goleiro ofensivo|goleiro defensivo|offensive goalkeeper|defensive goalkeeper/i.test(normalize(playstyle ?? ''));
+}
+
+function goalkeeperProfile(parsed: ParsedCard, a: Required<Attributes>) {
+  const style = normalize(parsed.playstyle ?? '').toLowerCase();
+  const height = Number(parsed.height ?? 0);
+  const shortGk = height > 0 && height < 190;
+  const offensive = /goleiro ofensivo|offensive goalkeeper/.test(style);
+  const defensive = /goleiro defensivo|defensive goalkeeper/.test(style);
+  const weakReach = a.goalkeeperReach < 82 || shortGk;
+  const weakReflex = a.goalkeeperReflexes < 82;
+  const weakCatch = a.goalkeeperCatching < 82;
+  return { shortGk, offensive, defensive, weakReach, weakReflex, weakCatch };
+}
+
+function goalkeeperTrainingTemplate(objective: Objective, a: Required<Attributes>, parsed: ParsedCard): { target: TrainingPlan; priority: TrainingKey[] } {
+  const profile = goalkeeperProfile(parsed, a);
+  let target = applyPlanEntries({ gk1: 10, gk2: 10, gk3: 10, aerialStrength: 3, lowerBodyStrength: 1 });
+  let priority: TrainingKey[] = ['gk2', 'gk3', 'gk1', 'aerialStrength', 'lowerBodyStrength'];
+
+  if (profile.defensive) {
+    target = applyPlanEntries({ gk1: 11, gk2: 10, gk3: 10, aerialStrength: 3, lowerBodyStrength: 1 });
+    priority = ['gk1', 'gk2', 'gk3', 'aerialStrength', 'lowerBodyStrength'];
+  }
+
+  if (profile.offensive) {
+    target = applyPlanEntries({ gk1: 9, gk2: 11, gk3: 9, aerialStrength: 2, lowerBodyStrength: 3 });
+    priority = ['gk2', 'gk3', 'gk1', 'lowerBodyStrength', 'aerialStrength'];
+  }
+
+  if (profile.weakReach) {
+    target.gk3 = Math.max(target.gk3, 11);
+    target.aerialStrength = Math.max(target.aerialStrength, 4);
+    priority = ['gk3', 'gk2', 'gk1', 'aerialStrength', 'lowerBodyStrength'];
+  }
+
+  if (profile.weakReflex) {
+    target.gk2 = Math.max(target.gk2, 11);
+    priority = ['gk2', ...priority.filter((key) => key !== 'gk2')];
+  }
+
+  if (profile.weakCatch) {
+    target.gk1 = Math.max(target.gk1, 11);
+    priority = ['gk1', ...priority.filter((key) => key !== 'gk1')];
+  }
+
+  if (objective === 'GOALKEEPER' || objective === 'COMPETITIVE') {
+    target.gk1 = Math.max(target.gk1, 10);
+    target.gk2 = Math.max(target.gk2, 11);
+    target.gk3 = Math.max(target.gk3, 10);
+  }
+
+  if (objective === 'AERIAL') {
+    target.gk3 = Math.max(target.gk3, 11);
+    target.aerialStrength = Math.max(target.aerialStrength, 5);
+    priority = ['gk3', 'aerialStrength', 'gk2', 'gk1', 'lowerBodyStrength'];
+  }
+
+  return { target: normalizeTrainingPlan(target), priority: Array.from(new Set(priority)) };
+}
+
 function trainingTemplate(position: PositionCode, objective: Objective, a: Required<Attributes>, parsed: ParsedCard): { target: TrainingPlan; priority: TrainingKey[] } {
   const playstyle = normalize(parsed.playstyle ?? '').toLowerCase();
   const isDestroyer = /destruidor|destroyer/.test(playstyle);
@@ -1513,8 +1581,7 @@ function trainingTemplate(position: PositionCode, objective: Objective, a: Requi
       : applyPlanEntries({ defending: 8, lowerBodyStrength: 8, passing: 7, dexterity: 6, dribbling: 4, aerialStrength: 2 });
     priority = ['lowerBodyStrength', 'defending', 'dexterity', 'passing', 'dribbling', 'aerialStrength'];
   } else if (position === 'GK') {
-    target = applyPlanEntries({ gk1: 9, gk2: 9, gk3: 9, aerialStrength: 4, lowerBodyStrength: 2 });
-    priority = ['gk1', 'gk2', 'gk3', 'aerialStrength', 'lowerBodyStrength'];
+    return goalkeeperTrainingTemplate(objective, a, parsed);
   }
 
   if (objective === 'FINISHER') priority = ['shooting', 'dexterity', ...priority.filter((key) => !['shooting', 'dexterity'].includes(key))];
@@ -1615,7 +1682,15 @@ function trainingCaps(position: PositionCode, objective: Objective, a: Required<
   } else if (position === 'LB' || position === 'RB') {
     set({ shooting: 2, passing: 8, dribbling: 7, dexterity: 9, lowerBodyStrength: 10, aerialStrength: 5, defending: 11 });
   } else if (position === 'GK') {
-    set({ aerialStrength: 6, lowerBodyStrength: 4, gk1: 12, gk2: 12, gk3: 12 });
+    set({ aerialStrength: 6, lowerBodyStrength: 5, gk1: 14, gk2: 14, gk3: 14 });
+  }
+
+  if (position === 'GK') {
+    if (objective === 'AERIAL') {
+      caps.aerialStrength = Math.min(8, caps.aerialStrength + 2);
+      caps.gk3 = Math.min(16, caps.gk3 + 1);
+    }
+    return caps;
   }
 
   if (objective === 'FINISHER') {
@@ -1644,6 +1719,13 @@ function trainingCaps(position: PositionCode, objective: Objective, a: Required<
 }
 
 function objectiveBonus(objective: Objective, position: PositionCode, a: Required<Attributes>) {
+  if (position === 'GK') {
+    const base = avg(a.goalkeeperAwareness, a.goalkeeperCatching, a.goalkeeperParrying, a.goalkeeperReflexes, a.goalkeeperReach);
+    const command = avg(a.jump, a.physicalContact, a.kickingPower);
+    if (objective === 'AERIAL') return avg(a.goalkeeperReach, a.jump, a.physicalContact, base);
+    return avg(base, base, command);
+  }
+
   const values: Record<Objective, number> = {
     COMPETITIVE: avg(a.stamina, a.balance, a.physicalContact, position === 'CF' ? a.finishing : a.lowPass),
     FINISHER: avg(a.finishing, a.offensiveAwareness, a.kickingPower, a.curl),
@@ -1653,7 +1735,8 @@ function objectiveBonus(objective: Objective, position: PositionCode, a: Require
     POSSESSION: avg(a.lowPass, a.ballControl, a.tightPossession, a.balance),
     QUICK_COUNTER: avg(a.speed, a.acceleration, a.finishing, a.kickingPower),
     DEFENSIVE: avg(a.defensiveAwareness, a.tackling, a.defensiveEngagement, a.physicalContact),
-    AERIAL: avg(a.heading, a.jump, a.physicalContact)
+    AERIAL: avg(a.heading, a.jump, a.physicalContact),
+    GOALKEEPER: avg(a.goalkeeperAwareness, a.goalkeeperCatching, a.goalkeeperParrying, a.goalkeeperReflexes, a.goalkeeperReach)
   };
   return values[objective] ?? values.COMPETITIVE;
 }
@@ -1718,7 +1801,8 @@ function trainingKeyWeight(key: TrainingKey, position: PositionCode, objective: 
     POSSESSION: { passing: 1.7, dribbling: 1.1, dexterity: .5 },
     QUICK_COUNTER: { lowerBodyStrength: 2.1, dexterity: 1.3, shooting: .6 },
     DEFENSIVE: { defending: 2.2, aerialStrength: .7, lowerBodyStrength: .9 },
-    AERIAL: { aerialStrength: 2.4, shooting: position === 'CF' ? .8 : 0, defending: position === 'CB' ? .8 : 0 }
+    AERIAL: { aerialStrength: 2.4, shooting: position === 'CF' ? .8 : 0, defending: position === 'CB' ? .8 : 0 },
+    GOALKEEPER: { gk1: 1.8, gk2: 2.2, gk3: 1.8, aerialStrength: .4, lowerBodyStrength: .3 }
   };
 
   let weight = (baseByPosition[position][key] ?? 0) + (objectiveBoost[objective][key] ?? 0);
@@ -1816,7 +1900,7 @@ function trainingFor(position: PositionCode, objective: Objective, a: Required<A
 }
 
 function trainingCostRuleText() {
-  return 'Motor Elite Tático v24: conferência obrigatória, banco local, guia tático, regras anti-erro e ficha focada em desempenho real. GER serve apenas como referência leve.';
+  return 'Motor Elite Tático v24.3 Goleiros: motor estável com ficha separada para GOL, habilidades de goleiro e desempenho real sem buscar GER máximo.';
 }
 
 function skillPriority(position: PositionCode, objective: Objective) {
@@ -1833,8 +1917,9 @@ function skillPriority(position: PositionCode, objective: Objective) {
     CB: ['Bloqueador', 'Interceptação', 'Marcação individual', 'Superioridade aérea', 'Carrinho', 'Espírito guerreiro'],
     LB: ['Cruzamento preciso', 'Passe de primeira', 'Interceptação', 'Volta para marcar', 'Bloqueador', 'Curva para fora'],
     RB: ['Cruzamento preciso', 'Passe de primeira', 'Interceptação', 'Volta para marcar', 'Bloqueador', 'Curva para fora'],
-    GK: ['Liderança', 'Espírito guerreiro']
+    GK: ['Defesa de pênalti', 'Arremesso longo de goleiro', 'Lançamento baixo de goleiro', 'Saque longo de goleiro', 'Liderança', 'Espírito guerreiro']
   };
+  if (position === 'GK') return byPosition.GK;
   const extras: Record<Objective, string[]> = {
     COMPETITIVE: ['Espírito guerreiro', 'Passe de primeira'],
     FINISHER: ['Chute de primeira', 'Precisão à distância', 'Finalização acrobática'],
@@ -1844,7 +1929,8 @@ function skillPriority(position: PositionCode, objective: Objective) {
     POSSESSION: ['Passe de primeira', 'Controle com a sola', 'Passe na medida'],
     QUICK_COUNTER: ['Passe em profundidade', 'Chute de primeira', 'Toque duplo'],
     DEFENSIVE: ['Interceptação', 'Bloqueador', 'Marcação individual'],
-    AERIAL: ['Cabeçada', 'Superioridade aérea', 'Afastamento acrobático']
+    AERIAL: ['Cabeçada', 'Superioridade aérea', 'Afastamento acrobático'],
+    GOALKEEPER: ['Defesa de pênalti', 'Arremesso longo de goleiro', 'Lançamento baixo de goleiro']
   };
   return Array.from(new Set([...(extras[objective] ?? []), ...(byPosition[position] ?? [])]));
 }
@@ -1895,7 +1981,7 @@ function desiredImpetoGroups(position: PositionCode, playstyle?: string | null, 
   const style = styleText(playstyle);
   const groups: string[] = [];
 
-  if (position === 'GK') groups.push('goleiro');
+  if (position === 'GK') return ['goleiro'];
   if (position === 'CB') groups.push('defensor', 'zagueiro-aereo');
   if (position === 'DMF') groups.push('volante-defensivo', 'volante-criador', 'pressao');
   if (position === 'CMF') groups.push('meia-versatil', 'meia', 'volante-criador');
@@ -1979,6 +2065,20 @@ function recommendAdditionalSkills(parsed: ParsedCard, selectedPosition: Positio
     if (bannedAdditional.has(key)) return;
     candidateScores.set(skill, Math.max(candidateScores.get(skill) ?? 0, score));
   };
+
+  if (selectedPosition === 'GK' || parsed.mainPosition === 'GK' || isGoalkeeperStyle(parsed.playstyle)) {
+    const profile = goalkeeperProfile(parsed, attributes);
+    add('Defesa de pênalti', profile.weakReflex ? 118 : 108);
+    add('Arremesso longo de goleiro', profile.offensive ? 112 : 98);
+    add('Lançamento baixo de goleiro', profile.offensive ? 106 : 96);
+    add('Saque longo de goleiro', 92);
+    add('Liderança', 88);
+    add('Espírito guerreiro', 80);
+    return Array.from(candidateScores.entries())
+      .sort((left, right) => right[1] - left[1])
+      .map(([skill]) => skill)
+      .slice(0, 5);
+  }
 
   // 1) Função principal escolhida pelo motor local.
   skillPriority(selectedPosition, objective).forEach((skill, index) => add(skill, 100 - index * 6));
@@ -2066,18 +2166,30 @@ function recommendAdditionalSkills(parsed: ParsedCard, selectedPosition: Positio
     add('Afastamento acrobático', 80);
     add('Carrinho', 76);
   }
-  if (selectedPosition === 'GK') {
-    add('Liderança', 92);
-    add('Espírito guerreiro', 82);
-  }
-
   return Array.from(candidateScores.entries())
     .sort((left, right) => right[1] - left[1])
     .map(([skill]) => skill)
     .slice(0, 5);
 }
 
-function strengthsWeaknesses(a: Required<Attributes>, pri: Record<string, number>) {
+function strengthsWeaknesses(a: Required<Attributes>, pri: Record<string, number>, position: PositionCode = 'CF') {
+  if (position === 'GK') {
+    const ranked = Object.entries({
+      'Reflexos de GO': a.goalkeeperReflexes,
+      'Alcance de GO': a.goalkeeperReach,
+      'Talento de GO': a.goalkeeperAwareness,
+      'Firmeza de GO': a.goalkeeperCatching,
+      'Defesa de GO': a.goalkeeperParrying,
+      Salto: a.jump,
+      'Contato físico': a.physicalContact,
+      'Força do chute': a.kickingPower
+    }).sort((left, right) => Number(right[1]) - Number(left[1]));
+    return {
+      strengths: ranked.slice(0, 4).map(([name, value]) => `${name} forte (${Number(value).toFixed(1)})`),
+      weaknesses: ranked.slice(-3).reverse().map(([name, value]) => `${name} precisa de cuidado (${Number(value).toFixed(1)})`)
+    };
+  }
+
   const ranked = Object.entries({
     Finalização: pri.finishing,
     Criação: pri.creation,
@@ -2122,6 +2234,10 @@ function usageTips(position: PositionCode, objective: Objective, a: Required<Att
   } else if (position === 'CB') {
     tips.push('Use como ZAG de cobertura: não dê bote desnecessário; priorize interceptar e bloquear chutes.');
     tips.push('Combine com outro zagueiro mais veloz se a velocidade estiver abaixo de 75.');
+  } else if (position === 'GK') {
+    tips.push('Use como GOL puro: mantenha a linha defensiva protegida, evite sair manualmente sem necessidade e valorize reflexo, alcance e firmeza.');
+    tips.push('Para goleiro ofensivo, use reposição rápida e saída curta; para goleiro defensivo, prefira posicionamento, alcance e segurança em chutes próximos.');
+    tips.push('Não use habilidades de jogador de linha no plano de goleiro; a recomendação prioriza pênalti, reposição, liderança e consistência no gol.');
   } else {
     tips.push('Use na posição recomendada e foque nas ações que aparecem como pontos fortes no PRI.');
   }
@@ -2666,7 +2782,15 @@ function compareTraining(autoPlan: TrainingPlan | null | undefined, recommended:
 
 function softenTraining(plan: TrainingPlan, position: PositionCode): TrainingPlan {
   const next = { ...plan };
-  if (position === 'DMF' || position === 'CMF') {
+  if (position === 'GK') {
+    next.gk1 += 1;
+    next.gk2 += 1;
+    if (next.lowerBodyStrength > 0) next.lowerBodyStrength -= 1;
+    next.shooting = 0;
+    next.passing = 0;
+    next.dribbling = 0;
+    next.defending = 0;
+  } else if (position === 'DMF' || position === 'CMF') {
     next.defending += 1;
     next.passing += 1;
     if (next.dribbling > 0) next.dribbling -= 1;
@@ -2686,7 +2810,15 @@ function softenTraining(plan: TrainingPlan, position: PositionCode): TrainingPla
 
 function aggressiveTraining(plan: TrainingPlan, position: PositionCode): TrainingPlan {
   const next = { ...plan };
-  if (position === 'DMF' || position === 'CMF') {
+  if (position === 'GK') {
+    next.gk2 += 1;
+    next.gk3 += 1;
+    if (next.aerialStrength > 0) next.aerialStrength -= 1;
+    next.shooting = 0;
+    next.passing = 0;
+    next.dribbling = 0;
+    next.defending = 0;
+  } else if (position === 'DMF' || position === 'CMF') {
     next.lowerBodyStrength += 1;
     next.passing += 1;
     if (next.aerialStrength > 0) next.aerialStrength -= 1;
@@ -2707,9 +2839,18 @@ function aggressiveTraining(plan: TrainingPlan, position: PositionCode): Trainin
 }
 
 function buildTrainingVariants(selected: PositionCode, selectedLabel: string, training: TrainingPlan, scored: Array<{ code: PositionCode; label: string; score: number }>): BuildVariant[] {
-  const alternativePosition = scored.find((item) => item.code !== selected)?.label ?? selectedLabel;
   const safe = softenTraining(training, selected);
   const competitive = aggressiveTraining(training, selected);
+  if (selected === 'GK') {
+    const distribution = normalizeTrainingPlan({ ...training, lowerBodyStrength: Math.max(training.lowerBodyStrength, 3), shooting: 0, passing: 0, dribbling: 0, defending: 0 });
+    return [
+      { kind: 'safe', title: 'Ficha goleiro segura', positionLabel: selectedLabel, training: safe, pointsUsed: trainingPlanTotalCost(safe), note: 'Mais firmeza e posicionamento para reduzir rebote e falhas em chutes próximos.' },
+      { kind: 'competitive', title: 'Ficha goleiro reflexo', positionLabel: selectedLabel, training: competitive, pointsUsed: trainingPlanTotalCost(competitive), note: 'Mais reflexo, alcance e salto para defender chutes fortes e finalizações rápidas.' },
+      { kind: 'alternative', title: 'Ficha goleiro reposição', positionLabel: selectedLabel, training: distribution, pointsUsed: trainingPlanTotalCost(distribution), note: 'Alternativa para goleiro ofensivo ou saída rápida, sem gastar pontos em atributos de linha.' }
+    ];
+  }
+
+  const alternativePosition = scored.find((item) => item.code !== selected)?.label ?? selectedLabel;
   return [
     { kind: 'safe', title: 'Ficha segura', positionLabel: selectedLabel, training: safe, pointsUsed: trainingPlanTotalCost(safe), note: 'Mais equilibrada, reduz risco de perder consistência em partidas ranqueadas.' },
     { kind: 'competitive', title: 'Ficha competitiva', positionLabel: selectedLabel, training: competitive, pointsUsed: trainingPlanTotalCost(competitive), note: 'Mais agressiva para extrair o máximo da função principal.' },
@@ -2721,6 +2862,7 @@ function recommendationExplanation(parsed: ParsedCard, selected: PositionCode, a
   const lines: string[] = [];
   const style = parsed.playstyle ? `estilo ${parsed.playstyle}` : 'estilo não confirmado';
   lines.push(`Recomendei ${POSITION_PT[selected]} porque a carta é ${POSITION_PT[parsed.mainPosition]}, tem ${style} e o motor priorizou função real, não o maior GER da grade.`);
+  if (selected === 'GK') lines.push(`Como GOL, pesaram talento de GO ${attributes.goalkeeperAwareness}, firmeza ${attributes.goalkeeperCatching}, defesa ${attributes.goalkeeperParrying}, reflexos ${attributes.goalkeeperReflexes}, alcance ${attributes.goalkeeperReach}, salto ${attributes.jump} e contato físico ${attributes.physicalContact}.`);
   if (selected === 'DMF') lines.push(`Como VOL, pesaram defesa ${attributes.defensiveAwareness}, desarme ${attributes.tackling}, agressividade ${attributes.aggression}, passe rasteiro ${attributes.lowPass} e contato físico ${attributes.physicalContact}.`);
   if (selected === 'CMF') lines.push(`Como MLG, pesaram passe ${attributes.lowPass}, condução ${attributes.tightPossession}, fôlego ${attributes.stamina} e capacidade de recomposição.`);
   if (selected === 'CB') lines.push(`Como ZAG, pesaram defesa ${attributes.defensiveAwareness}, desarme ${attributes.tackling}, contato físico ${attributes.physicalContact}, salto ${attributes.jump} e leitura de cobertura.`);
@@ -2760,7 +2902,7 @@ export function analyzeCard(rawText: string, objective: Objective = 'COMPETITIVE
   const trainingPointsRemaining = Math.max(0, trainingPointsTotal - trainingPointsUsed);
   const recommendedSkills = recommendAdditionalSkills(parsed, selected.code, objective, attributes);
   const recommendedImpetos = recommendImpetos(parsed, selected.code, objective);
-  const { strengths, weaknesses } = strengthsWeaknesses(attributes, pri);
+  const { strengths, weaknesses } = strengthsWeaknesses(attributes, pri, selected.code);
   const tips = usageTips(selected.code, objective, attributes);
   const buildName = `${POSITION_PT[selected.code]} ${selected.role}`;
   const visiblePositionScores = positionScores.slice(0, 10);

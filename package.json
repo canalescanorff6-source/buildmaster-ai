@@ -1,8 +1,8 @@
 {
-  "name": "buildmaster-elite-tatico-v24-json-fix",
-  "version": "24.2.0",
+  "name": "buildmaster-elite-tatico-v24-goleiro-stable",
+  "version": "24.3.0",
   "private": true,
-  "description": "BuildMaster Elite Tatico v24 - pacote corrigido com package.json validado para Vercel.",
+  "description": "BuildMaster Elite Tático v24.3 - versão estável com motor separado para goleiros.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

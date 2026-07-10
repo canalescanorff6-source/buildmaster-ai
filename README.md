@@ -32,3 +32,15 @@ Tudo continua local, privado e sem chamada para IA paga.
 ## Correção Vercel v24.1
 
 Esta versão fixa o ambiente de build no Vercel: Node.js travado em 24.x, `.nvmrc`, `.node-version` e `installCommand` com `npm ci` usando o registro público do npm.
+
+
+## v24.3 Goleiros Stable
+
+Esta revisão mantém a base estável da v24 e adiciona um motor separado para goleiros:
+
+- ficha de GOL não recebe mais treino/habilidades de jogador de linha;
+- recomenda Goleiro 1, Goleiro 2, Goleiro 3, salto e força nas pernas apenas quando fizer sentido;
+- adiciona objetivo **Goleiro elite**;
+- recomenda habilidades específicas de goleiro, como defesa de pênalti, arremesso longo e lançamento baixo;
+- cria variantes: ficha goleiro segura, ficha goleiro reflexo e ficha goleiro reposição;
+- explica a recomendação usando talento de GO, firmeza, defesa, reflexos, alcance, salto e contato físico.

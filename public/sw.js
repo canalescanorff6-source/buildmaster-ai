@@ -1,4 +1,4 @@
-const CACHE_NAME = 'buildmaster-elite-tatico-v24-revisado';
+const CACHE_NAME = 'buildmaster-elite-tatico-v24-3-goleiro-revisado';
 const STATIC_ASSETS = ['/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

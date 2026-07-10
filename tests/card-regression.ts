@@ -80,4 +80,38 @@ for (const item of cases) {
   }
 }
 
-console.log(`OK: ${cases.length} testes de regressão passaram.`);
+
+const goalkeeperText = `
+[AJUSTES MANUAIS]
+CONFIRMAÇÃO MANUAL: SIM
+NOME DO JOGADOR: Oliver Kahn
+POSIÇÃO PRINCIPAL: GK
+ESTILO DE JOGO: Goleiro defensivo
+NÍVEL MÁXIMO: 30
+PONTOS TOTAIS: 62
+Talento de GO: 90
+Firmeza do GO: 88
+Defesa do GO: 89
+Reflexos do GO: 91
+Alcance do GO: 88
+Salto: 82
+Contato físico: 85
+Força do chute: 78
+[FIM AJUSTES]
+`;
+
+const goalkeeperResult = analyzeCard(goalkeeperText, 'GOALKEEPER', 'AUTO', 'oliver-kahn-goleiro.txt');
+if (goalkeeperResult.bestPosition.code !== 'GK') {
+  throw new Error(`Goleiro deve permanecer como GK/GOL, mas veio ${goalkeeperResult.bestPosition.code}.`);
+}
+if (goalkeeperResult.training.shooting || goalkeeperResult.training.passing || goalkeeperResult.training.dribbling || goalkeeperResult.training.defending) {
+  throw new Error('Ficha de goleiro não pode receber Finalização, Passe, Drible ou Defesa de jogador de linha.');
+}
+if (!goalkeeperResult.training.gk1 || !goalkeeperResult.training.gk2 || !goalkeeperResult.training.gk3) {
+  throw new Error('Ficha de goleiro precisa priorizar Goleiro 1, Goleiro 2 e Goleiro 3.');
+}
+if (goalkeeperResult.recommendedSkills.some((skill) => ['Interceptação', 'Bloqueador', 'Marcação individual', 'Chute de primeira', 'Passe de primeira', 'Toque duplo'].includes(skill))) {
+  throw new Error(`Habilidades de jogador de linha não devem aparecer para goleiro: ${goalkeeperResult.recommendedSkills.join(', ')}`);
+}
+
+console.log(`OK: ${cases.length + 1} testes de regressão passaram.`);

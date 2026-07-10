@@ -41,9 +41,9 @@ type SavedAnalysis = {
   result: AnalysisResult;
 };
 
-const HISTORY_KEY = 'buildmaster_history_v24_tatico_premium';
-const CALIBRATION_KEY = 'buildmaster_ocr_zones_v24_tatico_premium';
-const LEARNING_KEY = 'buildmaster_local_learning_v24';
+const HISTORY_KEY = 'buildmaster_history_v24_3_goleiro_stable';
+const CALIBRATION_KEY = 'buildmaster_ocr_zones_v24_3_goleiro_stable';
+const LEARNING_KEY = 'buildmaster_local_learning_v24_3';
 
 const objectives: Array<{ value: Objective; title: string; hint: string }> = [
   { value: 'COMPETITIVE', title: 'Desempenho máximo', hint: 'rendimento real em campo, não GER alto' },
@@ -54,7 +54,8 @@ const objectives: Array<{ value: Objective; title: string; hint: string }> = [
   { value: 'POSSESSION', title: 'Posse de bola', hint: 'toque curto e paciência' },
   { value: 'PRESSING', title: 'Pressão alta', hint: 'roubo, fôlego e agressividade' },
   { value: 'DEFENSIVE', title: 'Defensivo', hint: 'marcação, bloqueio e cobertura' },
-  { value: 'AERIAL', title: 'Jogo aéreo', hint: 'cabeceio, salto e físico' }
+  { value: 'AERIAL', title: 'Jogo aéreo', hint: 'cabeceio, salto e físico' },
+  { value: 'GOALKEEPER', title: 'Goleiro elite', hint: 'reflexo, alcance, firmeza e pênalti' }
 ];
 
 const playstyleOptions = PLAYSTYLE_OPTIONS;
@@ -67,9 +68,9 @@ const trainingLabels: Record<string, string> = {
   lowerBodyStrength: 'Força pernas',
   aerialStrength: 'Bola aérea',
   defending: 'Defesa',
-  gk1: 'GO 1',
-  gk2: 'GO 2',
-  gk3: 'GO 3'
+  gk1: 'Goleiro 1',
+  gk2: 'Goleiro 2',
+  gk3: 'Goleiro 3'
 };
 
 const priLabels: Record<string, string> = {
