@@ -1,7 +1,7 @@
 {
-  "name": "BuildMaster Elite Studio v22",
-  "short_name": "BuildMaster",
-  "description": "App premium privado com Scanner Elite por Print, Console Pro Manual, banco local e ficha de desempenho real em campo, sem IA paga.",
+  "name": "BuildMaster Elite Tático v24.7 Neon Cloud",
+  "short_name": "BuildMaster v24.7",
+  "description": "Cofre local com sincronização opcional na nuvem Neon.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#020712",

@@ -853,7 +853,7 @@ a { color: inherit; }
   .flow-steps span { min-height: 34px; }
 }
 
-/* v20 — Conferência, calibrador e modo manual preciso */
+/* v24 — Conferência, calibrador e modo manual preciso */
 .manual-mode-button,
 .secondary-action {
   width: 100%;
@@ -941,7 +941,7 @@ a { color: inherit; }
   .review-actions { grid-template-columns: 1fr; }
 }
 
-/* v20 — calibrador, detector de print, comparação e variantes */
+/* v24 — calibrador, detector de print, comparação e variantes */
 .quality-card,
 .calibrator-panel {
   position: relative;
@@ -1054,7 +1054,7 @@ a { color: inherit; }
 .variant-grid em { color: var(--cyan); font-style: normal; font-size: 12px; line-height: 1.45; }
 .variant-grid p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
 
-/* v21 — Premium manual-only polish */
+/* v24 — Ajuste visual premium */
 .manual-premium-card {
   display: grid;
   gap: 12px;
@@ -1186,7 +1186,7 @@ label,
   .manual-premium-card { padding: 16px; }
 }
 
-/* v22 — Scanner por print restaurado + console manual premium */
+/* v22 — Leitura por print restaurada + central manual premium */
 .premium-entry-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -1259,4 +1259,338 @@ label,
   .vision-toolbar,
   .premium-upload-actions { grid-template-columns: 1fr; }
   .premium-upload-box { min-height: 180px; }
+}
+
+/* v24 — Guia tático premium e textos 100% legíveis */
+.tactical-guide-card {
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid rgba(55,216,255,.22);
+  border-radius: 22px;
+  background:
+    linear-gradient(140deg, rgba(55,216,255,.10), rgba(57,255,149,.06)),
+    rgba(1,8,18,.70);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 18px 42px rgba(0,0,0,.24);
+  color: var(--text);
+  overflow: visible;
+}
+.tactical-guide-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.tactical-guide-head h3 {
+  margin: 3px 0 0;
+  color: #fff;
+  font-size: 17px;
+  line-height: 1.25;
+  letter-spacing: -.02em;
+}
+.mini-action {
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid rgba(255,211,106,.42);
+  border-radius: 999px;
+  background: rgba(255,211,106,.10);
+  color: #ffe8a9;
+  font-weight: 950;
+  cursor: pointer;
+  white-space: normal;
+  text-align: center;
+}
+.guide-highlight {
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid rgba(57,255,149,.24);
+  border-radius: 16px;
+  background: rgba(57,255,149,.07);
+  margin-bottom: 11px;
+}
+.guide-highlight span,
+.tactical-guide-card small {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+.guide-highlight strong {
+  color: #eafff5;
+  font-size: 20px;
+  line-height: 1.1;
+}
+.guide-highlight em,
+.tactical-guide-card p {
+  color: var(--soft);
+  line-height: 1.55;
+  font-style: normal;
+  margin: 0;
+}
+.role-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 12px 0;
+}
+.role-chip-grid span {
+  padding: 10px 11px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 14px;
+  background: rgba(255,255,255,.045);
+  color: #eaf2ff;
+  font-size: 12.5px;
+  line-height: 1.4;
+  font-weight: 850;
+}
+.select-stack select,
+.review-form-grid select,
+.review-form-grid input,
+.attribute-editor-grid input {
+  padding: 11px 10px;
+  border-radius: 12px;
+  background: #071424 !important;
+  border: 1px solid rgba(255,255,255,.08);
+}
+.select-stack label,
+.review-form-grid label,
+.attribute-editor-grid label {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+}
+@media (max-width: 640px) {
+  .tactical-guide-head { flex-direction: column; }
+  .mini-action { width: 100%; }
+  .role-chip-grid { grid-template-columns: 1fr; }
+}
+
+/* v24 — Revisão fina de encaixe e legibilidade mobile */
+html, body, main, section, article, div { max-width: 100%; }
+.brand-lockup, .result-intro, .control-panel, .preview-panel, .luxury-panel, .manual-premium-card,
+.tactical-guide-card, .section-title-row, .metric-grid > div, .data-grid > div, .skill-grid > div,
+.position-list > div, .variant-grid > div, .comparison-table > div, .select-stack label { min-width: 0; }
+.kicker, .brand-lockup strong, .brand-lockup span, .section-title-row h3, .result-intro h2,
+.manual-premium-card strong, .manual-premium-card span, .status-card p, .tactical-guide-card p,
+.guide-highlight em, .role-chip-grid span, .flow-steps span { overflow-wrap: anywhere; word-break: normal; }
+select { max-width: 100%; text-overflow: ellipsis; }
+.elite-tabs button { white-space: normal; line-height: 1.2; }
+.position-list div, .data-grid div, .skill-grid div { overflow: visible; }
+@media (max-width: 520px) {
+  .premium-app { width: calc(100% - 16px); }
+  .app-topbar { padding: 10px; }
+  .brand-lockup strong { font-size: 14px; }
+  .brand-lockup span { font-size: 12px; }
+  .hero-redesign { padding: 24px 18px; }
+  .hero-redesign h1 { font-size: 30px; letter-spacing: -.05em; }
+  .kicker { font-size: 10px; letter-spacing: .12em; line-height: 1.25; }
+  .manual-premium-card strong { font-size: 18px; }
+  .manual-premium-card span { font-size: 13px; }
+  .elite-button, .scanner-action, .calibrator-action, .manual-mode-button { min-height: 52px; padding: 10px 12px; text-align: center; }
+  .result-intro h2 { font-size: 25px; }
+  .metric-grid div { min-height: 82px; padding: 12px; }
+  .metric-grid strong { font-size: 22px; }
+  .comparison-table > div { min-width: 430px; }
+}
+
+/* v24.5 — Fichário Elite: salva fichas e controla habilidades concluídas */
+.save-progress-card {
+  display: grid;
+  gap: 6px;
+  max-width: 360px;
+  margin: 10px 0 8px;
+  padding: 12px 14px;
+  border: 1px solid rgba(57,255,149,.20);
+  border-radius: 16px;
+  background: rgba(57,255,149,.055);
+}
+.save-progress-card span { color: var(--muted); font-size: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
+.save-progress-card strong { color: var(--green); font-size: 22px; line-height: 1; }
+.save-progress-card i,
+.saved-ficha-row i {
+  display: block;
+  height: 6px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255,255,255,.10);
+}
+.save-progress-card b,
+.saved-ficha-row b {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--green), var(--cyan));
+}
+.skill-check-card { position: relative; }
+.skill-check-card button {
+  width: 100%;
+  min-height: 38px;
+  margin-top: 10px;
+  border: 1px solid rgba(57,255,149,.24);
+  border-radius: 12px;
+  color: var(--soft);
+  background: rgba(57,255,149,.06);
+  font-weight: 900;
+}
+.skill-check-card.completed {
+  border-color: rgba(57,255,149,.42) !important;
+  background: rgba(57,255,149,.10) !important;
+}
+.skill-check-card.completed strong { color: var(--green); }
+.skill-check-card.completed button {
+  color: #03111c;
+  background: linear-gradient(100deg, var(--green), var(--cyan));
+}
+.result-floating-actions {
+  position: sticky;
+  bottom: 18px;
+  z-index: 3;
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+.result-floating-actions .copy-floating { position: static; margin-top: 0; }
+.library-strip { gap: 12px; }
+.history-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.history-head .kicker { margin: 0; }
+.history-head > button {
+  border: 1px solid rgba(57,255,149,.24);
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: var(--green);
+  background: rgba(57,255,149,.06);
+  font-size: 12px;
+  font-weight: 900;
+}
+.history-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(1,8,18,.48);
+  color: var(--muted);
+}
+.history-search input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent !important;
+  color: var(--text);
+  font-weight: 800;
+}
+.saved-ficha-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: stretch;
+}
+.saved-ficha-row > button:first-child {
+  display: grid;
+  gap: 4px;
+}
+.saved-ficha-row em {
+  color: var(--green);
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 900;
+}
+.delete-history-button {
+  width: 42px;
+  border: 1px solid rgba(255,95,120,.25) !important;
+  color: var(--red) !important;
+  border-radius: 14px !important;
+  padding: 0 !important;
+  display: grid;
+  place-items: center;
+  background: rgba(255,95,120,.08) !important;
+}
+
+@media (max-width: 720px) {
+  .result-floating-actions { justify-content: stretch; }
+  .result-floating-actions .copy-floating { flex: 1 1 150px; justify-content: center; }
+  .saved-ficha-row { grid-template-columns: 1fr 42px; }
+  .save-progress-card { max-width: none; }
+}
+
+
+/* v24.6 — Cofre persistente com backup */
+.history-head small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  font-weight: 700;
+}
+.history-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.history-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  border: 1px solid rgba(42, 210, 255, .22);
+  border-radius: 14px;
+  color: var(--soft);
+  background: rgba(42, 210, 255, .06);
+  font-size: 12px;
+  font-weight: 900;
+}
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+@media (max-width: 560px) {
+  .history-head { align-items: flex-start; }
+  .history-actions { grid-template-columns: 1fr; }
+}
+
+/* v24.7 — Cofre Neon Cloud */
+.cloud-history-actions {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.cloud-history-actions button:disabled {
+  opacity: .72;
+  cursor: wait;
+}
+.cloud-status-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid rgba(25, 227, 163, .22);
+  border-radius: 14px;
+  background: rgba(25, 227, 163, .07);
+  color: var(--soft);
+  font-size: 11.5px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+.cloud-status-card svg {
+  flex: 0 0 auto;
+  color: var(--green);
+  margin-top: 1px;
+}
+@media (max-width: 560px) {
+  .cloud-history-actions { grid-template-columns: 1fr; }
 }

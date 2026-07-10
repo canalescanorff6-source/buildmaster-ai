@@ -1,11 +1,16 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import type { ChangeEvent } from 'react';
 import {
   Camera,
   CheckCircle2,
   Copy,
   History,
+  Download,
+  Save,
+  Search,
+  Trash2,
   ImagePlus,
   Loader2,
   LogOut,
@@ -32,21 +37,32 @@ type ManualFields = {
   attributes: Partial<Record<AttributeKey, string>>;
 };
 
+type SavedSkillProgress = Record<string, boolean>;
+
 type SavedAnalysis = {
   id: string;
+  saveKey: string;
   savedAt: string;
+  updatedAt: string;
   rawText: string;
   playerImage: string | null;
   fullPreview: string | null;
   result: AnalysisResult;
+  skillProgress: SavedSkillProgress;
+  notes?: string;
 };
 
-const HISTORY_KEY = 'buildmaster_history_v22_elite_hybrid';
-const CALIBRATION_KEY = 'buildmaster_ocr_zones_v22_elite_hybrid';
-const LEARNING_KEY = 'buildmaster_local_learning_v22';
+const HISTORY_KEY = 'buildmaster_history_v24_6_cofre_persistente';
+const OLD_HISTORY_KEYS = ['buildmaster_history_v24_5_fichario_elite', 'buildmaster_history_v24_3_goleiro_stable', 'buildmaster_history_v24_4_habilidades_oficiais_stable'];
+const HISTORY_DB_NAME = 'buildmaster_cofre_fichas_db_v1';
+const HISTORY_STORE_NAME = 'fichas';
+const CALIBRATION_KEY = 'buildmaster_ocr_zones_v24_3_goleiro_stable';
+const LEARNING_KEY = 'buildmaster_local_learning_v24_3';
+const HISTORY_LIMIT = 200;
+const CLOUD_API_URL = '/api/cloud/fichas';
 
 const objectives: Array<{ value: Objective; title: string; hint: string }> = [
-  { value: 'COMPETITIVE', title: 'Desempenho máximo', hint: 'rendimento real em campo, não overall' },
+  { value: 'COMPETITIVE', title: 'Desempenho máximo', hint: 'rendimento real em campo, não GER alto' },
   { value: 'FINISHER', title: 'Finalizador', hint: 'gols, área e chute' },
   { value: 'CREATOR', title: 'Criador', hint: 'passe, controle e assistência' },
   { value: 'DRIBBLER', title: 'Driblador', hint: 'giro curto e 1 contra 1' },
@@ -54,7 +70,8 @@ const objectives: Array<{ value: Objective; title: string; hint: string }> = [
   { value: 'POSSESSION', title: 'Posse de bola', hint: 'toque curto e paciência' },
   { value: 'PRESSING', title: 'Pressão alta', hint: 'roubo, fôlego e agressividade' },
   { value: 'DEFENSIVE', title: 'Defensivo', hint: 'marcação, bloqueio e cobertura' },
-  { value: 'AERIAL', title: 'Jogo aéreo', hint: 'cabeceio, salto e físico' }
+  { value: 'AERIAL', title: 'Jogo aéreo', hint: 'cabeceio, salto e físico' },
+  { value: 'GOALKEEPER', title: 'Goleiro elite', hint: 'reflexo, alcance, firmeza e pênalti' }
 ];
 
 const playstyleOptions = PLAYSTYLE_OPTIONS;
@@ -67,9 +84,9 @@ const trainingLabels: Record<string, string> = {
   lowerBodyStrength: 'Força pernas',
   aerialStrength: 'Bola aérea',
   defending: 'Defesa',
-  gk1: 'GO 1',
-  gk2: 'GO 2',
-  gk3: 'GO 3'
+  gk1: 'Goleiro 1',
+  gk2: 'Goleiro 2',
+  gk3: 'Goleiro 3'
 };
 
 const priLabels: Record<string, string> = {
@@ -82,7 +99,7 @@ const priLabels: Record<string, string> = {
   physical: 'Físico',
   stamina: 'Resistência',
   aerial: 'Jogo aéreo',
-  overall: 'PRI geral'
+  GER: 'PRI geral'
 };
 
 
@@ -96,21 +113,149 @@ type LearnedCardMemory = {
 };
 
 const formations: Array<{ value: TacticalFormation; label: string }> = [
-  { value: 'AUTO', label: 'Automático' },
-  { value: '4-2-2-2', label: '4-2-2-2 — dois meias/dupla central' },
-  { value: '4-3-3', label: '4-3-3 — pontas e amplitude' },
-  { value: '4-1-2-3', label: '4-1-2-3 — um VOL + dois meias' },
-  { value: '3-2-4-1', label: '3-2-4-1 — cobertura e alas/meias' }
+  { value: 'AUTO', label: 'Automático inteligente' },
+  { value: '4-2-2-2', label: '4-2-2-2 — 2 meias + 2 atacantes' },
+  { value: '4-3-3', label: '4-3-3 — pontas abertos' },
+  { value: '4-1-2-3', label: '4-1-2-3 — VOL + 2 meias + trio' },
+  { value: '4-2-1-3', label: '4-2-1-3 — 2 volantes + MAT + trio' },
+  { value: '4-2-3-1', label: '4-2-3-1 — proteção + 3 meias' },
+  { value: '4-3-1-2', label: '4-3-1-2 — MAT + 2 atacantes' },
+  { value: '4-1-3-2', label: '4-1-3-2 — VOL único + pressão' },
+  { value: '4-4-2', label: '4-4-2 — equilíbrio clássico' },
+  { value: '4-1-4-1', label: '4-1-4-1 — posse segura' },
+  { value: '3-2-4-1', label: '3-2-4-1 — saída de três' },
+  { value: '3-4-3', label: '3-4-3 — alas + ataque aberto' },
+  { value: '3-5-2', label: '3-5-2 — meio dominante' },
+  { value: '5-3-2', label: '5-3-2 — bloco seguro' },
+  { value: '5-2-3', label: '5-2-3 — defesa + pontas' }
 ];
 
 const tacticalStyles: Array<{ value: TacticalStyle; label: string }> = [
-  { value: 'AUTO', label: 'Automático' },
-  { value: 'PASSE_CURTO', label: 'Passe curto' },
-  { value: 'CONTRA_ATAQUE_RAPIDO', label: 'Contra-ataque rápido' },
+  { value: 'AUTO', label: 'Automático inteligente' },
   { value: 'POSSE_DE_BOLA', label: 'Posse de bola' },
-  { value: 'BOLA_LONGA', label: 'Bola longa' },
-  { value: 'PRESSAO_ALTA', label: 'Pressão alta' }
+  { value: 'CONTRA_ATAQUE', label: 'Contra-ataque normal' },
+  { value: 'CONTRA_ATAQUE_RAPIDO', label: 'Contra-ataque rápido' },
+  { value: 'POR_FORA', label: 'Por fora' },
+  { value: 'PASSE_LONGO', label: 'Passe longo' }
 ];
+
+const tacticalStyleName: Record<TacticalStyle, string> = {
+  AUTO: 'Automático inteligente',
+  POSSE_DE_BOLA: 'Posse de bola',
+  CONTRA_ATAQUE: 'Contra-ataque normal',
+  CONTRA_ATAQUE_RAPIDO: 'Contra-ataque rápido',
+  POR_FORA: 'Por fora',
+  PASSE_LONGO: 'Passe longo'
+};
+
+type FormationGuide = {
+  title: string;
+  bestStyle: TacticalStyle;
+  styleReason: string;
+  howToPlay: string;
+  roles: string[];
+};
+
+const formationGuides: Record<Exclude<TacticalFormation, 'AUTO'>, FormationGuide> = {
+  '4-2-2-2': {
+    title: '4-2-2-2 — Compacto e direto',
+    bestStyle: 'CONTRA_ATAQUE_RAPIDO',
+    styleReason: 'combina bem com dois meias por dentro e dupla de ataque para sair rápido após o roubo.',
+    howToPlay: 'Recupere com VOL/MLG, toque vertical no MAT/SA e finalize rápido antes da defesa adversária recompor.',
+    roles: ['VOL: marcação e primeiro passe', 'MLG: condução curta e cobertura', 'MAT/SA: giro e assistência', 'CA: ataque ao espaço e finalização']
+  },
+  '4-3-3': {
+    title: '4-3-3 — Amplitude e pressão pelos lados',
+    bestStyle: 'POR_FORA',
+    styleReason: 'usa pontas e laterais para abrir campo, cruzar, inverter jogadas e atacar o lado fraco.',
+    howToPlay: 'Abra com PE/PD, apoie com laterais, procure cruzamento rasteiro/alto e finalize com CA bem posicionado.',
+    roles: ['Pontas: velocidade, drible e diagonal', 'CA: presença de área', 'MLG: cobertura e passe', 'Laterais: apoio com recomposição']
+  },
+  '4-1-2-3': {
+    title: '4-1-2-3 — Triângulo central ofensivo',
+    bestStyle: 'POSSE_DE_BOLA',
+    styleReason: 'o VOL protege e os dois meias criam linhas de passe para manter controle sem perder verticalidade.',
+    howToPlay: 'Faça triangulações curtas, atraia a marcação no meio e solte nos pontas quando abrir espaço.',
+    roles: ['VOL: segurança e cobertura', 'MLG/MAT: passe curto e giro', 'Pontas: amplitude', 'CA: finalização e pivô curto']
+  },
+  '4-2-1-3': {
+    title: '4-2-1-3 — Proteção e trio ofensivo',
+    bestStyle: 'CONTRA_ATAQUE_RAPIDO',
+    styleReason: 'a dupla de volantes dá segurança para o MAT acelerar o trio de ataque.',
+    howToPlay: 'Roube por dentro, passe no MAT e ataque com os três da frente em velocidade.',
+    roles: ['2 VOL/MLG: roubo e cobertura', 'MAT: passe final', 'Pontas: profundidade', 'CA: finalizar no primeiro toque']
+  },
+  '4-2-3-1': {
+    title: '4-2-3-1 — Controle com proteção dupla',
+    bestStyle: 'POSSE_DE_BOLA',
+    styleReason: 'a base com dois volantes permite circular a bola e criar com três meias atrás do CA.',
+    howToPlay: 'Gire a bola entre laterais e meias, espere o espaço e use o CA como pivô ou finalizador.',
+    roles: ['Dupla central: proteção e passe', 'Meias abertos: infiltração', 'MAT: criação', 'CA: pivô e presença de área']
+  },
+  '4-3-1-2': {
+    title: '4-3-1-2 — Compacto pelo centro',
+    bestStyle: 'CONTRA_ATAQUE',
+    styleReason: 'protege o corredor central e usa MAT com dois atacantes para contra-atacar com segurança.',
+    howToPlay: 'Feche o meio, recupere, acione o MAT e ataque com tabelas curtas entre os dois atacantes.',
+    roles: ['MAT: último passe', '2 CA/SA: tabela e ataque ao espaço', 'MLG: pressão central', 'Laterais: única largura do time']
+  },
+  '4-1-3-2': {
+    title: '4-1-3-2 — Pressão e ataque em dupla',
+    bestStyle: 'CONTRA_ATAQUE_RAPIDO',
+    styleReason: 'muitos jogadores próximos para recuperar rápido e servir a dupla de ataque.',
+    howToPlay: 'Pressione após perder, recupere no meio e finalize rápido com a dupla da frente.',
+    roles: ['VOL: proteger contra bola nas costas', 'Linha de 3: pressão e passe', 'Dupla de ataque: movimentação e finalização']
+  },
+  '4-4-2': {
+    title: '4-4-2 — Equilíbrio clássico',
+    bestStyle: 'CONTRA_ATAQUE',
+    styleReason: 'mantém duas linhas fortes e dois atacantes prontos para sair quando a bola é recuperada.',
+    howToPlay: 'Defenda em bloco médio, force o adversário para o lado e ataque com cruzamentos ou passes diretos.',
+    roles: ['Meias laterais: recomposição e cruzamento', '2 atacantes: presença e tabela', 'Centrais: cobertura e segundo passe']
+  },
+  '4-1-4-1': {
+    title: '4-1-4-1 — Posse e controle territorial',
+    bestStyle: 'POSSE_DE_BOLA',
+    styleReason: 'tem muitas linhas de passe e um VOL fixo para segurar a transição defensiva.',
+    howToPlay: 'Circule a bola com paciência, avance em bloco e não force passe vertical sem apoio.',
+    roles: ['VOL: âncora defensiva', 'Meias: circulação e pressão pós-perda', 'CA: pivô e finalização', 'Laterais: apoio alternado']
+  },
+  '3-2-4-1': {
+    title: '3-2-4-1 — Superioridade no meio',
+    bestStyle: 'POSSE_DE_BOLA',
+    styleReason: 'a saída de três e os dois volantes sustentam posse com muitos jogadores entrelinhas.',
+    howToPlay: 'Saia com três, encontre os meias entre linhas e use os alas para prender a defesa adversária aberta.',
+    roles: ['3 ZAG: cobertura e saída', '2 VOL: proteção', 'Alas/meias: amplitude e criação', 'CA: finalizar e prender zagueiros']
+  },
+  '3-4-3': {
+    title: '3-4-3 — Ataque aberto e agressivo',
+    bestStyle: 'POR_FORA',
+    styleReason: 'favorece amplitude máxima com alas e pontas pressionando os lados.',
+    howToPlay: 'Ataque pelos corredores, use inversões rápidas e proteja contra contra-ataques com três zagueiros fortes.',
+    roles: ['Alas: fôlego e cruzamento', 'Pontas: 1 contra 1', 'Zagueiros: cobertura longa', 'CA: presença de área']
+  },
+  '3-5-2': {
+    title: '3-5-2 — Meio dominante e dupla de ataque',
+    bestStyle: 'CONTRA_ATAQUE',
+    styleReason: 'ganha o meio, rouba por dentro e acha dois atacantes em vantagem.',
+    howToPlay: 'Feche o centro, use alas para abrir e procure a dupla de ataque com passe rápido após recuperar.',
+    roles: ['3 ZAG: segurança', 'Alas: amplitude total', 'Meias: pressão e passe', '2 atacantes: tabela e profundidade']
+  },
+  '5-3-2': {
+    title: '5-3-2 — Segurança máxima',
+    bestStyle: 'CONTRA_ATAQUE',
+    styleReason: 'protege a área, baixa o risco e usa dois atacantes para aproveitar espaço nas costas.',
+    howToPlay: 'Defenda compacto, não quebre a linha de cinco sem necessidade e saia em passe direto para a dupla.',
+    roles: ['Laterais/alas: recomposição', '3 ZAG: cobertura aérea', 'Meio: roubo e passe direto', '2 atacantes: profundidade']
+  },
+  '5-2-3': {
+    title: '5-2-3 — Defesa forte e pontas velozes',
+    bestStyle: 'PASSE_LONGO',
+    styleReason: 'a defesa baixa encontra pontas e CA com lançamentos rápidos para atacar campo aberto.',
+    howToPlay: 'Recupere baixo, procure passe longo ou inversão rápida para os pontas e ataque com poucos toques.',
+    roles: ['5 defensores: bloco seguro', '2 meios: interceptação e lançamento', 'Pontas: velocidade', 'CA: pivô e finalização']
+  }
+};
 
 function zoneKeyLabel(key: string) {
   return DEFAULT_OCR_ZONES.find((zone) => zone.key === key)?.label ?? key;
@@ -123,6 +268,167 @@ function memoryKey(value: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
+}
+
+function resultHistoryKey(result: AnalysisResult) {
+  return memoryKey([
+    result.parsed.playerName,
+    result.parsed.mainPosition,
+    result.bestPosition.code,
+    result.buildName,
+    result.trainingPointsTotal
+  ].join(' '));
+}
+
+function normalizeSavedAnalysis(entry: Partial<SavedAnalysis>, fallbackIndex = 0): SavedAnalysis | null {
+  if (!entry?.result?.parsed?.playerName) return null;
+  const saveKey = entry.saveKey || resultHistoryKey(entry.result);
+  const savedAt = entry.savedAt || new Date().toLocaleString('pt-BR');
+  const recommended = entry.result.recommendedSkills ?? [];
+  const progress: SavedSkillProgress = { ...(entry.skillProgress ?? {}) };
+  for (const skill of recommended) {
+    if (progress[skill] === undefined) progress[skill] = false;
+  }
+  return {
+    id: entry.id || `${saveKey || 'ficha'}-${fallbackIndex}`,
+    saveKey,
+    savedAt,
+    updatedAt: entry.updatedAt || savedAt,
+    rawText: entry.rawText || '',
+    playerImage: entry.playerImage ?? null,
+    fullPreview: entry.fullPreview ?? null,
+    result: entry.result,
+    skillProgress: progress,
+    notes: entry.notes || ''
+  };
+}
+
+function ensureSkillProgress(current: SavedSkillProgress | undefined, skills: string[]) {
+  const next: SavedSkillProgress = { ...(current ?? {}) };
+  for (const skill of skills) {
+    if (next[skill] === undefined) next[skill] = false;
+  }
+  return next;
+}
+
+function skillProgressInfo(skills: string[], progress: SavedSkillProgress | undefined) {
+  const unique = Array.from(new Set(skills));
+  const done = unique.filter((skill) => progress?.[skill]).length;
+  return { done, total: unique.length, percent: unique.length ? Math.round((done / unique.length) * 100) : 0 };
+}
+
+function openHistoryDb(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined' || !('indexedDB' in window)) {
+      reject(new Error('IndexedDB indisponível'));
+      return;
+    }
+
+    const request = window.indexedDB.open(HISTORY_DB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(HISTORY_STORE_NAME)) {
+        db.createObjectStore(HISTORY_STORE_NAME);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error ?? new Error('Falha ao abrir o cofre local'));
+  });
+}
+
+async function readIndexedHistory(): Promise<SavedAnalysis[]> {
+  const db = await openHistoryDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(HISTORY_STORE_NAME, 'readonly');
+    const store = tx.objectStore(HISTORY_STORE_NAME);
+    const request = store.get(HISTORY_KEY);
+    request.onsuccess = () => resolve(Array.isArray(request.result) ? request.result : []);
+    request.onerror = () => reject(request.error ?? new Error('Falha ao ler fichário'));
+    tx.oncomplete = () => db.close();
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error ?? new Error('Falha na leitura do fichário'));
+    };
+  });
+}
+
+async function writeIndexedHistory(items: SavedAnalysis[]): Promise<void> {
+  const db = await openHistoryDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(HISTORY_STORE_NAME, 'readwrite');
+    const store = tx.objectStore(HISTORY_STORE_NAME);
+    store.put(items.slice(0, HISTORY_LIMIT), HISTORY_KEY);
+    tx.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error ?? new Error('Falha ao gravar fichário'));
+    };
+  });
+}
+
+function normalizeHistoryList(entries: unknown[], offset = 0): SavedAnalysis[] {
+  const loaded: SavedAnalysis[] = [];
+  for (const entry of entries) {
+    const normalized = normalizeSavedAnalysis(entry as Partial<SavedAnalysis>, offset + loaded.length);
+    if (normalized && !loaded.some((item) => item.saveKey === normalized.saveKey)) loaded.push(normalized);
+  }
+  return loaded;
+}
+
+
+function mergeHistoryLists(primary: SavedAnalysis[], secondary: SavedAnalysis[]): SavedAnalysis[] {
+  const map = new Map<string, SavedAnalysis>();
+  for (const item of [...secondary, ...primary]) {
+    map.set(item.saveKey, item);
+  }
+  return Array.from(map.values()).slice(0, HISTORY_LIMIT);
+}
+
+async function loadHistoryStore(): Promise<SavedAnalysis[]> {
+  const loaded: SavedAnalysis[] = [];
+
+  try {
+    for (const item of normalizeHistoryList(await readIndexedHistory())) {
+      if (!loaded.some((entry) => entry.saveKey === item.saveKey)) loaded.push(item);
+    }
+  } catch {
+    // Se o IndexedDB falhar, o app tenta recuperar pelo armazenamento antigo.
+  }
+
+  try {
+    const keys = [HISTORY_KEY, ...OLD_HISTORY_KEYS];
+    for (const key of keys) {
+      const stored = localStorage.getItem(key);
+      if (!stored) continue;
+      const parsed = JSON.parse(stored);
+      if (!Array.isArray(parsed)) continue;
+      for (const item of normalizeHistoryList(parsed, loaded.length)) {
+        if (!loaded.some((entry) => entry.saveKey === item.saveKey)) loaded.push(item);
+      }
+    }
+  } catch {
+    // O cofre antigo é opcional; falha de leitura não pode travar o app.
+  }
+
+  return loaded.slice(0, HISTORY_LIMIT);
+}
+
+async function persistHistoryStore(items: SavedAnalysis[]) {
+  const next = items.slice(0, HISTORY_LIMIT);
+  try {
+    await writeIndexedHistory(next);
+  } catch {
+    // IndexedDB pode ser bloqueado em modo privado. Nesse caso usamos fallback.
+  }
+
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  } catch {
+    // LocalStorage pode estourar limite quando há imagens; o IndexedDB continua sendo o cofre principal.
+  }
 }
 
 function readLearningStore(): Record<string, LearnedCardMemory> {
@@ -158,9 +464,9 @@ function saveLearnedCard(memory: LearnedCardMemory) {
 const tacticalLabels: Record<string, string> = {
   possession: 'Posse de bola',
   quickCounter: 'Contra-ataque rápido',
-  longBallCounter: 'Contra-ataque bola longa',
-  outWide: 'Pelas pontas',
-  longBall: 'Bola longa'
+  longBallCounter: 'Contra-ataque',
+  outWide: 'Por fora',
+  longBall: 'Passe longo'
 };
 
 function normalizeLine(line: string) {
@@ -345,16 +651,16 @@ function copyBuildText(result: AnalysisResult) {
     .join('\n');
 
   const text = [
-    `BuildMaster Elite Studio v22 — ${result.parsed.playerName}`,
+    `BuildMaster Elite Tático v24 — ${result.parsed.playerName}`,
     `Função: ${result.buildName}`,
     `Melhor posição: ${result.bestPosition.label}`,
-    `PRI: ${result.pri.overall}`,
+    `PRI: ${result.pri.GER}`,
     `Pontos: ${result.trainingPointsUsed}/${result.trainingPointsTotal}`,
     '',
     'Plano Elite:',
     training,
     '',
-    'Skills adicionais:',
+    'Habilidades adicionais:',
     result.recommendedSkills.map((skill, index) => `${index + 1}. ${skill}`).join('\n'),
     '',
     'Ímpetos recomendados:',
@@ -386,16 +692,17 @@ function trainingSummary(plan: Record<string, number>) {
     .join(' • ');
 }
 
-function ResultCard({ result, playerImage }: { result: AnalysisResult; playerImage: string | null }) {
+function ResultCard({ result, playerImage, skillProgress, onSkillToggle, onSaveFicha }: { result: AnalysisResult; playerImage: string | null; skillProgress?: SavedSkillProgress; onSkillToggle?: (skill: string) => void; onSaveFicha?: () => void }) {
   const [tab, setTab] = useState<ResultTab>('resumo');
   const card = result.parsed;
-  const overall = card.maxOverall ?? card.overall ?? '--';
+  const GER = card.maxOverall ?? card.overall ?? '--';
   const trainingItems = Object.entries(result.training).filter(([, value]) => Number(value) > 0);
   const pointPercent = Math.min(100, Math.round((result.trainingPointsUsed / Math.max(1, result.trainingPointsTotal)) * 100));
   const positionItems = result.positionScores.slice(0, 8);
   const cardPositions = Array.from(new Set([card.mainPosition, ...card.positions])).slice(0, 10);
   const nativeSkills = card.nativeSkills.slice(0, 8);
   const recommendedSkills = result.recommendedSkills.slice(0, 8);
+  const skillInfo = skillProgressInfo(recommendedSkills, skillProgress);
   const recommendedImpetos = result.recommendedImpetos.slice(0, 8);
   const positionRatings = Object.entries(card.positionRatings).filter(([, value]) => Number.isFinite(value));
   const attributes = Object.entries(card.attributes).filter(([, value]) => Number.isFinite(value));
@@ -414,7 +721,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
           {playerImage && <img src={playerImage} alt={`Imagem de ${card.playerName}`} />}
           <div className="card-shine" />
           <div className="card-number">
-            <strong>{overall}</strong>
+            <strong>{GER}</strong>
             <span>{card.mainPositionPt}</span>
           </div>
           <em>{card.playstyle ?? 'BuildMaster'}</em>
@@ -424,12 +731,17 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
           <p className="kicker">Painel</p>
           <h2>{card.playerName}</h2>
           <div className="playstyle-pill">{card.playstyle ?? 'Estilo não lido'}</div>
-          <p className="identity-note">Identidade preservada: {card.mainPositionPt}{card.playstyle ? ` • ${card.playstyle}` : ''}. O app não altera a posição/estilo do card; só recomenda abaixo onde rende mais.</p>
+          <div className="save-progress-card">
+            <span>Progresso das habilidades</span>
+            <strong>{skillInfo.done}/{skillInfo.total || recommendedSkills.length}</strong>
+            <i><b style={{ width: `${skillInfo.percent}%` }} /></i>
+          </div>
+          <p className="identity-note">Identidade preservada: {card.mainPositionPt}{card.playstyle ? ` • ${card.playstyle}` : ''}. O programa não altera a posição/estilo da carta; só recomenda abaixo onde ela rende mais.</p>
           <div className="metric-grid">
-            <div><span>GER lido</span><strong>{overall}</strong></div>
+            <div><span>GER lido</span><strong>{GER}</strong></div>
             <div><span>Pos. carta</span><strong>{card.mainPositionPt}</strong></div>
             <div><span>Melhor pos.</span><strong>{result.bestPosition.label}</strong></div>
-            <div><span>PRI gameplay</span><strong>{result.pri.overall}</strong></div>
+            <div><span>PRI em campo</span><strong>{result.pri.GER}</strong></div>
             <div><span>Confiança</span><strong>{card.confidence}%</strong></div>
             <div className="wide-metric"><span>Pontos totais</span><strong>{result.trainingPointsUsed}/{result.trainingPointsTotal}</strong></div>
           </div>
@@ -446,7 +758,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
         {[
           ['resumo', 'Painel'],
           ['ficha', 'Plano'],
-          ['habilidades', 'Skills'],
+          ['habilidades', 'Habilidades'],
           ['posicoes', 'Funções'],
           ['dados', 'Base técnica']
         ].map(([value, label]) => (
@@ -482,7 +794,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
           </article>
 
           <article className="luxury-panel compact-card">
-            <p className="kicker">Skills adicionais</p>
+            <p className="kicker">Habilidades adicionais</p>
             <div className="chip-cloud purple">
               {recommendedSkills.length ? recommendedSkills.slice(0, 4).map((skill) => <span key={skill}>{skill}</span>) : <span>Nenhuma recomendação segura</span>}
             </div>
@@ -526,7 +838,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
             <div className="section-title-row">
               <div>
                 <p className="kicker">Distribuição de pontos</p>
-                <h3>Plano Elite de gameplay</h3>
+                <h3>Plano Elite de desempenho</h3>
               </div>
               <span>{result.trainingPointsUsed}/{result.trainingPointsTotal}</span>
             </div>
@@ -553,7 +865,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
                   <span>{item.recommended}</span>
                   <strong>{item.difference > 0 ? `+${item.difference}` : item.difference}</strong>
                 </div>
-              )) : <p className="panel-note">Plano automática não foi lida; comparação indisponível.</p>}
+              )) : <p className="panel-note">O plano automático não foi lido; comparação indisponível.</p>}
             </div>
           </article>
 
@@ -587,12 +899,18 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
           <article className="luxury-panel wide-card">
             <p className="kicker">Sugeridas adicionais</p>
             <div className="skill-grid">
-              {recommendedSkills.length ? recommendedSkills.map((skill, index) => (
-                <div key={skill}>
-                  <strong>{String(index + 1).padStart(2, '0')} • {skill}</strong>
-                  <span>{skillReason(skill)}</span>
-                </div>
-              )) : <p className="panel-note">Nenhuma habilidade adicional segura foi encontrada.</p>}
+              {recommendedSkills.length ? recommendedSkills.map((skill, index) => {
+                const completed = Boolean(skillProgress?.[skill]);
+                return (
+                  <div key={skill} className={completed ? 'skill-check-card completed' : 'skill-check-card'}>
+                    <strong>{String(index + 1).padStart(2, '0')} • {skill}</strong>
+                    <span>{skillReason(skill)}</span>
+                    <button type="button" onClick={() => onSkillToggle?.(skill)}>
+                      {completed ? '✓ Concluída' : 'Marcar como feita'}
+                    </button>
+                  </div>
+                );
+              }) : <p className="panel-note">Nenhuma habilidade adicional segura foi encontrada.</p>}
             </div>
           </article>
           <article className="luxury-panel wide-card">
@@ -612,8 +930,8 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
               {cardPositions.map((code, index) => (
                 <div key={code}>
                   <strong>{positionPt(code)}</strong>
-                  <span>{index === 0 ? 'Posição do card' : 'Compatível'}</span>
-                  <em>{code === card.mainPosition ? `Preservada no card • ${card.playstyle ?? 'estilo não lido'}` : `Registrada no painel${card.positionRatings[code] ? ` • ${card.positionRatings[code]}` : ''}`}</em>
+                  <span>{index === 0 ? 'Posição da carta' : 'Compatível'}</span>
+                  <em>{code === card.mainPosition ? `Preservada na carta • ${card.playstyle ?? 'estilo não lido'}` : `Registrada no painel${card.positionRatings[code] ? ` • ${card.positionRatings[code]}` : ''}`}</em>
                 </div>
               ))}
             </div>
@@ -621,7 +939,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
           </article>
 
           <article className="luxury-panel wide-card">
-            <p className="kicker">Ranking de gameplay real</p>
+            <p className="kicker">Ranking de rendimento real</p>
             <div className="position-list">
               {positionItems.map((item, index) => (
                 <div key={item.code}>
@@ -631,15 +949,15 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
                 </div>
               ))}
             </div>
-            <p className="panel-note">Aqui sim o app pode recomendar outra posição, mas sem alterar a identidade da carta no card principal.</p>
+            <p className="panel-note">Aqui sim o app pode recomendar outra posição, mas sem alterar a identidade original da carta.</p>
           </article>
 
           <article className="luxury-panel wide-card">
-            <p className="kicker">Overalls lidos</p>
+            <p className="kicker">GERs lidos</p>
             <div className="data-grid">
               {positionRatings.length ? positionRatings.map(([code, value]) => (
                 <div key={code}><span>{positionPt(code)}</span><strong>{value}</strong></div>
-              )) : <p className="panel-note">Nenhum overall por posição lido com segurança.</p>}
+              )) : <p className="panel-note">Nenhum GER por posição lido com segurança.</p>}
             </div>
           </article>
         </div>
@@ -648,7 +966,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
       {tab === 'dados' && (
         <div className="result-section-grid">
           <article className="luxury-panel wide-card">
-            <p className="kicker">Base técnica lidos</p>
+            <p className="kicker">Dados técnicos lidos</p>
             <div className="data-grid">
               <div><span>Posição da carta</span><strong>{card.mainPositionPt}</strong></div>
               <div><span>Estilo de jogo</span><strong>{card.playstyle ?? '—'}</strong></div>
@@ -659,7 +977,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
               <div><span>Altura</span><strong>{card.height ? `${card.height} cm` : '—'}</strong></div>
               <div><span>Peso</span><strong>{card.weight ? `${card.weight} kg` : '—'}</strong></div>
               <div><span>Idade</span><strong>{card.age ?? '—'}</strong></div>
-              <div><span>Entrada</span><strong>Manual premium</strong></div>
+              <div><span>Entrada</span><strong>Manual de precisão</strong></div>
             </div>
           </article>
           <article className="luxury-panel wide-card">
@@ -675,7 +993,7 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
           </article>
 
           <article className="luxury-panel wide-card">
-            <p className="kicker">Ímpetos / boosters lidos</p>
+            <p className="kicker">Ímpetos lidos</p>
             <div className="chip-cloud purple">
               {card.impetos.length ? card.impetos.map((item) => (
                 <span key={`${item.name}-${item.value ?? ''}`}>{item.name}{item.value ? ` +${item.value}` : ''}{item.active === false ? ' — inativo' : ''}</span>
@@ -693,7 +1011,10 @@ function ResultCard({ result, playerImage }: { result: AnalysisResult; playerIma
         </div>
       )}
 
-      <button className="copy-floating" type="button" onClick={() => copyBuildText(result)}><Copy size={16} /> Copiar plano</button>
+      <div className="result-floating-actions">
+        <button className="copy-floating" type="button" onClick={onSaveFicha}><Save size={16} /> Salvar ficha</button>
+        <button className="copy-floating" type="button" onClick={() => copyBuildText(result)}><Copy size={16} /> Copiar plano</button>
+      </div>
     </section>
   );
 }
@@ -752,7 +1073,7 @@ function ReviewPanel({
         <div className="result-intro">
           <p className="kicker"><ShieldCheck size={16} /> Auditoria Elite</p>
           <h2>Revise antes do plano final</h2>
-          <p className="review-copy">Fluxo manual premium: você confirma posição, estilo, pontos e atributos antes de finalizar. Assim o programa não depende de leitura automática e reduz erros de ficha.</p>
+          <p className="review-copy">Fluxo de precisão: você confirma posição, estilo, pontos e atributos antes de finalizar. Assim o programa não depende de leitura automática e reduz erros de ficha.</p>
           <div className="metric-grid">
             <div><span>Confiança</span><strong>{card.confidence}%</strong></div>
             <div><span>Posição lida</span><strong>{card.mainPositionPt}</strong></div>
@@ -824,7 +1145,7 @@ function ReviewPanel({
               </label>
             ))}
           </div>
-          <p className="panel-note">Preencha os valores que você deseja usar na ficha. O restante segue o motor local, banco de cartas e regras premium de gameplay.</p>
+          <p className="panel-note">Preencha os valores que você deseja usar na ficha. Os demais dados seguem o motor local, banco de cartas e regras premium de desempenho em campo.</p>
         </article>
 
         <article className="luxury-panel wide-card">
@@ -834,7 +1155,7 @@ function ReviewPanel({
               <div key={item.code}>
                 <strong>{item.label}</strong>
                 <span>{item.reason}</span>
-                <em>{item.rating ? `Nota lida ${item.rating}` : 'Sem depender de overall'}</em>
+                <em>{item.rating ? `Nota lida ${item.rating}` : 'Sem depender de GER'}</em>
               </div>
             ))}
           </div>
@@ -880,25 +1201,47 @@ export function CardVisionApp() {
   const [qualityReport, setQualityReport] = useState<PrintQualityReport | null>(null);
   const [formation, setFormation] = useState<TacticalFormation>('AUTO');
   const [teamStyle, setTeamStyle] = useState<TacticalStyle>('AUTO');
-  const [status, setStatus] = useState('Escolha Scanner Elite por Print ou Console Pro Manual. Tudo roda localmente, sem IA paga.');
+  const [status, setStatus] = useState('Escolha o Leitor Elite de Carta ou a Central de Precisão Manual. O Cofre salva localmente e pode sincronizar com Neon.');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [draftResult, setDraftResult] = useState<AnalysisResult | null>(null);
   const [manualFields, setManualFields] = useState<ManualFields>({ playerName: '', level: '', trainingPointsTotal: '', attributes: {} });
   const [manualMode, setManualMode] = useState(false);
   const [history, setHistory] = useState<SavedAnalysis[]>([]);
+  const [historySearch, setHistorySearch] = useState('');
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [cloudLoading, setCloudLoading] = useState(false);
+  const [cloudStatus, setCloudStatus] = useState('Neon opcional: configure DATABASE_URL no Vercel para sincronizar na nuvem.');
+  const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null);
   const lastSavedKey = useRef<string | null>(null);
+  const backupInputRef = useRef<HTMLInputElement | null>(null);
 
   const canProceed = useMemo(() => !loading && rawText.trim().length > 2, [rawText, loading]);
   const tacticalProfile = useMemo<TacticalProfile>(() => ({ formation, style: teamStyle }), [formation, teamStyle]);
+  const selectedFormationGuide = formation === 'AUTO' ? null : formationGuides[formation];
+  const activeSavedAnalysis = useMemo(() => {
+    if (!result) return null;
+    const key = resultHistoryKey(result);
+    return history.find((item) => item.id === activeHistoryId || item.saveKey === key) ?? null;
+  }, [history, activeHistoryId, result]);
+  const filteredHistory = useMemo(() => {
+    const query = memoryKey(historySearch);
+    if (!query) return history;
+    return history.filter((item) => memoryKey(`${item.result.parsed.playerName} ${item.result.bestPosition.label} ${item.result.buildName} ${item.result.parsed.playstyle ?? ''}`).includes(query));
+  }, [history, historySearch]);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(HISTORY_KEY);
-      if (stored) setHistory(JSON.parse(stored).slice(0, 6));
-    } catch {
-      setHistory([]);
-    }
+    let mounted = true;
+
+    void loadHistoryStore()
+      .then((next) => {
+        if (!mounted) return;
+        setHistory(next);
+        if (next.length) void persistHistoryStore(next);
+      })
+      .catch(() => {
+        if (mounted) setHistory([]);
+      });
 
     try {
       const storedZones = localStorage.getItem(CALIBRATION_KEY);
@@ -909,6 +1252,10 @@ export function CardVisionApp() {
     } catch {
       setOcrZones(DEFAULT_OCR_ZONES);
     }
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -921,29 +1268,134 @@ export function CardVisionApp() {
 
   useEffect(() => {
     if (!result) return;
-    const key = `${result.parsed.playerName}-${result.bestPosition.code}-${result.trainingPointsUsed}-${result.trainingPointsTotal}`;
-    if (lastSavedKey.current === key) return;
-    lastSavedKey.current = key;
+    const key = resultHistoryKey(result);
+    const autoSaveKey = `${key}-${result.trainingPointsUsed}-${result.trainingPointsTotal}`;
+    if (lastSavedKey.current === autoSaveKey) return;
+    lastSavedKey.current = autoSaveKey;
 
-    const item: SavedAnalysis = {
-      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-      savedAt: new Date().toLocaleString('pt-BR'),
-      rawText,
-      playerImage: playerCardImage,
-      fullPreview: preview,
-      result
-    };
-
+    const now = new Date().toLocaleString('pt-BR');
     setHistory((current) => {
-      const next = [item, ...current.filter((entry) => entry.result.parsed.playerName !== result.parsed.playerName)].slice(0, 6);
-      try {
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
-      } catch {
-        // Histórico é opcional.
-      }
+      const existing = current.find((entry) => entry.saveKey === key);
+      const item: SavedAnalysis = {
+        id: existing?.id ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        saveKey: key,
+        savedAt: existing?.savedAt ?? now,
+        updatedAt: now,
+        rawText,
+        playerImage: playerCardImage,
+        fullPreview: preview,
+        result,
+        skillProgress: ensureSkillProgress(existing?.skillProgress, result.recommendedSkills),
+        notes: existing?.notes ?? ''
+      };
+
+      setActiveHistoryId(item.id);
+      const next = [item, ...current.filter((entry) => entry.id !== item.id && entry.saveKey !== key)].slice(0, HISTORY_LIMIT);
+      void persistHistoryStore(next);
+      void pushCloudHistory(next, true);
       return next;
     });
   }, [result, rawText, playerCardImage, preview]);
+
+
+  async function pushCloudHistory(items: SavedAnalysis[] = history, silent = false) {
+    if (!items.length) {
+      if (!silent) setCloudStatus('Nenhuma ficha local para enviar ao Neon.');
+      return;
+    }
+
+    setCloudLoading(true);
+    try {
+      const response = await fetch(CLOUD_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: items.slice(0, HISTORY_LIMIT) })
+      });
+      const payload = await response.json().catch(() => null) as { count?: number; message?: string } | null;
+      if (!response.ok) throw new Error(payload?.message || 'Não consegui salvar no Neon agora.');
+      const message = `Neon atualizado com ${payload?.count ?? items.length} ficha(s).`;
+      setCloudStatus(message);
+      if (!silent) setStatus(message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao sincronizar com o Neon.';
+      if (!silent) {
+        setCloudStatus(message);
+        setStatus(`${message} O Cofre local continua funcionando normalmente.`);
+      }
+    } finally {
+      setCloudLoading(false);
+    }
+  }
+
+  async function pullCloudHistory() {
+    setCloudLoading(true);
+    try {
+      const response = await fetch(CLOUD_API_URL, { method: 'GET', cache: 'no-store' });
+      const payload = await response.json().catch(() => null) as { items?: unknown[]; message?: string } | null;
+      if (!response.ok) throw new Error(payload?.message || 'Não consegui buscar fichas no Neon agora.');
+      const cloudItems = normalizeHistoryList(Array.isArray(payload?.items) ? payload.items : []);
+      if (!cloudItems.length) {
+        setCloudStatus('Neon conectado, mas ainda não há fichas salvas na nuvem.');
+        return;
+      }
+
+      setHistory((current) => {
+        const next = mergeHistoryLists(cloudItems, current);
+        void persistHistoryStore(next);
+        return next;
+      });
+      setLibraryOpen(true);
+      const message = `Baixei ${cloudItems.length} ficha(s) do Neon para este aparelho.`;
+      setCloudStatus(message);
+      setStatus(message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao baixar fichas do Neon.';
+      setCloudStatus(message);
+      setStatus(`${message} Verifique a variável DATABASE_URL no Vercel.`);
+    } finally {
+      setCloudLoading(false);
+    }
+  }
+
+  async function syncCloudHistory() {
+    setCloudLoading(true);
+    try {
+      const response = await fetch(CLOUD_API_URL, { method: 'GET', cache: 'no-store' });
+      const payload = await response.json().catch(() => null) as { items?: unknown[]; message?: string } | null;
+      if (!response.ok) throw new Error(payload?.message || 'Neon ainda não está configurado.');
+      const cloudItems = normalizeHistoryList(Array.isArray(payload?.items) ? payload.items : []);
+      const merged = mergeHistoryLists(history, cloudItems);
+      await persistHistoryStore(merged);
+      setHistory(merged);
+
+      const saveResponse = await fetch(CLOUD_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: merged })
+      });
+      const savePayload = await saveResponse.json().catch(() => null) as { count?: number; message?: string } | null;
+      if (!saveResponse.ok) throw new Error(savePayload?.message || 'Não consegui atualizar o Neon.');
+
+      setLibraryOpen(true);
+      const message = `Sincronização concluída: ${merged.length} ficha(s) no Cofre local + Neon.`;
+      setCloudStatus(message);
+      setStatus(message);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha ao sincronizar com o Neon.';
+      setCloudStatus(message);
+      setStatus(`${message} O salvamento local permanece ativo.`);
+    } finally {
+      setCloudLoading(false);
+    }
+  }
+
+  async function deleteCloudHistoryItem(item: SavedAnalysis) {
+    try {
+      await fetch(`${CLOUD_API_URL}?id=${encodeURIComponent(item.saveKey || item.id)}`, { method: 'DELETE' });
+    } catch {
+      // Exclusão na nuvem é complementar; o cofre local não pode travar por isso.
+    }
+  }
 
   function logout() {
     clearBuildMasterSession();
@@ -964,11 +1416,13 @@ export function CardVisionApp() {
     setCardPositionOverride('AUTO');
     setPlaystyleOverride('AUTO');
     setQualityReport(null);
-    setStatus('Console reiniciado. Escolha Scanner Elite por Print ou Console Pro Manual para começar.');
+    setActiveHistoryId(null);
+    setStatus('Central reiniciada. Escolha o Leitor Elite de Carta ou a Central de Precisão Manual para começar.');
   }
 
   function restoreHistory(item: SavedAnalysis) {
-    lastSavedKey.current = `${item.result.parsed.playerName}-${item.result.bestPosition.code}-${item.result.trainingPointsUsed}-${item.result.trainingPointsTotal}`;
+    lastSavedKey.current = `${item.saveKey}-${item.result.trainingPointsUsed}-${item.result.trainingPointsTotal}`;
+    setActiveHistoryId(item.id);
     setSelectedFile(null);
     setOcrDone(true);
     setRawText(item.rawText);
@@ -978,6 +1432,106 @@ export function CardVisionApp() {
     setResult(item.result);
     setManualMode(true);
     setStatus(`Análise restaurada: ${item.result.parsed.playerName}.`);
+  }
+
+  function saveCurrentFicha() {
+    if (!result) return;
+    const key = resultHistoryKey(result);
+    const now = new Date().toLocaleString('pt-BR');
+    setHistory((current) => {
+      const existing = current.find((entry) => entry.saveKey === key);
+      const item: SavedAnalysis = {
+        id: existing?.id ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        saveKey: key,
+        savedAt: existing?.savedAt ?? now,
+        updatedAt: now,
+        rawText,
+        playerImage: playerCardImage,
+        fullPreview: preview,
+        result,
+        skillProgress: ensureSkillProgress(existing?.skillProgress, result.recommendedSkills),
+        notes: existing?.notes ?? ''
+      };
+      setActiveHistoryId(item.id);
+      const next = [item, ...current.filter((entry) => entry.id !== item.id && entry.saveKey !== key)].slice(0, HISTORY_LIMIT);
+      void persistHistoryStore(next);
+      void pushCloudHistory(next, true);
+      return next;
+    });
+    setStatus(`Ficha salva no Cofre de Fichas: ${result.parsed.playerName}.`);
+  }
+
+  function toggleSavedSkill(skill: string) {
+    if (!result) return;
+    const key = resultHistoryKey(result);
+    setHistory((current) => {
+      const next = current.map((entry) => {
+        if (entry.id !== activeHistoryId && entry.saveKey !== key) return entry;
+        const skillProgress = ensureSkillProgress(entry.skillProgress, result.recommendedSkills);
+        skillProgress[skill] = !skillProgress[skill];
+        return { ...entry, skillProgress, updatedAt: new Date().toLocaleString('pt-BR') };
+      });
+      void persistHistoryStore(next);
+      void pushCloudHistory(next, true);
+      return next;
+    });
+  }
+
+  function exportHistoryBackup() {
+    const payload = {
+      app: 'BuildMaster Elite Tático',
+      version: '24.7.0',
+      exportedAt: new Date().toISOString(),
+      items: history
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `buildmaster-fichario-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    setStatus('Backup do Cofre de Fichas exportado. Guarde esse arquivo para recuperar em outro navegador ou celular.');
+  }
+
+  async function importHistoryBackup(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    try {
+      const parsed = JSON.parse(await file.text()) as { items?: unknown[] } | unknown[];
+      const entries = Array.isArray(parsed) ? parsed : Array.isArray(parsed.items) ? parsed.items : [];
+      const imported = normalizeHistoryList(entries);
+      if (!imported.length) {
+        setStatus('Backup não importado: nenhum jogador salvo foi encontrado no arquivo.');
+        return;
+      }
+
+      setHistory((current) => {
+        const next = [...imported, ...current.filter((entry) => !imported.some((item) => item.saveKey === entry.saveKey))].slice(0, HISTORY_LIMIT);
+        void persistHistoryStore(next);
+        void pushCloudHistory(next, true);
+        return next;
+      });
+      setLibraryOpen(true);
+      setStatus(`Backup importado com ${imported.length} ficha(s). Elas ficam no cofre até você apagar.`);
+    } catch {
+      setStatus('Não consegui importar esse backup. Use um arquivo JSON exportado pelo próprio BuildMaster.');
+    }
+  }
+
+  function deleteHistoryItem(id: string) {
+    const item = history.find((entry) => entry.id === id);
+    setHistory((current) => {
+      const next = current.filter((entry) => entry.id !== id);
+      void persistHistoryStore(next);
+      return next;
+    });
+    if (item) void deleteCloudHistoryItem(item);
+    if (activeHistoryId === id) setActiveHistoryId(null);
   }
 
   async function handleFile(file: File) {
@@ -992,7 +1546,7 @@ export function CardVisionApp() {
     setRawText('');
     setOcrDone(false);
     setLoading(false);
-    setStatus('Imagem selecionada. Confira as travas opcionais se o OCR costuma errar posição/estilo e toque em Prosseguir.');
+    setStatus('Imagem selecionada. Confira posição, estilo e tática antes de executar a leitura premium.');
 
     const croppedPreview = await createPlayerCardPreview(file).catch(() => null);
     if (croppedPreview) setPlayerCardImage(croppedPreview);
@@ -1055,22 +1609,22 @@ export function CardVisionApp() {
       'NÍVEL MÁXIMO: ',
       'PONTOS TOTAIS: ',
       '',
-      'Preencha os dados no painel de auditoria. Este modo não usa OCR nem leitura automática.'
+      'Preencha os dados no painel de auditoria. Este modo não usa leitura automática nem depende do print.'
     ].join('\n');
     setManualMode(true);
     setSelectedFile(null);
     setPreview(null);
     setPlayerCardImage(null);
-    setFileName('entrada-manual-premium');
+    setFileName('entrada-manual-precisao');
     setRawText(template);
     setOcrDone(true);
     setResult(null);
     setCardPositionOverride('CF');
     setPlaystyleOverride('AUTO');
     setManualFields({ playerName: '', level: '', trainingPointsTotal: '', attributes: {} });
-    const nextResult = analyzeCard(template, objective, targetPosition, 'entrada-manual-premium', tacticalProfile);
+    const nextResult = analyzeCard(template, objective, targetPosition, 'entrada-manual-precisao', tacticalProfile);
     setDraftResult(nextResult);
-    setStatus('Console Elite Manual aberto. Preencha os dados, revise e finalize o plano premium.');
+    setStatus('Central de Precisão Manual aberta. Preencha os dados, revise e finalize o plano premium.');
   }
 
   async function analyzeSelectedImage() {
@@ -1086,7 +1640,7 @@ export function CardVisionApp() {
     setManualMode(false);
     setRawText('');
     setOcrDone(false);
-    setStatus('Preparando imagem para OCR local premium...');
+    setStatus('Preparando imagem para leitura local premium...');
 
     try {
       const Tesseract = await import('tesseract.js');
@@ -1192,7 +1746,7 @@ export function CardVisionApp() {
           <div className="brand-icon"><Sparkles size={19} /></div>
           <div>
             <strong>BuildMaster</strong>
-            <span>Elite Studio</span>
+            <span>Elite Tático</span>
           </div>
         </div>
         <div className="session-badge"><ShieldCheck size={16} /> Sessão protegida</div>
@@ -1204,9 +1758,9 @@ export function CardVisionApp() {
 
       <section className="hero-redesign">
         <div>
-          <p className="kicker"><Sparkles size={16} /> BuildMaster Elite Studio</p>
+          <p className="kicker"><Sparkles size={16} /> BuildMaster Elite Tático</p>
           <h1>Monte uma ficha premium por print ou manual, com auditoria antes do plano final.</h1>
-          <p>Use o Scanner Elite por Print para leitura local ou o Console Pro Manual para máxima precisão. Overall é apenas referência; o motor prioriza função, atributos úteis, estilo e melhor posicionamento.</p>
+          <p>Use o Leitor Elite de Carta para leitura local ou o Central de Precisão Manual para máxima precisão. GER é apenas referência; o motor prioriza função, atributos úteis, estilo e melhor posicionamento.</p>
         </div>
         <div className="orb-ball" aria-hidden="true" />
       </section>
@@ -1216,7 +1770,7 @@ export function CardVisionApp() {
           <div className="panel-heading">
             <div>
               <p className="kicker">Painel premium</p>
-              <h2>Console Elite</h2>
+              <h2>Central Elite</h2>
             </div>
             <ShieldCheck size={24} />
           </div>
@@ -1224,13 +1778,13 @@ export function CardVisionApp() {
           <div className="premium-entry-grid">
             <article className="manual-premium-card vision-entry-card">
               <div className="manual-premium-icon"><ScanText size={28} /></div>
-              <strong>Scanner Elite por Print</strong>
-              <span>Envie o print completo da carta. O app faz leitura local, aplica calibração por zonas e abre a Auditoria Elite antes de finalizar a ficha.</span>
+              <strong>Leitor Elite de Carta</strong>
+              <span>Envie o print completo da carta. O programa faz leitura local, aplica calibração por zonas e abre a Auditoria Elite antes de finalizar a ficha.</span>
             </article>
 
             <article className="manual-premium-card manual-entry-card">
               <div className="manual-premium-icon"><ShieldCheck size={28} /></div>
-              <strong>Console Pro Manual</strong>
+              <strong>Central de Precisão Manual</strong>
               <span>Modo de precisão máxima: você informa posição, estilo, pontos e atributos. Ideal quando quer zero risco de leitura errada.</span>
             </article>
           </div>
@@ -1261,7 +1815,7 @@ export function CardVisionApp() {
           <div className="vision-toolbar">
             <button className="manual-mode-button scanner-action" type="button" onClick={analyzeSelectedImage} disabled={!selectedFile || loading}>
               {loading ? <Loader2 className="spin" size={17} /> : <ScanText size={17} />}
-              {loading ? 'Lendo print...' : 'Executar Scanner Elite'}
+              {loading ? 'Lendo carta...' : 'Executar Leitor Elite'}
             </button>
             <button className="manual-mode-button calibrator-action" type="button" onClick={() => setCalibratorOpen((current) => !current)} disabled={!preview}>
               <Wand2 size={17} /> Ajustar zonas
@@ -1269,7 +1823,7 @@ export function CardVisionApp() {
           </div>
 
           <button className="manual-mode-button primary-manual" type="button" onClick={startManualPreciseMode}>
-            <ShieldCheck size={16} /> Abrir Console Pro Manual
+            <ShieldCheck size={16} /> Abrir Central de Precisão Manual
           </button>
 
           {qualityReport && (
@@ -1287,7 +1841,7 @@ export function CardVisionApp() {
           {calibratorOpen && preview && (
             <details className="calibrator-panel" open>
               <summary>Calibrador Elite de áreas</summary>
-              <p className="panel-note">Ajuste somente quando o print vier de resolução, zoom ou corte diferente. A posição original deve sair da área da carta, não da grade de overalls.</p>
+              <p className="panel-note">Ajuste somente quando o print vier de resolução, zoom ou corte diferente. A posição original deve sair da área da carta, não da grade de GERs.</p>
               <div className="calibration-preview">
                 <img src={preview} alt="Prévia para calibrar leitura" />
                 {ocrZones.filter((zone) => zone.enabled).map((zone) => (
@@ -1363,6 +1917,36 @@ export function CardVisionApp() {
             </label>
           </div>
 
+          <article className="tactical-guide-card">
+            <div className="tactical-guide-head">
+              <div>
+                <p className="kicker">Guia tático premium</p>
+                <h3>{selectedFormationGuide ? selectedFormationGuide.title : 'Escolha uma formação'}</h3>
+              </div>
+              {selectedFormationGuide && (
+                <button className="mini-action" type="button" onClick={() => setTeamStyle(selectedFormationGuide.bestStyle)}>
+                  Aplicar estilo sugerido
+                </button>
+              )}
+            </div>
+            {selectedFormationGuide ? (
+              <>
+                <div className="guide-highlight">
+                  <span>Melhor estilo do técnico</span>
+                  <strong>{tacticalStyleName[selectedFormationGuide.bestStyle]}</strong>
+                  <em>{selectedFormationGuide.styleReason}</em>
+                </div>
+                <p>{selectedFormationGuide.howToPlay}</p>
+                <div className="role-chip-grid">
+                  {selectedFormationGuide.roles.map((role) => <span key={role}>{role}</span>)}
+                </div>
+                <small>Selecionado agora: {teamStyle === 'AUTO' ? 'automático premium' : tacticalStyleName[teamStyle]}.</small>
+              </>
+            ) : (
+              <p>Selecione uma formação para ver o estilo de técnico recomendado, como jogar nela e a função principal de cada setor.</p>
+            )}
+          </article>
+
           <button className="elite-button generate-button" type="button" onClick={() => runAnalysis(false)} disabled={!canProceed}>
             {loading ? <Loader2 className="spin" size={18} /> : <Zap size={18} />}
             {loading ? 'Processando ficha...' : result ? 'Reabrir auditoria Elite' : 'Gerar prévia Elite'}
@@ -1388,20 +1972,51 @@ export function CardVisionApp() {
           )}
 
           {history.length > 0 && (
-            <div className="history-strip">
-              <p className="kicker"><History size={14} /> Histórico</p>
-              {history.slice(0, 3).map((item) => (
-                <button type="button" key={item.id} onClick={() => restoreHistory(item)}>
-                  <strong>{item.result.parsed.playerName}</strong>
-                  <span>{item.result.bestPosition.label} • {item.result.trainingPointsUsed}/{item.result.trainingPointsTotal}</span>
-                </button>
-              ))}
+            <div className="history-strip library-strip">
+              <div className="history-head">
+                <div>
+                  <p className="kicker"><History size={14} /> Cofre de Fichas</p>
+                  <small>Salvo neste aparelho até você apagar. Com Neon configurado, também sincroniza na nuvem.</small>
+                </div>
+                <button type="button" onClick={() => setLibraryOpen((current) => !current)}>{libraryOpen ? 'Recolher' : 'Ver tudo'}</button>
+              </div>
+              <div className="history-actions cloud-history-actions">
+                <button type="button" onClick={exportHistoryBackup}><Download size={14} /> Exportar backup</button>
+                <button type="button" onClick={() => backupInputRef.current?.click()}><UploadCloud size={14} /> Importar backup</button>
+                <button type="button" onClick={() => syncCloudHistory()} disabled={cloudLoading}>{cloudLoading ? <Loader2 className="spin" size={14} /> : <UploadCloud size={14} />} Sincronizar Neon</button>
+                <button type="button" onClick={() => pullCloudHistory()} disabled={cloudLoading}>{cloudLoading ? <Loader2 className="spin" size={14} /> : <Download size={14} />} Baixar nuvem</button>
+                <input ref={backupInputRef} className="sr-only" type="file" accept="application/json,.json" onChange={importHistoryBackup} />
+              </div>
+              <div className="cloud-status-card">
+                <ShieldCheck size={14} />
+                <span>{cloudStatus}</span>
+              </div>
+              <label className="history-search">
+                <Search size={14} />
+                <input value={historySearch} onChange={(event) => setHistorySearch(event.target.value)} placeholder="Buscar jogador salvo" />
+              </label>
+              {(libraryOpen ? filteredHistory : filteredHistory.slice(0, 4)).map((item) => {
+                const info = skillProgressInfo(item.result.recommendedSkills, item.skillProgress);
+                return (
+                  <div className="saved-ficha-row" key={item.id}>
+                    <button type="button" onClick={() => restoreHistory(item)}>
+                      <strong>{item.result.parsed.playerName}</strong>
+                      <span>{item.result.bestPosition.label} • {item.result.trainingPointsUsed}/{item.result.trainingPointsTotal} pts</span>
+                      <em>{info.done}/{info.total} habilidades concluídas</em>
+                      <i><b style={{ width: `${info.percent}%` }} /></i>
+                    </button>
+                    <button className="delete-history-button" type="button" aria-label={`Apagar ${item.result.parsed.playerName}`} onClick={() => deleteHistoryItem(item.id)}>
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           )}
         </aside>
 
         <section className="preview-panel">
-          {result ? <ResultCard result={result} playerImage={playerCardImage ?? preview} /> : draftResult ? (
+          {result ? <ResultCard result={result} playerImage={playerCardImage ?? preview} skillProgress={activeSavedAnalysis?.skillProgress} onSkillToggle={toggleSavedSkill} onSaveFicha={saveCurrentFicha} /> : draftResult ? (
             <ReviewPanel
               draft={draftResult}
               playerImage={playerCardImage ?? preview}
@@ -1420,15 +2035,15 @@ export function CardVisionApp() {
             <div className="empty-state luxury-panel">
               <div className="empty-icon"><Wand2 size={34} /></div>
               <h2>Painel Elite</h2>
-              <p>Depois de preencher os dados, o resultado aparece como um painel premium com plano, habilidades, posições e justificativa de gameplay.</p>
+              <p>Depois de preencher os dados, o resultado aparece como um painel premium com plano, habilidades, posições e justificativa de desempenho em campo.</p>
               <div className="empty-card-preview">
                 <strong>--</strong>
                 <span>CA</span>
-                <em>Elite Studio</em>
+                <em>Elite Tático</em>
               </div>
               <div className="feature-row">
-                <span><ScanText size={15} /> Scanner por print</span>
-                <span><ShieldCheck size={15} /> Manual premium</span>
+                <span><ScanText size={15} /> Leitura por print</span>
+                <span><ShieldCheck size={15} /> Manual de precisão</span>
                 <span><CheckCircle2 size={15} /> Sem IA paga</span>
               </div>
             </div>

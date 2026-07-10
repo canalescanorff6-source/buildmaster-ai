@@ -1,8 +1,8 @@
 {
-  "name": "buildmaster-elite-studio-v22-scanner-manual",
-  "version": "22.0.0",
+  "name": "buildmaster-elite-tatico-v24-7-neon-cloud",
+  "version": "24.7.0",
   "private": true,
-  "description": "BuildMaster Elite Studio v22 - Scanner Elite por Print e Console Pro Manual, auditoria de dados, banco local maior e ficha de desempenho real sem IA paga.",
+  "description": "BuildMaster Elite Tático v24.7 - base estável com Cofre local + sincronização opcional Neon Postgres.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -18,7 +18,8 @@
     "next": "^16.2.10",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
-    "tesseract.js": "^5.1.1"
+    "tesseract.js": "^5.1.1",
+    "@neondatabase/serverless": "^1.0.0"
   },
   "devDependencies": {
     "@types/node": "^24.10.2",
@@ -26,5 +27,8 @@
     "@types/react-dom": "^19.2.3",
     "tsx": "^4.23.0",
     "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": "24.x"
   }
 }

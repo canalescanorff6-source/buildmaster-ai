@@ -1,4 +1,4 @@
-const CACHE_NAME = 'buildmaster-elite-studio-v22-scanner-manual';
+const CACHE_NAME = 'buildmaster-v24-7-neon-cloud';
 const STATIC_ASSETS = ['/manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

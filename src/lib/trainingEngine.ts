@@ -25,9 +25,9 @@ export const TRAINING_LABELS: Record<TrainingKey, string> = {
   lowerBodyStrength: 'Força pernas',
   aerialStrength: 'Bola aérea',
   defending: 'Defesa',
-  gk1: 'GO 1',
-  gk2: 'GO 2',
-  gk3: 'GO 3'
+  gk1: 'Goleiro 1',
+  gk2: 'Goleiro 2',
+  gk3: 'Goleiro 3'
 };
 
 export function cloneTraining(plan: TrainingPlan): TrainingPlan {

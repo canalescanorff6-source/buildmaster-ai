@@ -1,35 +1,52 @@
-# BuildMaster Elite Studio v22 — Scanner Elite + Console Pro
+# BuildMaster Elite Tático v24.7 — Cofre de Fichas Persistente
 
-Versão corrigida para manter **as duas entradas premium**:
+Versão baseada na linha estável v24, sem mudanças de APK/v27.
 
-- **Scanner Elite por Print**: você envia o print completo da carta, o app faz leitura local com OCR/Tesseract, aplica calibração por zonas e abre a Auditoria Elite antes do plano final.
-- **Console Pro Manual**: você preenche os dados manualmente quando quiser máxima precisão e zero risco de leitura errada.
+## Principal melhoria
 
-Tudo continua local, sem IA paga e sem API externa para interpretar carta.
+O histórico agora virou **Cofre de Fichas**:
 
-## O que mudou na v22
+- salva as fichas no navegador usando **IndexedDB**;
+- mantém as fichas no mesmo celular/navegador até o usuário apagar;
+- permite acompanhar habilidades concluídas;
+- permite abrir uma ficha salva sem repetir print/OCR/manual;
+- limite aumentado para até 200 fichas;
+- permite exportar backup JSON;
+- permite importar backup JSON.
 
-1. A opção de colocar print foi restaurada.
-2. O fluxo de print ganhou nome premium: **Scanner Elite por Print**.
-3. O modo manual ganhou nome premium: **Console Pro Manual**.
-4. O app agora permite escolher entre print e manual na mesma tela.
-5. O calibrador visual de áreas voltou para o painel.
-6. O detector de qualidade do print aparece após importar imagem.
-7. A leitura por print ainda passa pela **Auditoria Elite** antes de gerar ficha final.
-8. Textos e cards foram ajustados para reduzir cortes, sobreposição e textos visíveis apenas no hover.
-9. O aprendizado local continua ativo para lembrar correções anteriores.
-10. Cache/PWA atualizado para v22.
+## Onde fica salvo?
+
+Fica salvo localmente no navegador/PWA do aparelho, no banco local IndexedDB do domínio do app.
+
+Continua salvo ao fechar o navegador, reiniciar o celular ou sair e voltar no app.
+
+Pode ser perdido se o usuário limpar dados do site, apagar armazenamento do navegador, desinstalar o PWA apagando os dados ou trocar de celular sem exportar backup.
+
+## Recomendações
+
+Use **Exportar backup** de tempos em tempos para guardar as fichas em arquivo JSON. Depois é possível usar **Importar backup** para recuperar.
 
 ## Validação
 
-Comandos usados para validar:
+Arquivos JSON verificados:
 
-```bash
-npm run typecheck
-npm run test:all
-npm run build
+- package.json
+- package-lock.json
+- manifest.webmanifest
+
+
+
+## v24.7 — Neon Cloud
+
+Esta versão adiciona sincronização opcional com Neon Postgres. O Cofre local continua funcionando mesmo sem configurar a nuvem.
+
+Para ativar a nuvem, configure no Vercel:
+
+```env
+DATABASE_URL=postgresql://...
+BUILDMASTER_CLOUD_OWNER=tiago-buildmaster
 ```
 
-## Deploy no Vercel
+Depois faça redeploy com Clear Build Cache e use os botões **Sincronizar Neon** e **Baixar nuvem** no Cofre de Fichas.
 
-Substitua os arquivos antigos do repositório por esta versão extraída e faça redeploy com cache limpo.
+Nunca coloque a `DATABASE_URL` dentro do código ou no GitHub.
