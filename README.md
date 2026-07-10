@@ -50,3 +50,7 @@ BUILDMASTER_CLOUD_OWNER=tiago-buildmaster
 Depois faça redeploy com Clear Build Cache e use os botões **Sincronizar Neon** e **Baixar nuvem** no Cofre de Fichas.
 
 Nunca coloque a `DATABASE_URL` dentro do código ou no GitHub.
+
+## APK Android v24.8
+
+Esta versão inclui geração de APK Android por GitHub Actions. Veja o arquivo `README_APK_SEM_ERRO.md`.

@@ -1,8 +1,8 @@
 {
-  "name": "buildmaster-elite-tatico-v24-7-neon-cloud",
-  "version": "24.7.0",
+  "name": "buildmaster-elite-tatico-v24-8-apk-sem-erro",
+  "version": "24.8.0",
   "private": true,
-  "description": "BuildMaster Elite Tático v24.7 - base estável com Cofre local + sincronização opcional Neon Postgres.",
+  "description": "BuildMaster Elite Tático v24.8 - base estável v24.7 com geração de APK Android por GitHub Actions sem alterar o motor do app.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,7 +11,11 @@
     "vercel-build": "next build",
     "test:cards": "tsx tests/card-regression.ts",
     "test:prints": "tsx tests/print-regression.ts",
-    "test:all": "npm run test:cards && npm run test:prints"
+    "test:all": "npm run test:cards && npm run test:prints",
+    "apk:doctor": "npx cap doctor",
+    "apk:add-android": "npx cap add android",
+    "apk:sync": "npx cap sync android",
+    "apk:open": "npx cap open android"
   },
   "dependencies": {
     "lucide-react": "^1.23.0",
@@ -19,14 +23,17 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "tesseract.js": "^5.1.1",
-    "@neondatabase/serverless": "^1.0.0"
+    "@neondatabase/serverless": "^1.0.0",
+    "@capacitor/core": "^7.4.4",
+    "@capacitor/android": "^7.4.4"
   },
   "devDependencies": {
     "@types/node": "^24.10.2",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
     "tsx": "^4.23.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "@capacitor/cli": "^7.4.4"
   },
   "engines": {
     "node": "24.x"

@@ -1,0 +1,52 @@
+name: Gerar APK Android
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build-apk:
+    name: Build APK Debug
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Instalar dependências
+        run: npm install --registry=https://registry.npmjs.org/
+
+      - name: Validar TypeScript do programa web
+        run: npm run typecheck
+
+      - name: Adicionar Android se ainda não existir
+        run: |
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
+
+      - name: Sincronizar APK com o site publicado
+        env:
+          BUILDMASTER_WEB_URL: ${{ vars.BUILDMASTER_WEB_URL || 'https://buildmaster-ai-git-main-buildmaster-ai.vercel.app' }}
+        run: npx cap sync android
+
+      - name: Gerar APK debug
+        run: cd android && ./gradlew assembleDebug
+
+      - name: Enviar APK como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: BuildMaster-Elite-Tatico-v24-8-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
