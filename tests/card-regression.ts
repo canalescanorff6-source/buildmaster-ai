@@ -115,3 +115,6 @@ if (goalkeeperResult.recommendedSkills.some((skill) => ['Interceptação', 'Bloq
 }
 
 console.log(`OK: ${cases.length + 1} testes de regressão passaram.`);
+if (goalkeeperResult.recommendedSkills.some((skill) => skill.toLowerCase().includes('saque longo'))) {
+  throw new Error(`Não recomendar nome inventado para goleiro: ${goalkeeperResult.recommendedSkills.join(', ')}`);
+}

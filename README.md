@@ -34,7 +34,7 @@ Tudo continua local, privado e sem chamada para IA paga.
 Esta versão fixa o ambiente de build no Vercel: Node.js travado em 24.x, `.nvmrc`, `.node-version` e `installCommand` com `npm ci` usando o registro público do npm.
 
 
-## v24.3 Goleiros Stable
+## v24.4 Habilidades Oficiais Stable
 
 Esta revisão mantém a base estável da v24 e adiciona um motor separado para goleiros:
 

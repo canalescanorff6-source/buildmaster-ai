@@ -471,7 +471,6 @@ const SKILL_PROFILES: Record<string, { category: string; boosts: Partial<Record<
   'Defesa de pênalti': { category: 'GOLEIRO', boosts: { defense: 3, pressure: 2 }, aliases: ['Penalty Saver', 'Defesa de penalti', 'Pegador de pênalti', 'Pegador de penalti'] },
   'Arremesso longo de goleiro': { category: 'GOLEIRO', boosts: { creation: 2, pressure: 1 }, aliases: ['GK Long Throw', 'Arremesso longo do goleiro', 'Arremesso longo GO'] },
   'Lançamento baixo de goleiro': { category: 'GOLEIRO', boosts: { creation: 2 }, aliases: ['Low Punt Trajectory', 'Lancamento baixo de goleiro', 'Saque baixo de goleiro'] },
-  'Saque longo de goleiro': { category: 'GOLEIRO', boosts: { creation: 2, physical: 1 }, aliases: ['High Punt', 'Saque longo do goleiro', 'Lançamento longo de goleiro'] },
   'Saída rápida de goleiro': { category: 'GOLEIRO', boosts: { mobility: 2, pressure: 1 }, aliases: ['Saida rapida de goleiro', 'Saída do goleiro', 'GK Rush'] },
   'Esticada de Perna': { category: 'ÍMPETO', boosts: { defense: 2, physical: 1 }, aliases: ['Long Legs', 'Esticada da Perna', 'Esticada de perna'] },
   'Sombra veloz': { category: 'ÍMPETO', boosts: { mobility: 2, pressure: 1 }, aliases: ['Speeding Bullet', 'Sombra Veloz'] },
@@ -1900,7 +1899,7 @@ function trainingFor(position: PositionCode, objective: Objective, a: Required<A
 }
 
 function trainingCostRuleText() {
-  return 'Motor Elite Tático v24.3 Goleiros: motor estável com ficha separada para GOL, habilidades de goleiro e desempenho real sem buscar GER máximo.';
+  return 'Motor Elite Tático v24.4 Habilidades Oficiais: usa lista separada para jogador de linha, goleiro e ímpetos criáveis, sem habilidades inventadas.';
 }
 
 function skillPriority(position: PositionCode, objective: Objective) {
@@ -1917,7 +1916,7 @@ function skillPriority(position: PositionCode, objective: Objective) {
     CB: ['Bloqueador', 'Interceptação', 'Marcação individual', 'Superioridade aérea', 'Carrinho', 'Espírito guerreiro'],
     LB: ['Cruzamento preciso', 'Passe de primeira', 'Interceptação', 'Volta para marcar', 'Bloqueador', 'Curva para fora'],
     RB: ['Cruzamento preciso', 'Passe de primeira', 'Interceptação', 'Volta para marcar', 'Bloqueador', 'Curva para fora'],
-    GK: ['Defesa de pênalti', 'Arremesso longo de goleiro', 'Lançamento baixo de goleiro', 'Saque longo de goleiro', 'Liderança', 'Espírito guerreiro']
+    GK: ['Defesa de pênalti', 'Arremesso longo de goleiro', 'Lançamento baixo de goleiro', 'Liderança', 'Espírito guerreiro']
   };
   if (position === 'GK') return byPosition.GK;
   const extras: Record<Objective, string[]> = {
@@ -1930,7 +1929,7 @@ function skillPriority(position: PositionCode, objective: Objective) {
     QUICK_COUNTER: ['Passe em profundidade', 'Chute de primeira', 'Toque duplo'],
     DEFENSIVE: ['Interceptação', 'Bloqueador', 'Marcação individual'],
     AERIAL: ['Cabeçada', 'Superioridade aérea', 'Afastamento acrobático'],
-    GOALKEEPER: ['Defesa de pênalti', 'Arremesso longo de goleiro', 'Lançamento baixo de goleiro']
+    GOALKEEPER: ['Defesa de pênalti', 'Arremesso longo de goleiro', 'Lançamento baixo de goleiro', 'Liderança']
   };
   return Array.from(new Set([...(extras[objective] ?? []), ...(byPosition[position] ?? [])]));
 }
@@ -2071,7 +2070,6 @@ function recommendAdditionalSkills(parsed: ParsedCard, selectedPosition: Positio
     add('Defesa de pênalti', profile.weakReflex ? 118 : 108);
     add('Arremesso longo de goleiro', profile.offensive ? 112 : 98);
     add('Lançamento baixo de goleiro', profile.offensive ? 106 : 96);
-    add('Saque longo de goleiro', 92);
     add('Liderança', 88);
     add('Espírito guerreiro', 80);
     return Array.from(candidateScores.entries())
@@ -2237,7 +2235,7 @@ function usageTips(position: PositionCode, objective: Objective, a: Required<Att
   } else if (position === 'GK') {
     tips.push('Use como GOL puro: mantenha a linha defensiva protegida, evite sair manualmente sem necessidade e valorize reflexo, alcance e firmeza.');
     tips.push('Para goleiro ofensivo, use reposição rápida e saída curta; para goleiro defensivo, prefira posicionamento, alcance e segurança em chutes próximos.');
-    tips.push('Não use habilidades de jogador de linha no plano de goleiro; a recomendação prioriza pênalti, reposição, liderança e consistência no gol.');
+    tips.push('Não use habilidades de jogador de linha no plano de goleiro; a recomendação mantém somente habilidades próprias de GOL e habilidades universais úteis, sem nomes inventados.');
   } else {
     tips.push('Use na posição recomendada e foque nas ações que aparecem como pontos fortes no PRI.');
   }

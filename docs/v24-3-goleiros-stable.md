@@ -1,4 +1,4 @@
-# BuildMaster Elite Tático v24.3 — Goleiros Stable
+# BuildMaster Elite Tático v24.4 — Habilidades Oficiais Stable
 
 Correção focada em goleiros, mantendo a base estável da v24.
 

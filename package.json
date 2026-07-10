@@ -1,8 +1,8 @@
 {
-  "name": "buildmaster-elite-tatico-v24-goleiro-stable",
-  "version": "24.3.0",
+  "name": "buildmaster-elite-tatico-v24-4-habilidades-oficiais",
+  "version": "24.4.0",
   "private": true,
-  "description": "BuildMaster Elite Tático v24.3 - versão estável com motor separado para goleiros.",
+  "description": "BuildMaster Elite Tático v24.4 - versão estável com habilidades oficiais separadas para jogadores, goleiros e ímpetos.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
