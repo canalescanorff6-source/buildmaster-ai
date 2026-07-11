@@ -59,7 +59,15 @@ const HISTORY_STORE_NAME = 'fichas';
 const CALIBRATION_KEY = 'buildmaster_ocr_zones_v24_3_goleiro_stable';
 const LEARNING_KEY = 'buildmaster_local_learning_v24_3';
 const HISTORY_LIMIT = 200;
-const CLOUD_API_URL = '/api/cloud/fichas';
+const DEFAULT_CLOUD_API_URL = 'https://buildmaster-ai-git-main-buildmaster-ai.vercel.app/api/cloud/fichas';
+const CLOUD_API_URL = process.env.NEXT_PUBLIC_BUILDMASTER_CLOUD_API_URL || '/api/cloud/fichas';
+
+function getCloudApiUrl() {
+  if (typeof window === 'undefined') return CLOUD_API_URL;
+  const isEmbeddedApk = ['capacitor:', 'file:'].includes(window.location.protocol) || window.location.hostname === 'localhost';
+  if (isEmbeddedApk && CLOUD_API_URL.startsWith('/')) return DEFAULT_CLOUD_API_URL;
+  return CLOUD_API_URL;
+}
 
 const objectives: Array<{ value: Objective; title: string; hint: string }> = [
   { value: 'COMPETITIVE', title: 'Desempenho máximo', hint: 'rendimento real em campo, não GER alto' },
@@ -1306,7 +1314,7 @@ export function CardVisionApp() {
 
     setCloudLoading(true);
     try {
-      const response = await fetch(CLOUD_API_URL, {
+      const response = await fetch(getCloudApiUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: items.slice(0, HISTORY_LIMIT) })
@@ -1330,7 +1338,7 @@ export function CardVisionApp() {
   async function pullCloudHistory() {
     setCloudLoading(true);
     try {
-      const response = await fetch(CLOUD_API_URL, { method: 'GET', cache: 'no-store' });
+      const response = await fetch(getCloudApiUrl(), { method: 'GET', cache: 'no-store' });
       const payload = await response.json().catch(() => null) as { items?: unknown[]; message?: string } | null;
       if (!response.ok) throw new Error(payload?.message || 'Não consegui buscar fichas no Neon agora.');
       const cloudItems = normalizeHistoryList(Array.isArray(payload?.items) ? payload.items : []);
@@ -1360,7 +1368,7 @@ export function CardVisionApp() {
   async function syncCloudHistory() {
     setCloudLoading(true);
     try {
-      const response = await fetch(CLOUD_API_URL, { method: 'GET', cache: 'no-store' });
+      const response = await fetch(getCloudApiUrl(), { method: 'GET', cache: 'no-store' });
       const payload = await response.json().catch(() => null) as { items?: unknown[]; message?: string } | null;
       if (!response.ok) throw new Error(payload?.message || 'Neon ainda não está configurado.');
       const cloudItems = normalizeHistoryList(Array.isArray(payload?.items) ? payload.items : []);
@@ -1368,7 +1376,7 @@ export function CardVisionApp() {
       await persistHistoryStore(merged);
       setHistory(merged);
 
-      const saveResponse = await fetch(CLOUD_API_URL, {
+      const saveResponse = await fetch(getCloudApiUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: merged })
@@ -1391,7 +1399,7 @@ export function CardVisionApp() {
 
   async function deleteCloudHistoryItem(item: SavedAnalysis) {
     try {
-      await fetch(`${CLOUD_API_URL}?id=${encodeURIComponent(item.saveKey || item.id)}`, { method: 'DELETE' });
+      await fetch(`${getCloudApiUrl()}?id=${encodeURIComponent(item.saveKey || item.id)}`,  { method: 'DELETE' });
     } catch {
       // Exclusão na nuvem é complementar; o cofre local não pode travar por isso.
     }

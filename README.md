@@ -54,3 +54,10 @@ Nunca coloque a `DATABASE_URL` dentro do código ou no GitHub.
 ## APK Android v24.8
 
 Esta versão inclui geração de APK Android por GitHub Actions. Veja o arquivo `README_APK_SEM_ERRO.md`.
+
+
+## v24.9 APK Nativo
+
+Esta versão adiciona um APK que abre o BuildMaster dentro do próprio aplicativo Android, sem abrir o navegador. Use o workflow **Gerar APK Android Nativo** no GitHub Actions.
+
+Veja `README_APK_NATIVO.md`.

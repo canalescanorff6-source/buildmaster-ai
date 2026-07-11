@@ -1,4 +1,4 @@
-name: Gerar APK Android
+name: Gerar APK Android Nativo
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
 
 jobs:
   build-apk:
-    name: Build APK Debug
+    name: Build APK nativo com app embutido
     runs-on: ubuntu-latest
 
     steps:
@@ -28,8 +28,27 @@ jobs:
       - name: Instalar dependências
         run: npm install --registry=https://registry.npmjs.org/
 
-      - name: Validar TypeScript do programa web
+      - name: Validar TypeScript
         run: npm run typecheck
+
+      - name: Rodar testes do motor
+        run: npm run test:all
+
+      - name: Preparar exportação estática para APK
+        run: |
+          rm -rf out
+          if [ -d src/app/api ]; then
+            mv src/app/api src/app/_api_desativada_no_apk
+          fi
+          if [ -f middleware.ts ]; then
+            mv middleware.ts middleware.desativado-no-apk.ts
+          fi
+
+      - name: Gerar arquivos internos do APK
+        env:
+          BUILDMASTER_ANDROID_STATIC: '1'
+          NEXT_PUBLIC_BUILDMASTER_CLOUD_API_URL: ${{ vars.BUILDMASTER_CLOUD_API_URL || 'https://buildmaster-ai-git-main-buildmaster-ai.vercel.app/api/cloud/fichas' }}
+        run: npm run build
 
       - name: Adicionar Android se ainda não existir
         run: |
@@ -37,9 +56,7 @@ jobs:
             npx cap add android
           fi
 
-      - name: Sincronizar APK com o site publicado
-        env:
-          BUILDMASTER_WEB_URL: ${{ vars.BUILDMASTER_WEB_URL || 'https://buildmaster-ai-git-main-buildmaster-ai.vercel.app' }}
+      - name: Sincronizar arquivos embutidos no Android
         run: npx cap sync android
 
       - name: Gerar APK debug
@@ -48,5 +65,5 @@ jobs:
       - name: Enviar APK como artefato
         uses: actions/upload-artifact@v4
         with:
-          name: BuildMaster-Elite-Tatico-v24-8-debug-apk
+          name: BuildMaster-Elite-Tatico-v24-9-apk-nativo
           path: android/app/build/outputs/apk/debug/app-debug.apk
